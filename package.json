@@ -23,6 +23,7 @@
     "type": "git",
     "url": "https://github.com/tu-usuario/matematica-pwa.git"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0"
+  }
 }

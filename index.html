@@ -23,6 +23,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
     
+    <!-- Supabase CDN -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <!-- Librerías para generar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -50,6 +53,11 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .exercise-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
         .exercise-item .operator {
             margin-right: 0.5rem;
@@ -75,6 +83,7 @@
             cursor: pointer;
             transition: transform 0.2s;
             font-size: 16px;
+            animation: pulse 2s infinite;
         }
         .story-button:hover {
             transform: scale(1.1);
@@ -170,6 +179,223 @@
         .install-prompt.show {
             transform: translateY(0);
         }
+        
+        /* Estilos para autenticación */
+        .success-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1100;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 350px;
+        }
+        
+        .success-toast.show {
+            transform: translateX(0);
+        }
+        
+        .loader-small {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        /* Nuevas animaciones y efectos */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+            20%, 40%, 60%, 80% { transform: translateX(3px); }
+        }
+        
+        .animate-bounce-in {
+            animation: bounceIn 0.6s ease-out;
+        }
+        
+        .animate-slide-up {
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        /* Efectos de hover mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Indicadores de progreso */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, .2) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, .2) 50%,
+                rgba(255, 255, 255, .2) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 50px 50px;
+            animation: move 2s linear infinite;
+        }
+        
+        @keyframes move {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+        
+        /* Efectos de card mejorados */
+        .exercise-card {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .exercise-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(147,51,234,0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 0.5rem;
+            z-index: -1;
+        }
+        
+        .exercise-card:hover::before {
+            opacity: 1;
+        }
+        
+        /* Toast notifications mejoradas */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 1100;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            min-width: 300px;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        
+        /* Responsive mejorado */
+        @media (max-width: 640px) {
+            .exercise-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 1rem;
+            }
+            
+            .modal-content {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+            
+            .toast {
+                right: 10px;
+                left: 10px;
+                transform: translateY(-100px);
+                min-width: auto;
+            }
+            
+            .toast.show {
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body class="bg-blue-50 text-gray-800">
@@ -189,6 +415,35 @@
     </div>
 
     <div class="container mx-auto p-4 md:p-8">
+        
+        <!-- Barra de Autenticación -->
+        <div id="auth-bar" class="flex justify-between items-center mb-4 p-3 bg-white rounded-lg shadow-sm">
+            <div id="user-profile" class="hidden flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold" id="user-avatar">
+                    G
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-800" id="user-name">Gaby</p>
+                    <p class="text-xs text-gray-500" id="user-email">gaby@example.com</p>
+                </div>
+            </div>
+            <div id="auth-buttons" class="flex space-x-2">
+                <button id="login-btn" class="auth-button bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                    🔐 Iniciar Sesión
+                </button>
+                <button id="register-btn" class="auth-button bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                    📝 Registrarse
+                </button>
+            </div>
+            <div id="user-actions" class="hidden flex space-x-2">
+                <button id="profile-btn" class="auth-button bg-purple-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                    👤 Mi Perfil
+                </button>
+                <button id="logout-btn" class="auth-button bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors">
+                    🚪 Salir
+                </button>
+            </div>
+        </div>
         
         <div id="main-content">
             <header class="text-center mb-8 pt-8">
@@ -272,6 +527,112 @@
         <p id="error-message" class="text-center text-red-600 font-bold hidden mt-8"></p>
     </div>
 
+    <!-- Modales de Autenticación -->
+    
+    <!-- Modal de Login -->
+    <div id="login-modal" class="modal-overlay hidden no-print">
+        <div class="modal-content">
+            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            <h3 class="text-2xl font-bold text-blue-600 mb-4">🔐 Iniciar Sesión</h3>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <input type="email" id="login-email" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="📧 Correo electrónico" required>
+                </div>
+                <div>
+                    <input type="password" id="login-password" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="🔒 Contraseña" required>
+                </div>
+                <button type="submit" id="login-submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    🚀 Entrar
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <p class="text-sm text-gray-600">¿No tienes cuenta? 
+                    <button type="button" onclick="document.getElementById('login-modal').classList.add('hidden'); document.getElementById('register-modal').classList.remove('hidden');" class="text-blue-600 font-semibold hover:underline">Regístrate aquí</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Registro -->
+    <div id="register-modal" class="modal-overlay hidden no-print">
+        <div class="modal-content">
+            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            <h3 class="text-2xl font-bold text-green-600 mb-4">🌟 Crear Cuenta</h3>
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <input type="text" id="register-name" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="👤 Tu nombre" required maxlength="50">
+                </div>
+                <div>
+                    <input type="email" id="register-email" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="📧 Correo electrónico" required>
+                </div>
+                <div>
+                    <input type="password" id="register-password" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="🔒 Contraseña (mín. 6 caracteres)" required minlength="6">
+                </div>
+                <button type="submit" id="register-submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">
+                    🌟 Crear Cuenta
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <p class="text-sm text-gray-600">¿Ya tienes cuenta? 
+                    <button type="button" onclick="document.getElementById('register-modal').classList.add('hidden'); document.getElementById('login-modal').classList.remove('hidden');" class="text-green-600 font-semibold hover:underline">Inicia sesión aquí</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Perfil -->
+    <div id="profile-modal" class="modal-overlay hidden no-print">
+        <div class="modal-content max-w-lg">
+            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            <h3 class="text-2xl font-bold text-purple-600 mb-4">👤 Mi Perfil</h3>
+            
+            <!-- Estadísticas -->
+            <div class="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600" id="stat-exercises">0</div>
+                    <div class="text-xs text-gray-600">Ejercicios</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600" id="stat-accuracy">0%</div>
+                    <div class="text-xs text-gray-600">Precisión</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-purple-600" id="stat-sessions">0</div>
+                    <div class="text-xs text-gray-600">Sesiones</div>
+                </div>
+            </div>
+
+            <form id="profile-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre:</label>
+                    <input type="text" id="profile-name" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none" required maxlength="50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nivel preferido:</label>
+                    <select id="profile-level" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none">
+                        <option value="1">Nivel 1 - Fácil</option>
+                        <option value="2">Nivel 2 - Medio</option>
+                        <option value="3">Nivel 3 - Difícil</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Operación favorita:</label>
+                    <select id="profile-operation" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none">
+                        <option value="+">Suma (+)</option>
+                        <option value="-">Resta (-)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Avatar (emoji):</label>
+                    <input type="text" id="profile-avatar" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="🦄 (opcional)" maxlength="2">
+                </div>
+                <button type="submit" id="profile-submit" class="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors">
+                    💾 Guardar Cambios
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal para Cuento -->
     <div id="story-modal" class="modal-overlay no-print">
         <div class="modal-content">
@@ -287,6 +648,315 @@
             <button id="close-modal-btn" class="mt-6 bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-400 transition-colors">Cerrar</button>
         </div>
     </div>
+
+    <!-- NUEVO: Script inline para autenticación (sin módulos ES6) -->
+    <script>
+        // Configuración de Supabase inline
+        const SUPABASE_URL = 'https://uznvakpuuxnpdhoejrog.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg';
+        
+        // Cliente Supabase global
+        let supabaseClient;
+        let authManager;
+        
+        // Inicializar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando Matemágica...');
+            
+            // Inicializar Supabase
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Supabase inicializado');
+                
+                // Inicializar autenticación
+                inicializarAutenticacion();
+            } else {
+                console.error('❌ Supabase no está cargado');
+            }
+            
+            // Configurar botones
+            configurarBotonesAuth();
+        });
+        
+        function configurarBotonesAuth() {
+            console.log('🔧 Configurando botones de autenticación...');
+            
+            // Botón de login
+            const loginBtn = document.getElementById('login-btn');
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function() {
+                    console.log('👆 Click en botón login');
+                    mostrarModalLogin();
+                });
+                console.log('✅ Botón login configurado');
+            }
+            
+            // Botón de registro
+            const registerBtn = document.getElementById('register-btn');
+            if (registerBtn) {
+                registerBtn.addEventListener('click', function() {
+                    console.log('👆 Click en botón registro');
+                    mostrarModalRegistro();
+                });
+                console.log('✅ Botón registro configurado');
+            }
+            
+            // Botón de logout
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    console.log('👆 Click en botón logout');
+                    cerrarSesion();
+                });
+                console.log('✅ Botón logout configurado');
+            }
+            
+            // Botón de perfil
+            const profileBtn = document.getElementById('profile-btn');
+            if (profileBtn) {
+                profileBtn.addEventListener('click', function() {
+                    console.log('👆 Click en botón perfil');
+                    mostrarModalPerfil();
+                });
+                console.log('✅ Botón perfil configurado');
+            }
+            
+            // Formularios
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', manejarLogin);
+            }
+            
+            const registerForm = document.getElementById('register-form');
+            if (registerForm) {
+                registerForm.addEventListener('submit', manejarRegistro);
+            }
+            
+            // Cerrar modales
+            document.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', cerrarModales);
+            });
+            
+            console.log('🎉 Todos los botones configurados');
+        }
+        
+        function mostrarModalLogin() {
+            const modal = document.getElementById('login-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('visible');
+                console.log('📱 Modal de login mostrado');
+            }
+        }
+        
+        function mostrarModalRegistro() {
+            const modal = document.getElementById('register-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('visible');
+                console.log('📱 Modal de registro mostrado');
+            }
+        }
+        
+        function mostrarModalPerfil() {
+            const modal = document.getElementById('profile-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('visible');
+                console.log('📱 Modal de perfil mostrado');
+            }
+        }
+        
+        function cerrarModales() {
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.classList.add('hidden');
+                modal.classList.remove('visible');
+            });
+            console.log('❌ Modales cerrados');
+        }
+        
+        async function manejarRegistro(event) {
+            event.preventDefault();
+            console.log('📝 Procesando registro...');
+            
+            const nombre = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            if (!nombre || !email || !password) {
+                mostrarMensaje('Por favor completa todos los campos 📝', 'error');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            display_name: nombre,
+                            user_type: 'student'
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                mostrarMensaje(`¡Bienvenido ${nombre}! 🌟`, 'success');
+                cerrarModales();
+                console.log('✅ Registro exitoso');
+                
+            } catch (error) {
+                console.error('❌ Error en registro:', error);
+                mostrarMensaje(`Error: ${error.message} 😞`, 'error');
+            }
+        }
+        
+        async function manejarLogin(event) {
+            event.preventDefault();
+            console.log('🔐 Procesando login...');
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                mostrarMensaje('Por favor completa todos los campos 📝', 'error');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                
+                mostrarMensaje('¡Bienvenido de vuelta! 🎉', 'success');
+                cerrarModales();
+                console.log('✅ Login exitoso');
+                
+            } catch (error) {
+                console.error('❌ Error en login:', error);
+                mostrarMensaje(`Error: ${error.message} 😞`, 'error');
+            }
+        }
+        
+        async function cerrarSesion() {
+            console.log('🚪 Cerrando sesión...');
+            
+            try {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) throw error;
+                
+                mostrarMensaje('¡Hasta pronto! 👋', 'info');
+                actualizarUIAuth(false);
+                console.log('✅ Sesión cerrada');
+                
+            } catch (error) {
+                console.error('❌ Error cerrando sesión:', error);
+                mostrarMensaje('Error cerrando sesión 😞', 'error');
+            }
+        }
+        
+        function inicializarAutenticacion() {
+            // Escuchar cambios de autenticación
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                console.log('🔄 Cambio de autenticación:', event);
+                
+                if (session?.user) {
+                    console.log('👤 Usuario autenticado:', session.user.email);
+                    actualizarUIAuth(true, session.user);
+                } else {
+                    console.log('👤 Usuario no autenticado');
+                    actualizarUIAuth(false);
+                }
+            });
+        }
+        
+        function actualizarUIAuth(autenticado, usuario = null) {
+            const authButtons = document.getElementById('auth-buttons');
+            const userProfile = document.getElementById('user-profile');
+            const userActions = document.getElementById('user-actions');
+            
+            if (autenticado && usuario) {
+                // Ocultar botones de login/registro
+                authButtons.classList.add('hidden');
+                
+                // Mostrar perfil de usuario
+                userProfile.classList.remove('hidden');
+                userActions.classList.remove('hidden');
+                
+                // Actualizar información del perfil
+                const userName = document.getElementById('user-name');
+                const userEmail = document.getElementById('user-email');
+                const userAvatar = document.getElementById('user-avatar');
+                
+                if (userName && usuario.user_metadata?.display_name) {
+                    userName.textContent = usuario.user_metadata.display_name;
+                }
+                if (userEmail) {
+                    userEmail.textContent = usuario.email;
+                }
+                if (userAvatar && usuario.user_metadata?.display_name) {
+                    userAvatar.textContent = usuario.user_metadata.display_name.charAt(0).toUpperCase();
+                }
+                
+                // Actualizar nombre en el input del header
+                const nameInput = document.getElementById('name-input');
+                if (nameInput && usuario.user_metadata?.display_name) {
+                    nameInput.value = usuario.user_metadata.display_name;
+                }
+                
+            } else {
+                // Mostrar botones de login/registro
+                authButtons.classList.remove('hidden');
+                
+                // Ocultar perfil de usuario
+                userProfile.classList.add('hidden');
+                userActions.classList.add('hidden');
+            }
+        }
+        
+        function mostrarMensaje(mensaje, tipo = 'info') {
+            // Crear o actualizar elemento de mensaje
+            let messageEl = document.getElementById('auth-message');
+            if (!messageEl) {
+                messageEl = document.createElement('div');
+                messageEl.id = 'auth-message';
+                document.body.appendChild(messageEl);
+            }
+
+            // Configurar estilos según tipo
+            messageEl.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+            
+            switch(tipo) {
+                case 'success':
+                    messageEl.classList.add('bg-green-500', 'text-white');
+                    break;
+                case 'error':
+                    messageEl.classList.add('bg-red-500', 'text-white');
+                    break;
+                case 'info':
+                default:
+                    messageEl.classList.add('bg-blue-500', 'text-white');
+                    break;
+            }
+
+            messageEl.textContent = mensaje;
+            messageEl.style.transform = 'translateX(0)';
+
+            // Auto ocultar después de 3 segundos
+            setTimeout(() => {
+                messageEl.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.parentNode.removeChild(messageEl);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    </script>
     
     <script src="app.js"></script>
 </body>

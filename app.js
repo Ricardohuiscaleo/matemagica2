@@ -1,5 +1,77 @@
 // Variables globales
 let deferredPrompt;
+let authManager; // Agregar referencia al AuthManager
+
+// Eliminar el import dinámico problemático y usar la instancia global
+window.addEventListener('DOMContentLoaded', async () => {
+    // Esperar a que se carguen los módulos de autenticación
+    // El authManager se cargará automáticamente desde auth-manager.js
+    
+    // Pequeña espera para asegurar que los módulos estén cargados
+    setTimeout(() => {
+        // El authManager está disponible globalmente
+        if (window.authManager) {
+            authManager = window.authManager;
+            console.log('AuthManager cargado correctamente');
+            setupAuthIntegration();
+        } else {
+            console.warn('AuthManager no está disponible, pero la app funcionará sin autenticación');
+        }
+        
+        // Resto de la inicialización
+        initializeApp();
+    }, 100);
+});
+
+function setupAuthIntegration() {
+    if (!authManager) return;
+    
+    // Actualizar nombre del usuario en el header cuando se autentique
+    window.addEventListener('userAuthenticated', (event) => {
+        const profile = event.detail.profile;
+        if (profile && profile.full_name) {
+            document.getElementById('name-input').value = profile.full_name;
+        }
+    });
+    
+    // Configurar nivel preferido del usuario
+    window.addEventListener('userAuthenticated', (event) => {
+        const profile = event.detail.profile;
+        if (profile && profile.preferred_level) {
+            const levelRadio = document.querySelector(`input[name="level"][value="${profile.preferred_level}"]`);
+            if (levelRadio) {
+                levelRadio.checked = true;
+            }
+        }
+    });
+}
+
+// Función para guardar progreso de ejercicios con autenticación
+async function saveExerciseProgress(exerciseData) {
+    if (authManager && authManager.isAuthenticated) {
+        try {
+            await authManager.saveExerciseProgress(exerciseData);
+            console.log('Progreso guardado en Supabase');
+        } catch (error) {
+            console.error('Error guardando en Supabase:', error);
+        }
+    }
+    
+    // Siempre guardar localmente como backup
+    localStorage.setItem('lastExercises', JSON.stringify(exerciseData));
+}
+
+// Función para guardar progreso de cuentos con autenticación
+async function saveStoryProgress(storyData) {
+    if (authManager && authManager.isAuthenticated) {
+        try {
+            await authManager.saveStoryProgress(storyData);
+            console.log('Cuento guardado en Supabase');
+        } catch (error) {
+            console.error('Error guardando cuento en Supabase:', error);
+        }
+    }
+}
 
 // Elementos del DOM
 const generateBtn = document.getElementById('generate-btn');
@@ -181,6 +253,15 @@ async function generateAndRenderExercises() {
         // Guardar ejercicios en localStorage para modo offline
         localStorage.setItem('lastExercises', JSON.stringify(data));
         localStorage.setItem('exerciseLevel', selectedLevel);
+        
+        // Guardar progreso en Supabase si el usuario está autenticado
+        const exerciseData = {
+            additions: data.additions,
+            subtractions: data.subtractions,
+            level: selectedLevel,
+            date: new Date().toISOString()
+        };
+        await saveExerciseProgress(exerciseData);
         
     } catch (error) {
         console.error("Error:", error);
@@ -467,22 +548,144 @@ function convertMarkdownToHtml(text) {
         .trim();
 }
 
-// Event Listeners
-generateBtn.addEventListener('click', generateAndRenderExercises);
-printPdfBtn.addEventListener('click', printToPDF);
+// Función para crear efecto confetti cuando el niño responde correctamente
+function createConfetti() {
+    const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6'];
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-piece';
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 3 + 's';
+        document.body.appendChild(confetti);
+        
+        setTimeout(() => {
+            confetti.remove();
+        }, 3000);
+    }
+}
 
-document.querySelectorAll('input[name="level"]').forEach(radio => {
-    radio.addEventListener('change', generateAndRenderExercises);
-});
+// Función mejorada para mostrar progreso del niño
+function mostrarProgreso() {
+    const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
+    const totalEjercicios = stats.totalEjercicios || 0;
+    const ejerciciosCorrectos = stats.ejerciciosCorrectos || 0;
+    const porcentaje = totalEjercicios > 0 ? Math.round((ejerciciosCorrectos / totalEjercicios) * 100) : 0;
+    
+    // Crear medallas basadas en el progreso
+    let medalla = '';
+    if (porcentaje >= 90) medalla = '🏆';
+    else if (porcentaje >= 70) medalla = '🥇';
+    else if (porcentaje >= 50) medalla = '🥈';
+    else if (porcentaje >= 30) medalla = '🥉';
+    else medalla = '⭐';
+    
+    alert(`¡Genial! ${medalla}\n\nHas resuelto ${ejerciciosCorrectos} de ${totalEjercicios} ejercicios correctamente.\nTu puntuación: ${porcentaje}%\n\n¡Sigue practicando para ser un matemago!`);
+}
 
-createStoryBtn.addEventListener('click', handleCustomProblemSubmit);
-closeModalBtn.addEventListener('click', () => storyModal.classList.remove('visible'));
-storyModal.addEventListener('click', (e) => {
-    if (e.target === storyModal) storyModal.classList.remove('visible');
-});
+// Función mejorada para verificar respuestas con feedback visual
+function verificarRespuesta(ejercicioIndex, respuestaUsuario) {
+    const ejercicios = JSON.parse(localStorage.getItem('ejerciciosActuales') || '[]');
+    const ejercicio = ejercicios[ejercicioIndex];
+    const input = document.getElementById(`respuesta-${ejercicioIndex}`);
+    
+    if (parseInt(respuestaUsuario) === ejercicio.resultado) {
+        // Respuesta correcta
+        input.classList.add('correct-animation');
+        createConfetti();
+        
+        // Guardar estadísticas
+        const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
+        stats.ejerciciosCorrectos = (stats.ejerciciosCorrectos || 0) + 1;
+        stats.totalEjercicios = (stats.totalEjercicios || 0) + 1;
+        localStorage.setItem('playerStats', JSON.stringify(stats));
+        
+        // Mensaje de felicitación aleatorio
+        const felicitaciones = [
+            '¡Excelente! 🌟',
+            '¡Muy bien! 🎉',
+            '¡Perfecto! ✨',
+            '¡Eres un matemago! 🧙‍♂️',
+            '¡Fantástico! 🎊'
+        ];
+        const mensaje = felicitaciones[Math.floor(Math.random() * felicitaciones.length)];
+        
+        setTimeout(() => {
+            alert(mensaje);
+            input.classList.remove('correct-animation');
+        }, 600);
+        
+    } else {
+        // Respuesta incorrecta
+        input.classList.add('incorrect-animation');
+        
+        const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
+        stats.totalEjercicios = (stats.totalEjercicios || 0) + 1;
+        localStorage.setItem('playerStats', JSON.stringify(stats));
+        
+        setTimeout(() => {
+            alert('¡Inténtalo de nuevo! Puedes hacerlo 💪');
+            input.classList.remove('incorrect-animation');
+            input.value = '';
+            input.focus();
+        }, 500);
+    }
+}
 
-// Carga inicial
-window.addEventListener('load', () => {
+// Función para mostrar consejos y ayuda
+function mostrarConsejo() {
+    const consejos = [
+        '💡 Para sumar, puedes contar con los dedos si necesitas ayuda.',
+        '💡 Para restar, piensa en "quitar" objetos de un grupo.',
+        '💡 Si el resultado parece muy grande o pequeño, revisa tu operación.',
+        '💡 Practica todos los días para ser mejor en matemáticas.',
+        '💡 ¡No te preocupes por los errores, son parte del aprendizaje!'
+    ];
+    
+    const consejo = consejos[Math.floor(Math.random() * consejos.length)];
+    alert(consejo);
+}
+
+// Función para modo de juego cronometrado
+function iniciarModoTiempo() {
+    const tiempo = prompt('¿Cuántos segundos quieres para resolver los ejercicios?\n(Recomendado: 60 segundos)');
+    if (!tiempo || isNaN(tiempo)) return;
+    
+    const segundos = parseInt(tiempo);
+    mostrarCronometro(segundos);
+    
+    setTimeout(() => {
+        alert('¡Se acabó el tiempo! 🕐\nVeamos qué tal lo hiciste.');
+        mostrarProgreso();
+    }, segundos * 1000);
+}
+
+function mostrarCronometro(segundos) {
+    const cronometro = document.createElement('div');
+    cronometro.id = 'cronometro';
+    cronometro.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg font-bold text-xl z-50';
+    cronometro.textContent = `⏰ ${segundos}s`;
+    document.body.appendChild(cronometro);
+    
+    const intervalo = setInterval(() => {
+        segundos--;
+        cronometro.textContent = `⏰ ${segundos}s`;
+        
+        if (segundos <= 10) {
+            cronometro.classList.add('animate-pulse');
+            cronometro.classList.remove('bg-red-500');
+            cronometro.classList.add('bg-red-700');
+        }
+        
+        if (segundos <= 0) {
+            clearInterval(intervalo);
+            cronometro.remove();
+        }
+    }, 1000);
+}
+
+// Función de inicialización principal
+function initializeApp() {
     setDate();
     
     // Cargar ejercicios guardados si existen, sino generar nuevos
@@ -501,6 +704,7 @@ window.addEventListener('load', () => {
         generateAndRenderExercises();
     }
 
+    // Configurar inputs numéricos
     const numericInputs = ['num1-input', 'num2-input', 'custom-story-answer', 'story-answer-input'];
     numericInputs.forEach(id => {
         const element = document.getElementById(id);
@@ -508,10 +712,24 @@ window.addEventListener('load', () => {
             element.addEventListener('keydown', preventNonNumericInput);
         }
     });
+}
+
+// Event Listeners principales
+generateBtn.addEventListener('click', generateAndRenderExercises);
+printPdfBtn.addEventListener('click', printToPDF);
+
+document.querySelectorAll('input[name="level"]').forEach(radio => {
+    radio.addEventListener('change', generateAndRenderExercises);
+});
+
+createStoryBtn.addEventListener('click', handleCustomProblemSubmit);
+closeModalBtn.addEventListener('click', () => storyModal.classList.remove('visible'));
+storyModal.addEventListener('click', (e) => {
+    if (e.target === storyModal) storyModal.classList.remove('visible');
 });
 
 // Detectar cuando la app se está ejecutando como PWA
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
         console.log('La aplicación se está ejecutando como PWA instalada');
         // Ocultar prompt de instalación si ya está instalada
