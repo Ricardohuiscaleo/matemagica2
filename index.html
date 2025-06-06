@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Ejercicios de Sumas y Restas</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Aplicación para generar ejercicios de matemáticas con IA para estudiantes de primaria">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Matemágica">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    
+    <!-- Librerías para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .exercise-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1.5rem;
+        }
+        .exercise-item {
+            text-align: right;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background-color: white;
+            position: relative;
+            font-size: 1.1rem;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .exercise-item .operator {
+            margin-right: 0.5rem;
+        }
+        .exercise-item .line {
+            border-bottom: 2px solid #000;
+            margin-top: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .story-button {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background-color: #f59e0b;
+            color: white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 16px;
+        }
+        .story-button:hover {
+            transform: scale(1.1);
+        }
+        h1, h2 {
+             font-family: 'Pacifico', cursive;
+        }
+        .level-label {
+            display: block;
+            padding: 0.5rem 1rem;
+            border: 2px solid #ddd;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: white;
+        }
+        .level-label:has(input:checked) {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+        .pdf-page {
+            background-color: white;
+            padding: 2rem;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+        .feedback-correct {
+            border-color: #10b981;
+            background-color: #d1fae5;
+        }
+        .feedback-incorrect {
+            border-color: #f59e0b;
+            background-color: #fef3c7;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateY(100px);
+            transition: transform 0.3s ease;
+        }
+        .install-prompt.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-blue-50 text-gray-800">
+
+    <!-- Install Prompt -->
+    <div id="install-prompt" class="install-prompt">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="font-bold">¡Instala Matemágica!</h3>
+                <p class="text-sm">Úsala offline en tu dispositivo</p>
+            </div>
+            <div class="flex gap-2">
+                <button id="install-button" class="bg-white text-blue-600 px-4 py-2 rounded font-bold text-sm">Instalar</button>
+                <button id="dismiss-install" class="text-white text-xl">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <div id="main-content">
+            <header class="text-center mb-8 pt-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-blue-600 mb-2">Matemágica</h1>
+                <p class="text-xl text-gray-700 mt-4">Sumas y Restas con el poder de la IA</p>
+                <p class="text-md text-gray-500 italic">By Ricardo Huiscaleo</p>
+                <div class="mt-6 text-left max-w-md mx-auto bg-white p-4 rounded-lg shadow-sm" id="user-info-header">
+                    <div class="flex items-center mb-2">
+                        <strong class="mr-2">Para:</strong>
+                        <input type="text" id="name-input" value="Gaby" class="p-1 border border-gray-200 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                    <p><strong>Fecha:</strong> <span id="current-date"></span></p>
+                </div>
+            </header>
+            
+            <div id="exercises-container" class="px-4">
+                 <div id="loader" class="text-center py-10">
+                    <div class="loader"></div>
+                    <p class="text-lg text-gray-600">Creando ejercicios mágicos para ti...</p>
+                </div>
+                
+                <div id="content" class="hidden">
+                    <section id="additions-section" class="mb-12">
+                        <h2 class="text-3xl font-bold text-blue-500 pb-2 mb-6">Tabla de Sumas</h2>
+                        <div id="additions-grid" class="exercise-grid"></div>
+                    </section>
+                    <section id="subtractions-section">
+                        <h2 class="text-3xl font-bold text-red-500 pb-2 mb-6">Tabla de Restas</h2>
+                        <div id="subtractions-grid" class="exercise-grid"></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- Creador de problemas escritos -->
+        <section class="my-12 p-6 bg-white rounded-lg shadow-md no-print">
+            <h2 class="text-3xl font-bold text-amber-500 pb-2 mb-4 text-center">Crea tu Propio Cuento Matemático</h2>
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                <input type="number" id="num1-input" class="p-2 border border-gray-300 rounded-md w-24 text-center" placeholder="Nº 1">
+                <select id="operator-select" class="p-2 border border-gray-300 rounded-md">
+                    <option value="+">+</option>
+                    <option value="-">-</option>
+                </select>
+                <input type="number" id="num2-input" class="p-2 border border-gray-300 rounded-md w-24 text-center" placeholder="Nº 2">
+                <button id="create-story-btn" class="bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M6 1h4a1 1 0 0 1 1 1v4.117a4.5 4.5 0 0 1-.555 2.144L6.94 14.12a.5.5 0 0 1-.876-.44l.24-1.205L3.646 9.47a.5.5 0 0 1 .434-.748L5.5 8.51V2a1 1 0 0 1 1-1zM2.5 9.04a1 1 0 0 0-1.03 1.06l.154.772a1 1 0 0 0 1.03 1.06L4.5 11.5l-2-2.46z"/></svg>
+                    ¡Crear Cuento!
+                </button>
+            </div>
+            <div id="custom-story-loader" class="hidden"><div class="loader"></div></div>
+            <div id="custom-story-output" class="mt-4 text-center hidden">
+                <p class="p-4 border-l-4 border-amber-400 bg-amber-50 rounded-r-lg text-left" id="custom-story-text"></p>
+                <div class="mt-4 answer-section">
+                    <input type="number" id="custom-story-answer" class="p-2 border border-gray-300 rounded-md w-32 text-center" placeholder="Tu respuesta">
+                    <button id="custom-story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Revisar mi respuesta</button>
+                    <div id="custom-feedback-loader" class="hidden"><div class="loader"></div></div>
+                    <div id="custom-feedback" class="mt-4 p-3 rounded-lg hidden"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controles -->
+        <div class="text-center my-10 no-print">
+            <div id="level-selector" class="flex justify-center flex-wrap gap-2 sm:gap-4 mb-6">
+                <label class="level-label"><input type="radio" name="level" value="1" class="hidden" checked> Nivel 1 (Fácil)</label>
+                <label class="level-label"><input type="radio" name="level" value="2" class="hidden"> Nivel 2 (Medio)</label>
+                <label class="level-label"><input type="radio" name="level" value="3" class="hidden"> Nivel 3 (Difícil)</label>
+            </div>
+            <div class="flex justify-center items-center space-x-4">
+                 <button id="generate-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M8 3a.5.5 0 0 1 .5.5v3.5a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/><path d="M6.354 1.146a.5.5 0 0 1 0 .708L5.707 2.5l.647.646a.5.5 0 1 1-.708.708l-.646-.647-.647.647a.5.5 0 1 1-.708-.708l.647-.646L4.95 1.854a.5.5 0 1 1 .708-.708l.646.647.647-.647a.5.5 0 0 1 .708 0zM8 13a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1H8.5a.5.5 0 0 1-.5-.5z"/><path d="M6.354 14.854a.5.5 0 0 1 0-.708l.647-.646.646.647a.5.5 0 1 1-.708.708l-.647-.646-.646.647a.5.5 0 1 1-.708-.708l.646-.647.647-.646a.5.5 0 0 1 .708.708l-.647.647.646.646a.5.5 0 0 1 0 .708zM12.5 8a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5zM1.5 8a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1H2a.5.5 0 0 1-.5-.5zM1.146 6.354a.5.5 0 0 1 .708 0l.646.647.647-.646a.5.5 0 1 1 .708.708l-.646.647.647.646a.5.5 0 1 1-.708-.708L2.5 8.707l-.646.647a.5.5 0 1 1-.708-.708l.646-.647-.646-.647a.5.5 0 0 1 0-.708zM14.854 6.354a.5.5 0 0 1 .708 0l.646.647.646-.646a.5.5 0 1 1 .708.708l-.646.647.647.646a.5.5 0 1 1-.708.708l-.647-.646.646-.647a.5.5 0 0 1 0-.708z"/></svg>
+                    Generar Ejercicios
+                </button>
+                <button id="print-pdf-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-md flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1h10v-1a2 2 0 0 0-2-2H5zm-1 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4v-1z"/></svg>
+                    Guardar como PDF
+                </button>
+            </div>
+        </div>
+        
+        <p id="error-message" class="text-center text-red-600 font-bold hidden mt-8"></p>
+    </div>
+
+    <!-- Modal para Cuento -->
+    <div id="story-modal" class="modal-overlay no-print">
+        <div class="modal-content">
+            <h3 id="story-title" class="text-2xl font-bold text-amber-500 mb-4">Un Cuento Matemático ✨</h3>
+            <div id="story-loader" class="hidden"><div class="loader"></div></div>
+            <p id="story-text" class="text-gray-700 text-lg mb-4 text-left"></p>
+            <div class="answer-section">
+                <input type="number" id="story-answer-input" class="p-2 border border-gray-300 rounded-md w-32 text-center" placeholder="Tu respuesta">
+                <button id="story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Revisar</button>
+            </div>
+            <div id="modal-feedback-loader" class="hidden"><div class="loader"></div></div>
+            <div id="modal-feedback" class="mt-4 p-3 rounded-lg hidden"></div>
+            <button id="close-modal-btn" class="mt-6 bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-400 transition-colors">Cerrar</button>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

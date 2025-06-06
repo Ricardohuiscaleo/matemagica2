@@ -1,0 +1,28 @@
+{
+  "name": "matematica-pwa",
+  "version": "1.0.0",
+  "description": "PWA para generar ejercicios de matemáticas con IA",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "build": "echo 'No build process needed for this static PWA'",
+    "icons": "echo 'Convert SVG icons to PNG manually or use online tool'"
+  },
+  "keywords": [
+    "pwa",
+    "matematicas",
+    "educacion",
+    "ejercicios",
+    "ia",
+    "gemini"
+  ],
+  "author": "Ricardo Huiscaleo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/matematica-pwa.git"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
