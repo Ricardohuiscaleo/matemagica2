@@ -194,21 +194,45 @@ async function generateAndRenderExercises() {
     generateBtn.disabled = true;
 
     const selectedLevel = document.querySelector('input[name="level"]:checked').value;
+    const userName = document.getElementById('name-input').value || 'estudiante';
+    
     let levelInstructions = '';
+    let difficultyContext = '';
     
     switch (selectedLevel) {
         case '2':
-            levelInstructions = "Nivel 2 (Medio): En sumas, puede haber reserva. En restas, puede haber reserva.";
+            levelInstructions = "Nivel 2 (Medio): En sumas, puede haber reserva (llevadas). En restas, puede haber reserva (préstamos). Incluye números del 10 al 99.";
+            difficultyContext = "ejercicios de dificultad media con algunas operaciones que requieren reagrupación";
             break;
         case '3':
-            levelInstructions = "Nivel 3 (Difícil): Mezcla de problemas con y sin reserva. Genera 25 con reserva y 25 sin para cada operación y mézclalos.";
+            levelInstructions = "Nivel 3 (Difícil): Mezcla estratégica de problemas con y sin reserva. Para cada operación: 25 ejercicios CON reserva/reagrupación y 25 SIN reserva. Varía la posición donde ocurre la reagrupación.";
+            difficultyContext = "ejercicios desafiantes que combinan operaciones simples y complejas para desarrollar flexibilidad mental";
             break;
         default:
-            levelInstructions = "Nivel 1 (Fácil): Sumas y restas sin reserva.";
+            levelInstructions = "Nivel 1 (Fácil): Sumas y restas SIN reserva ni reagrupación. Solo números del 10 al 50 para mantener simplicidad.";
+            difficultyContext = "ejercicios básicos y accesibles para construir confianza";
             break;
     }
     
-    const prompt = `Genera 50 problemas de suma y 50 de resta de dos dígitos para un niño de 7 años. Reglas: ${levelInstructions}. Devuelve el resultado como un objeto JSON.`;
+    // Prompt mejorado con más contexto educativo
+    const prompt = `Eres un experto en educación matemática para niños de 7-8 años. Genera exactamente 50 problemas de suma y 50 de resta de dos dígitos.
+
+CONTEXTO EDUCATIVO:
+- Estudiante: ${userName}
+- Objetivo: Desarrollar fluidez en operaciones básicas
+- Enfoque: ${difficultyContext}
+
+REGLAS ESPECÍFICAS:
+${levelInstructions}
+
+REQUISITOS DE CALIDAD:
+- Números apropiados para la edad (evita 0 en unidades/decenas cuando sea confuso)
+- En restas: el minuendo siempre debe ser mayor que el sustraendo
+- Distribución equilibrada de dificultad dentro del nivel
+- Variedad en los números para evitar patrones obvios
+
+Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
+
     const schema = {
         type: "OBJECT",
         properties: {
@@ -217,35 +241,66 @@ async function generateAndRenderExercises() {
                 items: { 
                     type: "OBJECT", 
                     properties: { 
-                        "num1": { type: "INTEGER" }, 
-                        "num2": { type: "INTEGER" } 
-                    } 
-                } 
+                        "num1": { type: "INTEGER", minimum: 10, maximum: 99 }, 
+                        "num2": { type: "INTEGER", minimum: 10, maximum: 99 } 
+                    },
+                    required: ["num1", "num2"]
+                },
+                minItems: 50,
+                maxItems: 50
             },
             "subtractions": { 
                 type: "ARRAY", 
                 items: { 
                     type: "OBJECT", 
                     properties: { 
-                        "num1": { type: "INTEGER" }, 
-                        "num2": { type: "INTEGER" } 
-                    } 
-                } 
+                        "num1": { type: "INTEGER", minimum: 10, maximum: 99 }, 
+                        "num2": { type: "INTEGER", minimum: 10, maximum: 99 } 
+                    },
+                    required: ["num1", "num2"]
+                },
+                minItems: 50,
+                maxItems: 50
             }
-        }
+        },
+        required: ["additions", "subtractions"]
     };
     
     const payload = {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { 
             responseMimeType: "application/json", 
-            responseSchema: schema 
+            responseSchema: schema,
+            temperature: 0.7, // Añadir algo de creatividad
+            maxOutputTokens: 4000 // Asegurar respuesta completa
         }
     };
 
     try {
         const result = await callGemini(payload);
+        
+        // Validación adicional de la respuesta
+        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
+            throw new Error('Respuesta de IA incompleta');
+        }
+        
         const data = JSON.parse(result.candidates[0].content.parts[0].text);
+        
+        // Validar que tenemos el número correcto de ejercicios
+        if (!data.additions || !data.subtractions || 
+            data.additions.length !== 50 || data.subtractions.length !== 50) {
+            throw new Error('Número incorrecto de ejercicios generados');
+        }
+        
+        // Validar que las restas son válidas (num1 > num2)
+        data.subtractions = data.subtractions.map(sub => {
+            if (sub.num1 <= sub.num2) {
+                // Intercambiar números si es necesario
+                [sub.num1, sub.num2] = [sub.num2, sub.num1];
+            }
+            return sub;
+        });
+        
         renderGrid(data.additions, additionsGrid, '+');
         renderGrid(data.subtractions, subtractionsGrid, '-');
         content.classList.remove('hidden');
@@ -253,34 +308,43 @@ async function generateAndRenderExercises() {
         // Guardar ejercicios en localStorage para modo offline
         localStorage.setItem('lastExercises', JSON.stringify(data));
         localStorage.setItem('exerciseLevel', selectedLevel);
+        localStorage.setItem('exerciseTimestamp', new Date().toISOString());
         
         // Guardar progreso en Supabase si el usuario está autenticado
         const exerciseData = {
             additions: data.additions,
             subtractions: data.subtractions,
-            level: selectedLevel,
+            level: parseInt(selectedLevel),
+            additions_count: data.additions.length,
+            subtractions_count: data.subtractions.length,
+            student_name: userName,
             date: new Date().toISOString()
         };
         await saveExerciseProgress(exerciseData);
         
+        // Mostrar mensaje de éxito
+        mostrarMensajeExito(`¡Ejercicios listos para ${userName}! 🎯`);
+        
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error generando ejercicios:", error);
         
         // Intentar cargar ejercicios guardados
         const savedExercises = localStorage.getItem('lastExercises');
         if (savedExercises) {
-            const data = JSON.parse(savedExercises);
-            renderGrid(data.additions, additionsGrid, '+');
-            renderGrid(data.subtractions, subtractionsGrid, '-');
-            content.classList.remove('hidden');
-            
-            errorMessage.textContent = 'Sin conexión - Mostrando ejercicios guardados anteriormente.';
-            errorMessage.className = 'text-center text-amber-600 font-bold mt-8';
-            errorMessage.classList.remove('hidden');
+            try {
+                const data = JSON.parse(savedExercises);
+                renderGrid(data.additions, additionsGrid, '+');
+                renderGrid(data.subtractions, subtractionsGrid, '-');
+                content.classList.remove('hidden');
+                
+                errorMessage.textContent = '📱 Sin conexión - Mostrando ejercicios guardados anteriormente.';
+                errorMessage.className = 'text-center text-amber-600 font-bold mt-8 p-4 bg-amber-50 rounded-lg';
+                errorMessage.classList.remove('hidden');
+            } catch (parseError) {
+                mostrarErrorEjercicios();
+            }
         } else {
-            errorMessage.textContent = '¡Ups! No se pudieron crear los ejercicios y no hay ejercicios guardados. Verifica tu conexión e intenta de nuevo.';
-            errorMessage.className = 'text-center text-red-600 font-bold mt-8';
-            errorMessage.classList.remove('hidden');
+            mostrarErrorEjercicios();
         }
     } finally {
         mainLoader.classList.add('hidden');
@@ -328,40 +392,79 @@ async function generateAndShowWordProblemInModal(num1, num2, operator) {
 }
 
 async function getWordProblemText(num1, num2, operator) {
-    const prompt = `Crea un problema de cuento corto, simple y divertido en español para un niño de 7 años usando la operación: ${num1} ${operator} ${num2}. Termina con una pregunta. Responde solo con el texto del problema.`;
+    const userName = document.getElementById('name-input').value || 'estudiante';
+    const operationWord = operator === '+' ? 'suma' : 'resta';
+    
+    // Prompt mejorado para cuentos más educativos y contextualizados
+    const prompt = `Eres un experto en educación matemática infantil. Crea un problema de cuento corto y atractivo en español para ${userName}, un niño de 7-8 años.
+
+OPERACIÓN: ${num1} ${operator} ${num2}
+
+REQUERIMIENTOS DEL CUENTO:
+- Contexto familiar y divertido (animales, juguetes, frutas, deportes)
+- Personajes con nombres latinos comunes
+- Situación realista y apropiada para la edad
+- Lenguaje simple y claro
+- Termina con una pregunta directa
+- Máximo 3 oraciones
+
+EJEMPLOS DE CONTEXTOS APROPIADOS:
+- Colección de cartas, stickers o juguetes
+- Animales en una granja o zoológico
+- Frutas en una canasta o mercado
+- Niños jugando en el parque
+- Deportes como fútbol (goles, jugadores)
+
+Crea un cuento original que motive a ${userName} a resolver esta ${operationWord}. Responde SOLO con el texto del cuento.`;
+
     const payload = { 
-        contents: [{ role: "user", parts: [{ text: prompt }] }] 
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+            temperature: 0.8, // Mayor creatividad para los cuentos
+            maxOutputTokens: 200 // Mantener cuentos concisos
+        }
     };
     
     try {
         const result = await callGemini(payload);
+        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
+            throw new Error('Respuesta de IA incompleta para cuento');
+        }
+        
         const rawText = result.candidates[0].content.parts[0].text;
         return convertMarkdownToHtml(rawText);
     } catch (error) {
-        console.error("Error:", error);
-        return `${getRandomStoryTemplate(num1, num2, operator)}`;
+        console.error("Error generando cuento con IA:", error);
+        return getRandomStoryTemplate(num1, num2, operator);
     }
 }
 
-// Plantillas de cuento offline
+// Plantillas de cuento offline mejoradas
 function getRandomStoryTemplate(num1, num2, operator) {
     const storyTemplates = [
         {
-            addition: `En el parque hay ${num1} niños jugando. Luego llegan ${num2} niños más. ¿Cuántos niños hay en total en el parque?`,
-            subtraction: `María tenía ${num1} caramelos. Se comió ${num2} caramelos. ¿Cuántos caramelos le quedan a María?`
-        },
-        {
-            addition: `En la granja hay ${num1} pollitos. Nacen ${num2} pollitos más. ¿Cuántos pollitos hay ahora en la granja?`,
-            subtraction: `Carlos tenía ${num1} globos. Se le escaparon ${num2} globos. ¿Cuántos globos le quedan a Carlos?`
-        },
-        {
-            addition: `Ana tiene ${num1} flores. Su mamá le da ${num2} flores más. ¿Cuántas flores tiene Ana en total?`,
-            subtraction: `En el árbol había ${num1} manzanas. Los niños recogieron ${num2} manzanas. ¿Cuántas manzanas quedan en el árbol?`
+            addition: [
+                `🎈 En la fiesta de cumpleaños hay ${num1} globos azules. Llegan ${num2} globos rojos más. ¿Cuántos globos hay en total para decorar?`,
+                `🦆 En el lago nadan ${num1} patitos. Llegan ${num2} patitos más con su mamá. ¿Cuántos patitos nadan ahora en el lago?`,
+                `🍎 María tiene ${num1} manzanas en su mochila. Su abuela le da ${num2} manzanas más. ¿Cuántas manzanas tiene María en total?`,
+                `⚽ En el primer tiempo del partido, el equipo de Carlos metió ${num1} goles. En el segundo tiempo metieron ${num2} goles más. ¿Cuántos goles metieron en total?`,
+                `🎨 Ana tiene ${num1} crayones en su estuche. Su hermano le presta ${num2} crayones más. ¿Cuántos crayones puede usar Ana para dibujar?`
+            ],
+            subtraction: [
+                `🍪 Pablo tenía ${num1} galletas en su lonchera. En el recreo se comió ${num2} galletas. ¿Cuántas galletas le quedan?`,
+                `🐱 En el refugio de animales había ${num1} gatitos. Hoy adoptaron ${num2} gatitos. ¿Cuántos gatitos quedan en el refugio?`,
+                `🎪 En el circo había ${num1} payasos. Al final del show se fueron ${num2} payasos. ¿Cuántos payasos se quedaron?`,
+                `🚗 En el estacionamiento había ${num1} carros. Salieron ${num2} carros. ¿Cuántos carros quedan estacionados?`,
+                `📚 En la biblioteca había ${num1} libros de cuentos. Los niños pidieron prestados ${num2} libros. ¿Cuántos libros de cuentos quedan?`
+            ]
         }
     ];
     
-    const randomTemplate = storyTemplates[Math.floor(Math.random() * storyTemplates.length)];
-    return operator === '+' ? randomTemplate.addition : randomTemplate.subtraction;
+    const templates = storyTemplates[0];
+    const operationTemplates = operator === '+' ? templates.addition : templates.subtraction;
+    const randomTemplate = operationTemplates[Math.floor(Math.random() * operationTemplates.length)];
+    
+    return randomTemplate;
 }
 
 async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedbackLoader) {
