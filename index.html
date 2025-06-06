@@ -350,7 +350,7 @@
             border-radius: 0.5rem;
             color: white;
             font-weight: 600;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -1px rgba(0, 0, 0, 0.1);
             z-index: 1100;
             transform: translateX(400px);
             transition: transform 0.3s ease;
@@ -657,24 +657,56 @@
         
         // Cliente Supabase global
         let supabaseClient;
-        let authManager;
+        
+        // Función para mostrar mensajes - AÑADIDA
+        function mostrarMensaje(mensaje, tipo = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast show ${tipo}`;
+            
+            let icono = '📝';
+            if (tipo === 'success') icono = '✅';
+            if (tipo === 'error') icono = '❌';
+            if (tipo === 'info') icono = 'ℹ️';
+            
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <span class="mr-2">${icono}</span>
+                    <span>${mensaje}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+        
+        // Hacer mostrarMensaje disponible globalmente
+        window.mostrarMensaje = mostrarMensaje;
         
         // Inicializar cuando la página cargue
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('🚀 Inicializando Matemágica...');
             
             // Inicializar Supabase
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                window.supabaseClient = supabaseClient;
                 console.log('✅ Supabase inicializado');
                 
-                // Inicializar autenticación
-                inicializarAutenticacion();
+                // Inicializar AuthManager después de que se haya cargado
+                if (window.authManager) {
+                    await window.authManager.initialize();
+                    console.log('✅ AuthManager inicializado');
+                }
             } else {
                 console.error('❌ Supabase no está cargado');
+                mostrarMensaje('⚠️ Sistema de autenticación no disponible', 'error');
             }
             
-            // Configurar botones
+            // Configurar botones de autenticación
             configurarBotonesAuth();
         });
         
@@ -720,24 +752,6 @@
                 });
                 console.log('✅ Botón perfil configurado');
             }
-            
-            // Formularios
-            const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                loginForm.addEventListener('submit', manejarLogin);
-            }
-            
-            const registerForm = document.getElementById('register-form');
-            if (registerForm) {
-                registerForm.addEventListener('submit', manejarRegistro);
-            }
-            
-            // Cerrar modales
-            document.querySelectorAll('.modal-close').forEach(btn => {
-                btn.addEventListener('click', cerrarModales);
-            });
-            
-            console.log('🎉 Todos los botones configurados');
         }
         
         function mostrarModalLogin() {
@@ -788,6 +802,11 @@
                 return;
             }
             
+            if (password.length < 6) {
+                mostrarMensaje('La contraseña debe tener al menos 6 caracteres 🔒', 'error');
+                return;
+            }
+            
             try {
                 const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
@@ -802,7 +821,7 @@
                 
                 if (error) throw error;
                 
-                mostrarMensaje(`¡Bienvenido ${nombre}! 🌟`, 'success');
+                mostrarMensaje(`¡Cuenta creada! Revisa tu email para confirmar 📧`, 'success');
                 cerrarModales();
                 console.log('✅ Registro exitoso');
                 
@@ -832,13 +851,20 @@
                 
                 if (error) throw error;
                 
-                mostrarMensaje('¡Bienvenido de vuelta! 🎉', 'success');
                 cerrarModales();
                 console.log('✅ Login exitoso');
                 
             } catch (error) {
                 console.error('❌ Error en login:', error);
-                mostrarMensaje(`Error: ${error.message} 😞`, 'error');
+                let mensaje = 'Error de inicio de sesión 😞';
+                
+                if (error.message.includes('Invalid login credentials')) {
+                    mensaje = 'Email o contraseña incorrectos 🔐';
+                } else if (error.message.includes('Email not confirmed')) {
+                    mensaje = 'Por favor confirma tu email primero 📧';
+                }
+                
+                mostrarMensaje(mensaje, 'error');
             }
         }
         
@@ -849,8 +875,6 @@
                 const { error } = await supabaseClient.auth.signOut();
                 if (error) throw error;
                 
-                mostrarMensaje('¡Hasta pronto! 👋', 'info');
-                actualizarUIAuth(false);
                 console.log('✅ Sesión cerrada');
                 
             } catch (error) {
@@ -858,106 +882,9 @@
                 mostrarMensaje('Error cerrando sesión 😞', 'error');
             }
         }
-        
-        function inicializarAutenticacion() {
-            // Escuchar cambios de autenticación
-            supabaseClient.auth.onAuthStateChange((event, session) => {
-                console.log('🔄 Cambio de autenticación:', event);
-                
-                if (session?.user) {
-                    console.log('👤 Usuario autenticado:', session.user.email);
-                    actualizarUIAuth(true, session.user);
-                } else {
-                    console.log('👤 Usuario no autenticado');
-                    actualizarUIAuth(false);
-                }
-            });
-        }
-        
-        function actualizarUIAuth(autenticado, usuario = null) {
-            const authButtons = document.getElementById('auth-buttons');
-            const userProfile = document.getElementById('user-profile');
-            const userActions = document.getElementById('user-actions');
-            
-            if (autenticado && usuario) {
-                // Ocultar botones de login/registro
-                authButtons.classList.add('hidden');
-                
-                // Mostrar perfil de usuario
-                userProfile.classList.remove('hidden');
-                userActions.classList.remove('hidden');
-                
-                // Actualizar información del perfil
-                const userName = document.getElementById('user-name');
-                const userEmail = document.getElementById('user-email');
-                const userAvatar = document.getElementById('user-avatar');
-                
-                if (userName && usuario.user_metadata?.display_name) {
-                    userName.textContent = usuario.user_metadata.display_name;
-                }
-                if (userEmail) {
-                    userEmail.textContent = usuario.email;
-                }
-                if (userAvatar && usuario.user_metadata?.display_name) {
-                    userAvatar.textContent = usuario.user_metadata.display_name.charAt(0).toUpperCase();
-                }
-                
-                // Actualizar nombre en el input del header
-                const nameInput = document.getElementById('name-input');
-                if (nameInput && usuario.user_metadata?.display_name) {
-                    nameInput.value = usuario.user_metadata.display_name;
-                }
-                
-            } else {
-                // Mostrar botones de login/registro
-                authButtons.classList.remove('hidden');
-                
-                // Ocultar perfil de usuario
-                userProfile.classList.add('hidden');
-                userActions.classList.add('hidden');
-            }
-        }
-        
-        function mostrarMensaje(mensaje, tipo = 'info') {
-            // Crear o actualizar elemento de mensaje
-            let messageEl = document.getElementById('auth-message');
-            if (!messageEl) {
-                messageEl = document.createElement('div');
-                messageEl.id = 'auth-message';
-                document.body.appendChild(messageEl);
-            }
-
-            // Configurar estilos según tipo
-            messageEl.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-            
-            switch(tipo) {
-                case 'success':
-                    messageEl.classList.add('bg-green-500', 'text-white');
-                    break;
-                case 'error':
-                    messageEl.classList.add('bg-red-500', 'text-white');
-                    break;
-                case 'info':
-                default:
-                    messageEl.classList.add('bg-blue-500', 'text-white');
-                    break;
-            }
-
-            messageEl.textContent = mensaje;
-            messageEl.style.transform = 'translateX(0)';
-
-            // Auto ocultar después de 3 segundos
-            setTimeout(() => {
-                messageEl.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (messageEl.parentNode) {
-                        messageEl.parentNode.removeChild(messageEl);
-                    }
-                }, 300);
-            }, 3000);
-        }
     </script>
-    
+
+    <!-- Scripts principales -->
     <script src="app.js"></script>
 </body>
 </html>

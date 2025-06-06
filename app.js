@@ -113,9 +113,9 @@ const installPrompt = document.getElementById('install-prompt');
 const installButton = document.getElementById('install-button');
 const dismissInstallBtn = document.getElementById('dismiss-install');
 
-// Configuración API - Ahora con tu API key configurada
+// Configuración API - ACTUALIZADA para 2025
 const API_KEY = "AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI";
-const API_URL_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+const API_URL_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
 // Registro del Service Worker
 if ('serviceWorker' in navigator) {
@@ -167,27 +167,51 @@ function hideInstallPrompt() {
     installPrompt.classList.remove('show');
 }
 
-// Funciones API
+// Funciones API mejoradas
 async function callGemini(payload) {
     if (!API_KEY) {
-        throw new Error('Por favor, configura tu API key de Google Gemini en el archivo app.js');
+        throw new Error('⚠️ API key de Google Gemini no configurada');
     }
     
-    const response = await fetch(API_URL_GENERATE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    
-    if (!response.ok) {
-        throw new Error(`Error de red: ${response.statusText}`);
+    try {
+        console.log('🤖 Llamando a Gemini API...');
+        
+        const response = await fetch(API_URL_GENERATE, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-goog-api-key': API_KEY
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('❌ Error de API:', response.status, errorData);
+            
+            if (response.status === 403) {
+                throw new Error('🔑 API key inválida o sin permisos. Verifica tu configuración.');
+            } else if (response.status === 429) {
+                throw new Error('⏰ Límite de peticiones excedido. Intenta en unos minutos.');
+            } else {
+                throw new Error(`💥 Error de la API: ${response.status} - ${response.statusText}`);
+            }
+        }
+        
+        const result = await response.json();
+        console.log('✅ Respuesta de Gemini recibida');
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Error llamando a Gemini:', error);
+        throw error;
     }
-    
-    return response.json();
 }
 
-// Función principal para generar ejercicios
+// Función principal para generar ejercicios - MEJORADA
 async function generateAndRenderExercises() {
+    console.log('🎯 Generando ejercicios...');
+    
     mainLoader.classList.remove('hidden');
     content.classList.add('hidden');
     errorMessage.classList.add('hidden');
@@ -271,8 +295,8 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
         generationConfig: { 
             responseMimeType: "application/json", 
             responseSchema: schema,
-            temperature: 0.7, // Añadir algo de creatividad
-            maxOutputTokens: 4000 // Asegurar respuesta completa
+            temperature: 0.7,
+            maxOutputTokens: 4000
         }
     };
 
@@ -281,7 +305,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
         
         // Validación adicional de la respuesta
         if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-            throw new Error('Respuesta de IA incompleta');
+            throw new Error('🤖 Respuesta de IA incompleta');
         }
         
         const data = JSON.parse(result.candidates[0].content.parts[0].text);
@@ -289,7 +313,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
         // Validar que tenemos el número correcto de ejercicios
         if (!data.additions || !data.subtractions || 
             data.additions.length !== 50 || data.subtractions.length !== 50) {
-            throw new Error('Número incorrecto de ejercicios generados');
+            throw new Error('📊 Número incorrecto de ejercicios generados');
         }
         
         // Validar que las restas son válidas (num1 > num2)
@@ -326,7 +350,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
         mostrarMensajeExito(`¡Ejercicios listos para ${userName}! 🎯`);
         
     } catch (error) {
-        console.error("Error generando ejercicios:", error);
+        console.error("❌ Error generando ejercicios:", error);
         
         // Intentar cargar ejercicios guardados
         const savedExercises = localStorage.getItem('lastExercises');
@@ -337,9 +361,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
                 renderGrid(data.subtractions, subtractionsGrid, '-');
                 content.classList.remove('hidden');
                 
-                errorMessage.textContent = '📱 Sin conexión - Mostrando ejercicios guardados anteriormente.';
-                errorMessage.className = 'text-center text-amber-600 font-bold mt-8 p-4 bg-amber-50 rounded-lg';
-                errorMessage.classList.remove('hidden');
+                mostrarMensajeError('📱 Sin conexión - Mostrando ejercicios guardados anteriormente.');
             } catch (parseError) {
                 mostrarErrorEjercicios();
             }
@@ -350,6 +372,31 @@ Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
         mainLoader.classList.add('hidden');
         generateBtn.disabled = false;
     }
+}
+
+// Funciones de mensajes
+function mostrarMensajeExito(mensaje) {
+    const toast = document.createElement('div');
+    toast.className = 'success-toast show';
+    toast.innerHTML = `<div class="flex items-center"><span class="mr-2">✅</span><span>${mensaje}</span></div>`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function mostrarMensajeError(mensaje) {
+    errorMessage.textContent = mensaje;
+    errorMessage.className = 'text-center text-amber-600 font-bold mt-8 p-4 bg-amber-50 rounded-lg';
+    errorMessage.classList.remove('hidden');
+}
+
+function mostrarErrorEjercicios() {
+    errorMessage.textContent = '❌ No se pudieron crear los ejercicios y no hay ejercicios guardados. Verifica tu conexión e intenta de nuevo.';
+    errorMessage.className = 'text-center text-red-600 font-bold mt-8 p-4 bg-red-50 rounded-lg border border-red-200';
+    errorMessage.classList.remove('hidden');
 }
 
 function renderGrid(problems, gridElement, operator) {
@@ -383,7 +430,7 @@ async function generateAndShowWordProblemInModal(num1, num2, operator) {
     storyTitle.textContent = `Creando cuento para ${num1} ${operator} ${num2}`;
 
     const problemText = await getWordProblemText(num1, num2, operator);
-    storyTextEl.innerHTML = problemText; // Cambiar a innerHTML para mostrar HTML
+    storyTextEl.innerHTML = problemText;
     
     storyCheckBtn.onclick = () => checkAnswer(num1, num2, operator, storyAnswerInput, modalFeedbackDiv, modalFeedbackLoader);
 
@@ -420,8 +467,8 @@ Crea un cuento original que motive a ${userName} a resolver esta ${operationWord
     const payload = { 
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-            temperature: 0.8, // Mayor creatividad para los cuentos
-            maxOutputTokens: 200 // Mantener cuentos concisos
+            temperature: 0.8,
+            maxOutputTokens: 200
         }
     };
     
@@ -441,26 +488,23 @@ Crea un cuento original que motive a ${userName} a resolver esta ${operationWord
 
 // Plantillas de cuento offline mejoradas
 function getRandomStoryTemplate(num1, num2, operator) {
-    const storyTemplates = [
-        {
-            addition: [
-                `🎈 En la fiesta de cumpleaños hay ${num1} globos azules. Llegan ${num2} globos rojos más. ¿Cuántos globos hay en total para decorar?`,
-                `🦆 En el lago nadan ${num1} patitos. Llegan ${num2} patitos más con su mamá. ¿Cuántos patitos nadan ahora en el lago?`,
-                `🍎 María tiene ${num1} manzanas en su mochila. Su abuela le da ${num2} manzanas más. ¿Cuántas manzanas tiene María en total?`,
-                `⚽ En el primer tiempo del partido, el equipo de Carlos metió ${num1} goles. En el segundo tiempo metieron ${num2} goles más. ¿Cuántos goles metieron en total?`,
-                `🎨 Ana tiene ${num1} crayones en su estuche. Su hermano le presta ${num2} crayones más. ¿Cuántos crayones puede usar Ana para dibujar?`
-            ],
-            subtraction: [
-                `🍪 Pablo tenía ${num1} galletas en su lonchera. En el recreo se comió ${num2} galletas. ¿Cuántas galletas le quedan?`,
-                `🐱 En el refugio de animales había ${num1} gatitos. Hoy adoptaron ${num2} gatitos. ¿Cuántos gatitos quedan en el refugio?`,
-                `🎪 En el circo había ${num1} payasos. Al final del show se fueron ${num2} payasos. ¿Cuántos payasos se quedaron?`,
-                `🚗 En el estacionamiento había ${num1} carros. Salieron ${num2} carros. ¿Cuántos carros quedan estacionados?`,
-                `📚 En la biblioteca había ${num1} libros de cuentos. Los niños pidieron prestados ${num2} libros. ¿Cuántos libros de cuentos quedan?`
-            ]
-        }
-    ];
+    const templates = {
+        addition: [
+            `🎈 En la fiesta de cumpleaños hay ${num1} globos azules. Llegan ${num2} globos rojos más. ¿Cuántos globos hay en total para decorar?`,
+            `🦆 En el lago nadan ${num1} patitos. Llegan ${num2} patitos más con su mamá. ¿Cuántos patitos nadan ahora en el lago?`,
+            `🍎 María tiene ${num1} manzanas en su mochila. Su abuela le da ${num2} manzanas más. ¿Cuántas manzanas tiene María en total?`,
+            `⚽ En el primer tiempo del partido, el equipo de Carlos metió ${num1} goles. En el segundo tiempo metieron ${num2} goles más. ¿Cuántos goles metieron en total?`,
+            `🎨 Ana tiene ${num1} crayones en su estuche. Su hermano le presta ${num2} crayones más. ¿Cuántos crayones puede usar Ana para dibujar?`
+        ],
+        subtraction: [
+            `🍪 Pablo tenía ${num1} galletas en su lonchera. En el recreo se comió ${num2} galletas. ¿Cuántas galletas le quedan?`,
+            `🐱 En el refugio de animales había ${num1} gatitos. Hoy adoptaron ${num2} gatitos. ¿Cuántos gatitos quedan en el refugio?`,
+            `🎪 En el circo había ${num1} payasos. Al final del show se fueron ${num2} payasos. ¿Cuántos payasos se quedaron?`,
+            `🚗 En el estacionamiento había ${num1} carros. Salieron ${num2} carros. ¿Cuántos carros quedan estacionados?`,
+            `📚 En la biblioteca había ${num1} libros de cuentos. Los niños pidieron prestados ${num2} libros. ¿Cuántos libros de cuentos quedan?`
+        ]
+    };
     
-    const templates = storyTemplates[0];
     const operationTemplates = operator === '+' ? templates.addition : templates.subtraction;
     const randomTemplate = operationTemplates[Math.floor(Math.random() * operationTemplates.length)];
     
@@ -470,7 +514,7 @@ function getRandomStoryTemplate(num1, num2, operator) {
 async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedbackLoader) {
     const userAnswer = answerInput.value;
     if (!userAnswer) {
-        feedbackDiv.innerHTML = 'Por favor, escribe una respuesta.';
+        feedbackDiv.innerHTML = '📝 Por favor, escribe una respuesta.';
         feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
         feedbackDiv.classList.remove('hidden');
         return;
@@ -493,12 +537,17 @@ async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedb
         const htmlFeedback = convertMarkdownToHtml(rawFeedback);
         feedbackDiv.innerHTML = htmlFeedback;
         feedbackDiv.className = `mt-4 p-3 rounded-lg ${userAnswer == correctAnswer ? 'feedback-correct' : 'feedback-incorrect'}`;
+        
+        if (userAnswer == correctAnswer) {
+            createConfetti();
+        }
     } catch (error) {
         console.error("Error:", error);
         // Feedback offline
         if (userAnswer == correctAnswer) {
             feedbackDiv.innerHTML = `¡Excelente, <strong>${userName}</strong>! ¡Respuesta correcta! 🎉`;
             feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-correct';
+            createConfetti();
         } else {
             feedbackDiv.innerHTML = `¡Casi lo tienes, <strong>${userName}</strong>! La respuesta correcta es <strong>${correctAnswer}</strong>. ¡Sigue intentando! 💪`;
             feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
@@ -515,7 +564,7 @@ async function handleCustomProblemSubmit() {
     const operator = document.getElementById('operator-select').value;
     
     if (isNaN(num1) || isNaN(num2)) {
-        customStoryText.innerHTML = "Por favor, ingresa ambos números.";
+        customStoryText.innerHTML = "📝 Por favor, ingresa ambos números.";
         customStoryOutput.classList.remove('hidden');
         return;
     }
@@ -525,7 +574,7 @@ async function handleCustomProblemSubmit() {
     createStoryBtn.disabled = true;
 
     const problemText = await getWordProblemText(num1, num2, operator);
-    customStoryText.innerHTML = problemText; // Cambiar a innerHTML para mostrar HTML
+    customStoryText.innerHTML = problemText;
     customFeedbackDiv.classList.add('hidden');
     customStoryAnswerInput.value = '';
     
@@ -536,11 +585,31 @@ async function handleCustomProblemSubmit() {
     createStoryBtn.disabled = false;
 }
 
+// Función para establecer la fecha - CORREGIDA
 function setDate() {
     const dateElement = document.getElementById('current-date');
-    const today = new Date();
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    dateElement.textContent = today.toLocaleDateString('es-CL', options);
+    if (dateElement) {
+        const today = new Date();
+        const options = { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            weekday: 'long'
+        };
+        
+        try {
+            // Intentar formato chileno primero
+            dateElement.textContent = today.toLocaleDateString('es-CL', options);
+        } catch (error) {
+            // Fallback a formato español general
+            console.warn('⚠️ Formato es-CL no disponible, usando es-ES');
+            dateElement.textContent = today.toLocaleDateString('es-ES', options);
+        }
+        
+        console.log('📅 Fecha establecida:', dateElement.textContent);
+    } else {
+        console.error('❌ Elemento current-date no encontrado');
+    }
 }
 
 function preventNonNumericInput(event) {
@@ -624,11 +693,11 @@ async function printToPDF() {
         }
         
         pdf.save('matematica-ejercicios.pdf');
+        mostrarMensajeExito('📄 PDF generado exitosamente');
         
     } catch (error) {
         console.error('Error generando PDF:', error);
-        errorMessage.textContent = 'Error al generar el PDF. Intenta de nuevo.';
-        errorMessage.classList.remove('hidden');
+        mostrarMensajeError('❌ Error al generar el PDF. Intenta de nuevo.');
     } finally {
         printButton.disabled = false;
         printButton.innerHTML = originalButtonText;
@@ -657,153 +726,67 @@ function createConfetti() {
     for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti-piece';
-        confetti.style.left = Math.random() * 100 + 'vw';
-        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-        confetti.style.animationDelay = Math.random() * 3 + 's';
+        confetti.style.cssText = `
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: ${colors[Math.floor(Math.random() * colors.length)]};
+            left: ${Math.random() * 100}vw;
+            top: -10px;
+            z-index: 1000;
+            animation: fall ${2 + Math.random() * 3}s linear forwards;
+        `;
         document.body.appendChild(confetti);
         
         setTimeout(() => {
             confetti.remove();
-        }, 3000);
+        }, 5000);
     }
 }
 
-// Función mejorada para mostrar progreso del niño
-function mostrarProgreso() {
-    const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
-    const totalEjercicios = stats.totalEjercicios || 0;
-    const ejerciciosCorrectos = stats.ejerciciosCorrectos || 0;
-    const porcentaje = totalEjercicios > 0 ? Math.round((ejerciciosCorrectos / totalEjercicios) * 100) : 0;
-    
-    // Crear medallas basadas en el progreso
-    let medalla = '';
-    if (porcentaje >= 90) medalla = '🏆';
-    else if (porcentaje >= 70) medalla = '🥇';
-    else if (porcentaje >= 50) medalla = '🥈';
-    else if (porcentaje >= 30) medalla = '🥉';
-    else medalla = '⭐';
-    
-    alert(`¡Genial! ${medalla}\n\nHas resuelto ${ejerciciosCorrectos} de ${totalEjercicios} ejercicios correctamente.\nTu puntuación: ${porcentaje}%\n\n¡Sigue practicando para ser un matemago!`);
-}
-
-// Función mejorada para verificar respuestas con feedback visual
-function verificarRespuesta(ejercicioIndex, respuestaUsuario) {
-    const ejercicios = JSON.parse(localStorage.getItem('ejerciciosActuales') || '[]');
-    const ejercicio = ejercicios[ejercicioIndex];
-    const input = document.getElementById(`respuesta-${ejercicioIndex}`);
-    
-    if (parseInt(respuestaUsuario) === ejercicio.resultado) {
-        // Respuesta correcta
-        input.classList.add('correct-animation');
-        createConfetti();
-        
-        // Guardar estadísticas
-        const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
-        stats.ejerciciosCorrectos = (stats.ejerciciosCorrectos || 0) + 1;
-        stats.totalEjercicios = (stats.totalEjercicios || 0) + 1;
-        localStorage.setItem('playerStats', JSON.stringify(stats));
-        
-        // Mensaje de felicitación aleatorio
-        const felicitaciones = [
-            '¡Excelente! 🌟',
-            '¡Muy bien! 🎉',
-            '¡Perfecto! ✨',
-            '¡Eres un matemago! 🧙‍♂️',
-            '¡Fantástico! 🎊'
-        ];
-        const mensaje = felicitaciones[Math.floor(Math.random() * felicitaciones.length)];
-        
-        setTimeout(() => {
-            alert(mensaje);
-            input.classList.remove('correct-animation');
-        }, 600);
-        
-    } else {
-        // Respuesta incorrecta
-        input.classList.add('incorrect-animation');
-        
-        const stats = JSON.parse(localStorage.getItem('playerStats') || '{}');
-        stats.totalEjercicios = (stats.totalEjercicios || 0) + 1;
-        localStorage.setItem('playerStats', JSON.stringify(stats));
-        
-        setTimeout(() => {
-            alert('¡Inténtalo de nuevo! Puedes hacerlo 💪');
-            input.classList.remove('incorrect-animation');
-            input.value = '';
-            input.focus();
-        }, 500);
-    }
-}
-
-// Función para mostrar consejos y ayuda
-function mostrarConsejo() {
-    const consejos = [
-        '💡 Para sumar, puedes contar con los dedos si necesitas ayuda.',
-        '💡 Para restar, piensa en "quitar" objetos de un grupo.',
-        '💡 Si el resultado parece muy grande o pequeño, revisa tu operación.',
-        '💡 Practica todos los días para ser mejor en matemáticas.',
-        '💡 ¡No te preocupes por los errores, son parte del aprendizaje!'
-    ];
-    
-    const consejo = consejos[Math.floor(Math.random() * consejos.length)];
-    alert(consejo);
-}
-
-// Función para modo de juego cronometrado
-function iniciarModoTiempo() {
-    const tiempo = prompt('¿Cuántos segundos quieres para resolver los ejercicios?\n(Recomendado: 60 segundos)');
-    if (!tiempo || isNaN(tiempo)) return;
-    
-    const segundos = parseInt(tiempo);
-    mostrarCronometro(segundos);
-    
-    setTimeout(() => {
-        alert('¡Se acabó el tiempo! 🕐\nVeamos qué tal lo hiciste.');
-        mostrarProgreso();
-    }, segundos * 1000);
-}
-
-function mostrarCronometro(segundos) {
-    const cronometro = document.createElement('div');
-    cronometro.id = 'cronometro';
-    cronometro.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg font-bold text-xl z-50';
-    cronometro.textContent = `⏰ ${segundos}s`;
-    document.body.appendChild(cronometro);
-    
-    const intervalo = setInterval(() => {
-        segundos--;
-        cronometro.textContent = `⏰ ${segundos}s`;
-        
-        if (segundos <= 10) {
-            cronometro.classList.add('animate-pulse');
-            cronometro.classList.remove('bg-red-500');
-            cronometro.classList.add('bg-red-700');
+// Añadir CSS para animación de confetti
+if (!document.getElementById('confetti-style')) {
+    const style = document.createElement('style');
+    style.id = 'confetti-style';
+    style.textContent = `
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
         }
-        
-        if (segundos <= 0) {
-            clearInterval(intervalo);
-            cronometro.remove();
-        }
-    }, 1000);
+    `;
+    document.head.appendChild(style);
 }
 
-// Función de inicialización principal
+// Función de inicialización principal - MEJORADA
 function initializeApp() {
+    console.log('🚀 Inicializando Matemágica...');
+    
+    // Establecer fecha
     setDate();
     
-    // Cargar ejercicios guardados si existen, sino generar nuevos
+    // Cargar ejercicios guardados si existen
     const savedExercises = localStorage.getItem('lastExercises');
     if (savedExercises) {
         try {
             const data = JSON.parse(savedExercises);
-            renderGrid(data.additions, additionsGrid, '+');
-            renderGrid(data.subtractions, subtractionsGrid, '-');
-            content.classList.remove('hidden');
-            mainLoader.classList.add('hidden');
+            if (data.additions && data.subtractions) {
+                renderGrid(data.additions, additionsGrid, '+');
+                renderGrid(data.subtractions, subtractionsGrid, '-');
+                content.classList.remove('hidden');
+                mainLoader.classList.add('hidden');
+                
+                console.log('📦 Ejercicios guardados cargados');
+                mostrarMensajeError('📱 Mostrando ejercicios guardados. Genera nuevos para actualizar.');
+            } else {
+                throw new Error('Datos inválidos');
+            }
         } catch (error) {
+            console.log('🎯 Generando ejercicios nuevos...');
             generateAndRenderExercises();
         }
     } else {
+        console.log('🎯 Generando ejercicios iniciales...');
         generateAndRenderExercises();
     }
 
@@ -815,27 +798,41 @@ function initializeApp() {
             element.addEventListener('keydown', preventNonNumericInput);
         }
     });
+    
+    console.log('✅ Matemágica inicializada correctamente');
 }
 
 // Event Listeners principales
-generateBtn.addEventListener('click', generateAndRenderExercises);
-printPdfBtn.addEventListener('click', printToPDF);
+if (generateBtn) {
+    generateBtn.addEventListener('click', generateAndRenderExercises);
+}
+
+if (printPdfBtn) {
+    printPdfBtn.addEventListener('click', printToPDF);
+}
 
 document.querySelectorAll('input[name="level"]').forEach(radio => {
     radio.addEventListener('change', generateAndRenderExercises);
 });
 
-createStoryBtn.addEventListener('click', handleCustomProblemSubmit);
-closeModalBtn.addEventListener('click', () => storyModal.classList.remove('visible'));
-storyModal.addEventListener('click', (e) => {
-    if (e.target === storyModal) storyModal.classList.remove('visible');
-});
+if (createStoryBtn) {
+    createStoryBtn.addEventListener('click', handleCustomProblemSubmit);
+}
+
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => storyModal.classList.remove('visible'));
+}
+
+if (storyModal) {
+    storyModal.addEventListener('click', (e) => {
+        if (e.target === storyModal) storyModal.classList.remove('visible');
+    });
+}
 
 // Detectar cuando la app se está ejecutando como PWA
 window.addEventListener('load', () => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('La aplicación se está ejecutando como PWA instalada');
-        // Ocultar prompt de instalación si ya está instalada
+        console.log('📱 La aplicación se está ejecutando como PWA instalada');
         hideInstallPrompt();
     }
 });
