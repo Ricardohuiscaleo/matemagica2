@@ -238,7 +238,7 @@ async function generateAndShowWordProblemInModal(num1, num2, operator) {
     storyTitle.textContent = `Creando cuento para ${num1} ${operator} ${num2}`;
 
     const problemText = await getWordProblemText(num1, num2, operator);
-    storyTextEl.textContent = problemText;
+    storyTextEl.innerHTML = problemText; // Cambiar a innerHTML para mostrar HTML
     
     storyCheckBtn.onclick = () => checkAnswer(num1, num2, operator, storyAnswerInput, modalFeedbackDiv, modalFeedbackLoader);
 
@@ -254,7 +254,8 @@ async function getWordProblemText(num1, num2, operator) {
     
     try {
         const result = await callGemini(payload);
-        return result.candidates[0].content.parts[0].text;
+        const rawText = result.candidates[0].content.parts[0].text;
+        return convertMarkdownToHtml(rawText);
     } catch (error) {
         console.error("Error:", error);
         return `${getRandomStoryTemplate(num1, num2, operator)}`;
@@ -285,7 +286,7 @@ function getRandomStoryTemplate(num1, num2, operator) {
 async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedbackLoader) {
     const userAnswer = answerInput.value;
     if (!userAnswer) {
-        feedbackDiv.textContent = 'Por favor, escribe una respuesta.';
+        feedbackDiv.innerHTML = 'Por favor, escribe una respuesta.';
         feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
         feedbackDiv.classList.remove('hidden');
         return;
@@ -304,17 +305,18 @@ async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedb
 
     try {
         const result = await callGemini(payload);
-        const feedbackText = result.candidates[0].content.parts[0].text;
-        feedbackDiv.textContent = feedbackText;
+        const rawFeedback = result.candidates[0].content.parts[0].text;
+        const htmlFeedback = convertMarkdownToHtml(rawFeedback);
+        feedbackDiv.innerHTML = htmlFeedback;
         feedbackDiv.className = `mt-4 p-3 rounded-lg ${userAnswer == correctAnswer ? 'feedback-correct' : 'feedback-incorrect'}`;
     } catch (error) {
         console.error("Error:", error);
         // Feedback offline
         if (userAnswer == correctAnswer) {
-            feedbackDiv.textContent = `¡Excelente, ${userName}! ¡Respuesta correcta! 🎉`;
+            feedbackDiv.innerHTML = `¡Excelente, <strong>${userName}</strong>! ¡Respuesta correcta! 🎉`;
             feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-correct';
         } else {
-            feedbackDiv.textContent = `¡Casi lo tienes, ${userName}! La respuesta correcta es ${correctAnswer}. ¡Sigue intentando! 💪`;
+            feedbackDiv.innerHTML = `¡Casi lo tienes, <strong>${userName}</strong>! La respuesta correcta es <strong>${correctAnswer}</strong>. ¡Sigue intentando! 💪`;
             feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
         }
     } finally {
@@ -329,7 +331,7 @@ async function handleCustomProblemSubmit() {
     const operator = document.getElementById('operator-select').value;
     
     if (isNaN(num1) || isNaN(num2)) {
-        customStoryText.textContent = "Por favor, ingresa ambos números.";
+        customStoryText.innerHTML = "Por favor, ingresa ambos números.";
         customStoryOutput.classList.remove('hidden');
         return;
     }
@@ -339,7 +341,7 @@ async function handleCustomProblemSubmit() {
     createStoryBtn.disabled = true;
 
     const problemText = await getWordProblemText(num1, num2, operator);
-    customStoryText.textContent = problemText;
+    customStoryText.innerHTML = problemText; // Cambiar a innerHTML para mostrar HTML
     customFeedbackDiv.classList.add('hidden');
     customStoryAnswerInput.value = '';
     
@@ -447,6 +449,22 @@ async function printToPDF() {
         printButton.disabled = false;
         printButton.innerHTML = originalButtonText;
     }
+}
+
+// Función para convertir markdown simple a HTML
+function convertMarkdownToHtml(text) {
+    if (!text) return '';
+    
+    return text
+        // Convertir **texto** a <strong>texto</strong>
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Convertir *texto* a <em>texto</em>
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Convertir saltos de línea a <br>
+        .replace(/\n/g, '<br>')
+        // Limpiar espacios múltiples
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 // Event Listeners
