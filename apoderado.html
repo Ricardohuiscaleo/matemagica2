@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Dashboard Apoderado</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    
+    <!-- Estilos compilados de Tailwind v4 -->
+    <link rel="stylesheet" href="public/styles.css">
+    
+    <!-- Configuración -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="gemini-ai.js"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-500 to-pink-600 min-h-screen">
+    
+    <!-- Header del Apoderado -->
+    <header class="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                    <span class="text-2xl">🧮</span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">Matemágica</h1>
+                    <p class="text-pink-100">Dashboard Familiar</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Toggle de modo offline/online -->
+                <button id="mode-toggle" class="mode-toggle offline-mode" title="Alternar entre modo offline y online">
+                    <span class="mode-icon">📱</span>
+                    <span class="mode-text">Offline</span>
+                </button>
+                
+                <div class="flex items-center">
+                    <img id="apoderado-avatar" src="/icons/icon-72.png" alt="Avatar" class="w-10 h-10 rounded-full mr-3">
+                    <div class="text-right">
+                        <div id="apoderado-nombre" class="font-semibold">Apoderado</div>
+                        <div id="mode-status" class="mode-status offline text-xs">Modo Offline</div>
+                    </div>
+                </div>
+                
+                <button id="btn-cerrar-sesion" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="contenido-principal">
+        
+        <!-- Sección Información del Estudiante -->
+        <section class="seccion-niveles">
+            <div class="encabezado-seccion">
+                <h2 class="titulo-subseccion">👨‍👩‍👧‍👦 Mi Hijo/a</h2>
+                <button id="btn-configurar-estudiante" class="btn-agregar-estudiante">
+                    ⚙️ Configurar Perfil
+                </button>
+            </div>
+            
+            <!-- Información del estudiante asignado -->
+            <div id="info-estudiante" class="bg-white rounded-xl p-6 shadow-lg">
+                <div id="estudiante-asignado" class="hidden">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                            <span id="estudiante-inicial">?</span>
+                        </div>
+                        <div>
+                            <h3 id="estudiante-nombre-display" class="text-xl font-bold text-gray-800">Nombre del estudiante</h3>
+                            <p id="estudiante-info-display" class="text-gray-600">Curso y edad</p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">Nivel actual:</span>
+                                <span id="estudiante-nivel-display" class="text-sm font-bold">Fácil</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progreso rápido -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600" id="total-ejercicios-estudiante">0</div>
+                            <div class="text-sm text-gray-600">Ejercicios completados</div>
+                        </div>
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600" id="nivel-favorito-estudiante">-</div>
+                            <div class="text-sm text-gray-600">Nivel favorito</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600" id="ultima-sesion">-</div>
+                            <div class="text-sm text-gray-600">Última práctica</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Formulario para configurar estudiante -->
+                <div id="formulario-configurar" class="hidden">
+                    <h3 class="text-lg font-bold mb-4">📝 Configurar perfil de mi hijo/a</h3>
+                    <form id="form-configurar-estudiante">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="campo-form">
+                                <label class="etiqueta-form">Nombre completo:</label>
+                                <input type="text" id="config-estudiante-nombre" class="input-form" 
+                                       placeholder="Ej: María González" required>
+                            </div>
+                            
+                            <div class="campo-form">
+                                <label class="etiqueta-form">Curso:</label>
+                                <select id="config-estudiante-curso" class="input-form" required>
+                                    <option value="">Seleccionar curso</option>
+                                    <option value="1° Básico">1° Básico</option>
+                                    <option value="2° Básico">2° Básico</option>
+                                    <option value="3° Básico">3° Básico</option>
+                                </select>
+                            </div>
+                            
+                            <div class="campo-form">
+                                <label class="etiqueta-form">Edad:</label>
+                                <select id="config-estudiante-edad" class="input-form" required>
+                                    <option value="">Seleccionar edad</option>
+                                    <option value="6">6 años</option>
+                                    <option value="7">7 años</option>
+                                    <option value="8">8 años</option>
+                                    <option value="9">9 años</option>
+                                </select>
+                            </div>
+                            
+                            <div class="campo-form">
+                                <label class="etiqueta-form">Nivel de dificultad:</label>
+                                <select id="config-estudiante-nivel" class="input-form">
+                                    <option value="1">Fácil (sin reserva)</option>
+                                    <option value="2">Medio (con reserva)</option>
+                                    <option value="3">Difícil (mixto)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="botones-formulario">
+                            <button type="button" id="btn-cancelar-config" class="btn-cancelar">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn-continuar">
+                                💾 Guardar Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Mensaje si no hay estudiante configurado -->
+                <div id="sin-estudiante" class="text-center py-8">
+                    <div class="text-6xl mb-4">👨‍👩‍👧‍👦</div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">¡Configura el perfil de tu hijo/a!</h3>
+                    <p class="text-gray-600 mb-4">Para comenzar a generar ejercicios personalizados, necesitamos conocer a tu pequeño matemático.</p>
+                    <button id="btn-empezar-config" class="btn-continuar">
+                        ✨ Empezar Configuración
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Generador de Ejercicios -->
+        <section id="seccion-generador" class="seccion-controles hidden">
+            <h2 class="titulo-seccion">🎯 Generar Ejercicios para mi Hijo/a</h2>
+            
+            <!-- Controles de generación -->
+            <div class="controles-grid">
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Nivel de dificultad:</label>
+                    <select id="nivelSelect" class="control-select">
+                        <option value="1">🟢 Fácil (sin reserva)</option>
+                        <option value="2">🟡 Medio (con reserva)</option>
+                        <option value="3">🔴 Difícil (mixto)</option>
+                    </select>
+                    <p class="text-sm text-gray-600 mt-1">
+                        <span id="recomendacion-nivel">Se recomienda empezar con el nivel que domina tu hijo/a</span>
+                    </p>
+                </div>
+                
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Cantidad de ejercicios:</label>
+                    <select id="cantidadSelect" class="control-select">
+                        <option value="5">5 ejercicios (sesión corta)</option>
+                        <option value="10" selected>10 ejercicios (sesión normal)</option>
+                        <option value="15">15 ejercicios (sesión larga)</option>
+                    </select>
+                </div>
+                
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Tipo de operación:</label>
+                    <select id="tipoSelect" class="control-select">
+                        <option value="mixto">🔄 Mixto (sumas y restas)</option>
+                        <option value="suma">➕ Solo sumas</option>
+                        <option value="resta">➖ Solo restas</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Botones de generación -->
+            <div class="botones-accion">
+                <button id="btn-generar-ia" class="btn-generar-ia">
+                    🤖 Generar con IA
+                </button>
+                <button id="btn-generar-offline" class="btn-generar-offline">
+                    📚 Generar Offline
+                </button>
+            </div>
+            
+            <!-- Consejos para apoderados -->
+            <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mt-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <span class="text-amber-400 text-xl">💡</span>
+                    </div>
+                    <div class="ml-3">
+                        <h4 class="text-sm font-medium text-amber-800">Consejos para una buena práctica:</h4>
+                        <ul class="mt-2 text-sm text-amber-700 list-disc list-inside">
+                            <li>Practica 10-15 minutos al día</li>
+                            <li>Celebra los aciertos y apoya en los errores</li>
+                            <li>Usa lápiz y papel para resolver juntos</li>
+                            <li>Si algo está muy difícil, baja el nivel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección Resultados -->
+        <section id="seccion-resultados" class="seccion-resultados hidden">
+            <div class="resultados-header">
+                <h2 class="titulo-resultados">📋 Ejercicios para Practicar</h2>
+                <div class="botones-resultados">
+                    <button id="btn-descargar-pdf" class="btn-descargar">
+                        📄 Descargar PDF
+                    </button>
+                    <button id="btn-generar-cuento" class="btn-cuento">
+                        📖 Generar Cuento
+                    </button>
+                    <button id="btn-marcar-completado" class="btn-generar-ia">
+                        ✅ Marcar como Practicado
+                    </button>
+                </div>
+            </div>
+            
+            <div id="ejercicios-container" class="ejercicios-grid">
+                <!-- Los ejercicios se insertan aquí dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Sección Estadísticas Detalladas -->
+        <section id="seccion-estadisticas" class="seccion-niveles hidden">
+            <h2 class="titulo-seccion">📊 Progreso de mi Hijo/a</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Gráfico de progreso -->
+                <div class="bg-white rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">📈 Progreso por Nivel</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>🟢 Fácil</span>
+                                <span id="progreso-facil">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="barra-facil" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>🟡 Medio</span>
+                                <span id="progreso-medio">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="barra-medio" class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>🔴 Difícil</span>
+                                <span id="progreso-dificil">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="barra-dificil" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Historial reciente -->
+                <div class="bg-white rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🕒 Actividad Reciente</h3>
+                    <div id="historial-reciente" class="space-y-3">
+                        <p class="text-gray-500">Sin actividad registrada aún</p>
+                    </div>
+                </div>
+                
+                <!-- Fortalezas y áreas de mejora -->
+                <div class="bg-white rounded-xl p-6 shadow-lg md:col-span-2">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🎯 Análisis de Rendimiento</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-green-700 mb-2">💪 Fortalezas</h4>
+                            <div id="fortalezas" class="space-y-2">
+                                <p class="text-gray-500">Genera ejercicios para ver fortalezas</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-orange-700 mb-2">📈 Áreas de Mejora</h4>
+                            <div id="areas-mejora" class="space-y-2">
+                                <p class="text-gray-500">Genera ejercicios para ver áreas de mejora</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para cuentos matemáticos -->
+    <div id="modal-cuento" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-titulo">📖 Cuento Matemático</h3>
+                <button id="btn-cerrar-cuento" class="btn-cerrar-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="contenido-cuento">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner-grande"></div>
+            <p id="loading-text">Generando ejercicios con IA...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Sistema híbrido y autenticación -->
+    <script src="auth-flow.js"></script>
+    <script src="math-mode-system.js"></script>
+    <script src="app.js"></script>
+    <script src="apoderado-dashboard.js"></script>
+</body>
+</html>

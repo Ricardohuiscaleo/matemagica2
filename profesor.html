@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Dashboard Profesor</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    
+    <!-- Estilos compilados de Tailwind v4 -->
+    <link rel="stylesheet" href="public/styles.css">
+    
+    <!-- Configuración -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="gemini-ai.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen">
+    
+    <!-- Header del Profesor -->
+    <header class="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-6 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                    <span class="text-2xl">👩‍🏫</span>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">Matemágica</h1>
+                    <p class="text-blue-100">Dashboard del Profesor</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Toggle de modo offline/online -->
+                <button id="mode-toggle" class="mode-toggle offline-mode" title="Alternar entre modo offline y online">
+                    <span class="mode-icon">📱</span>
+                    <span class="mode-text">Offline</span>
+                </button>
+                
+                <div class="flex items-center">
+                    <img id="profesor-avatar" src="/icons/icon-72.png" alt="Avatar" class="w-10 h-10 rounded-full mr-3">
+                    <div class="text-right">
+                        <div id="profesor-nombre" class="font-semibold">Profesor Demo</div>
+                        <div id="mode-status" class="mode-status offline text-xs">Modo Offline</div>
+                    </div>
+                </div>
+                
+                <button id="btn-cerrar-sesion" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="contenido-principal">
+        
+        <!-- Sección Mis Estudiantes -->
+        <section class="seccion-estudiantes seccion-niveles">
+            <div class="encabezado-seccion">
+                <h2 class="titulo-subseccion">👥 Mis Estudiantes</h2>
+                <button id="btn-agregar-estudiante" class="btn-agregar-estudiante">
+                    ➕ Agregar Estudiante
+                </button>
+            </div>
+            
+            <!-- Lista de estudiantes -->
+            <div id="lista-estudiantes" class="lista-estudiantes">
+                <div class="estudiante-placeholder">
+                    <div class="icono-vacio">👤</div>
+                    <p>Aún no has agregado estudiantes</p>
+                    <p class="text-sm">Haz clic en "Agregar Estudiante" para empezar</p>
+                </div>
+            </div>
+            
+            <!-- Formulario agregar estudiante (oculto inicialmente) -->
+            <div id="formulario-estudiante" class="formulario-agregar-estudiante hidden">
+                <h3 id="titulo-modal-estudiante" class="titulo-formulario">📝 Nuevo Estudiante</h3>
+                <form id="form-nuevo-estudiante">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="campo-form">
+                            <label class="etiqueta-form">Nombre completo:</label>
+                            <input type="text" name="estudiante-nombre" id="estudiante-nombre" class="input-form" 
+                                   placeholder="Ej: María González" required>
+                        </div>
+                        
+                        <div class="campo-form">
+                            <label class="etiqueta-form">Curso:</label>
+                            <select name="estudiante-curso" id="estudiante-curso" class="input-form" required>
+                                <option value="">Seleccionar curso</option>
+                                <option value="1° Básico">1° Básico</option>
+                                <option value="2° Básico">2° Básico</option>
+                                <option value="3° Básico">3° Básico</option>
+                            </select>
+                        </div>
+                        
+                        <div class="campo-form">
+                            <label class="etiqueta-form">Edad:</label>
+                            <select name="estudiante-edad" id="estudiante-edad" class="input-form" required>
+                                <option value="">Seleccionar edad</option>
+                                <option value="6">6 años</option>
+                                <option value="7">7 años</option>
+                                <option value="8">8 años</option>
+                                <option value="9">9 años</option>
+                            </select>
+                        </div>
+                        
+                        <div class="campo-form">
+                            <label class="etiqueta-form">Nivel inicial:</label>
+                            <select name="estudiante-nivel" id="estudiante-nivel" class="input-form">
+                                <option value="1">Fácil (sin reserva)</option>
+                                <option value="2">Medio (con reserva)</option>
+                                <option value="3">Difícil (mixto)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="campo-form">
+                        <label class="etiqueta-form">Email del apoderado (opcional):</label>
+                        <input type="email" name="apoderado-email" id="apoderado-email" class="input-form" 
+                               placeholder="Ej: mama@gmail.com">
+                        <p class="text-sm text-gray-600 mt-1">Para que el apoderado pueda ver el progreso</p>
+                    </div>
+                    
+                    <div class="botones-formulario">
+                        <button type="button" id="btn-cancelar-estudiante" class="btn-cancelar">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-continuar">
+                            ➕ Agregar Estudiante
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Sección Generador de Ejercicios -->
+        <section class="seccion-controles">
+            <h2 class="titulo-seccion">🎯 Generador de Ejercicios</h2>
+            
+            <!-- Selección de estudiante -->
+            <div class="mb-6">
+                <label class="control-etiqueta">Generar ejercicios para:</label>
+                <select id="estudiante-target" class="control-select">
+                    <option value="">Selecciona un estudiante</option>
+                </select>
+            </div>
+            
+            <!-- Controles de generación -->
+            <div class="controles-grid">
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Nivel de dificultad:</label>
+                    <select id="nivelSelect" class="control-select">
+                        <option value="1">🟢 Fácil (sin reserva)</option>
+                        <option value="2">🟡 Medio (con reserva)</option>
+                        <option value="3">🔴 Difícil (mixto)</option>
+                    </select>
+                </div>
+                
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Cantidad de ejercicios:</label>
+                    <select id="cantidadSelect" class="control-select">
+                        <option value="5">5 ejercicios</option>
+                        <option value="10" selected>10 ejercicios</option>
+                        <option value="15">15 ejercicios</option>
+                        <option value="20">20 ejercicios</option>
+                    </select>
+                </div>
+                
+                <div class="control-grupo">
+                    <label class="control-etiqueta">Tipo de operación:</label>
+                    <select id="tipoSelect" class="control-select">
+                        <option value="mixto">🔄 Mixto (sumas y restas)</option>
+                        <option value="suma">➕ Solo sumas</option>
+                        <option value="resta">➖ Solo restas</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Botones de generación -->
+            <div class="botones-accion">
+                <button id="btn-generar-ia" class="btn-generar-ia">
+                    🤖 Generar con IA
+                </button>
+                <button id="btn-generar-offline" class="btn-generar-offline">
+                    📚 Generar Offline
+                </button>
+            </div>
+        </section>
+
+        <!-- Sección Resultados -->
+        <section id="seccion-resultados" class="seccion-resultados hidden">
+            <div class="resultados-header">
+                <h2 class="titulo-resultados">📋 Ejercicios Generados</h2>
+                <div class="botones-resultados">
+                    <button id="btn-descargar-pdf" class="btn-descargar">
+                        📄 Descargar PDF
+                    </button>
+                    <button id="btn-generar-cuento" class="btn-cuento">
+                        📖 Generar Cuento
+                    </button>
+                    <button id="btn-guardar-progreso" class="btn-generar-ia">
+                        💾 Guardar al Estudiante
+                    </button>
+                </div>
+            </div>
+            
+            <div id="ejercicios-container" class="ejercicios-grid">
+                <!-- Los ejercicios se insertan aquí dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Sección Estadísticas de Estudiantes -->
+        <section class="seccion-niveles">
+            <h2 class="titulo-seccion">📊 Estadísticas Generales</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Resumen general -->
+                <div class="bg-white rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">📈 Resumen</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Total estudiantes:</span>
+                            <span id="total-estudiantes" class="font-bold text-blue-600">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Ejercicios generados:</span>
+                            <span id="total-ejercicios" class="font-bold text-green-600">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Sesiones de práctica:</span>
+                            <span id="total-sesiones" class="font-bold text-purple-600">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Estudiante más activo -->
+                <div class="bg-white rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🏆 Más Activo</h3>
+                    <div id="estudiante-activo">
+                        <p class="text-gray-500">Sin datos aún</p>
+                    </div>
+                </div>
+                
+                <!-- Nivel más practicado -->
+                <div class="bg-white rounded-xl p-6 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🎯 Nivel Favorito</h3>
+                    <div id="nivel-favorito">
+                        <p class="text-gray-500">Sin datos aún</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para estadísticas detalladas de estudiante -->
+    <div id="modal-estadisticas" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-titulo">📊 Estadísticas de Estudiante</h3>
+                <button id="btn-cerrar-estadisticas" class="btn-cerrar-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="contenido-estadisticas">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para el cuento matemático -->
+    <div id="modal-cuento" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-titulo">📖 Cuento Matemático</h3>
+                <button id="btn-cerrar-cuento" class="btn-cerrar-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="contenido-cuento">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner-grande"></div>
+            <p id="loading-text">Generando ejercicios con IA...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Sistema híbrido y autenticación -->
+    <script src="auth-flow.js"></script>
+    <script src="math-mode-system.js"></script>
+    <script src="app.js"></script>
+    <script src="profesor-dashboard.js"></script>
+</body>
+</html>

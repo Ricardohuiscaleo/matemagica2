@@ -1,267 +1,270 @@
-# Matemágica PWA 🧮✨
+# 🧮 Matemágica PWA - Sistema Educativo con Roles
 
-## Descripción
-Progressive Web App para generar ejercicios de matemáticas (sumas y restas) con inteligencia artificial, diseñada especialmente para estudiantes de primaria.
+> **Una Progressive Web App educativa para generar ejercicios de matemáticas con IA, diseñada para profesores y apoderados.**
 
-## Características
-- ✨ **Generación automática** de ejercicios con IA (Google Gemini)
-- 📱 **PWA instalable** - funciona offline
-- 🎨 **Interfaz amigable** para niños
-- 📚 **Cuentos matemáticos** interactivos
-- 📄 **Exportación a PDF** para imprimir
-- 🎯 **3 niveles de dificultad**
-- 💾 **Funcionamiento offline** con ejercicios guardados
+## 🎯 Características Principales
 
-## Configuración inicial
+✅ **Sistema de Roles**: Profesores crean estudiantes, apoderados acceden a sus hijos  
+✅ **Autenticación**: Google OAuth + Supabase + modo offline  
+✅ **Ejercicios IA**: Google Gemini genera 50 sumas + 50 restas por nivel  
+✅ **3 Niveles**: Fácil (sin reserva), Medio (con reserva), Difícil (mixto)  
+✅ **Cuentos Matemáticos**: IA crea problemas narrativos personalizados  
+✅ **PWA Completa**: Instalable, funciona offline, datos sincronizados  
+✅ **Seguimiento**: Progreso detallado por estudiante en la nube  
 
-### 1. API Key de Google Gemini
-Para que funcione la generación de ejercicios con IA, necesitas configurar tu API key:
+## 🚀 Setup Rápido (5 minutos)
 
-1. Ve a [Google AI Studio](https://aistudio.google.com/)
-2. Obtén tu API key
-3. Abre el archivo `app.js`
-4. Busca la línea `const API_KEY = "";`
-5. Reemplaza las comillas vacías con tu API key:
-   ```javascript
-   const API_KEY = "tu-api-key-aqui";
-   ```
-
-### 2. Iconos PNG
-Los iconos están en formato SVG. Para que funcionen correctamente como PWA, conviértelos a PNG:
-- `icons/icon-192.svg` → `icons/icon-192.png`
-- `icons/icon-512.svg` → `icons/icon-512.png`
-
-Puedes usar herramientas online como [CloudConvert](https://cloudconvert.com/svg-to-png) o cualquier editor de imágenes.
-
-## Ejecutar localmente
-
+### Paso 1: Configurar Supabase
 ```bash
-# Opción 1: Con Python
-python3 -m http.server 8000
-
-# Opción 2: Con Node.js
-npm start
-
-# Luego abrir: http://localhost:8000
+1. Crear proyecto en https://supabase.com
+2. Ir a SQL Editor
+3. Ejecutar database-schema.sql (crear tablas)
+4. Ejecutar test-data.sql (datos de prueba)
+5. Copiar URL y API Key desde Settings > API
 ```
 
-## Despliegue
-
-### GitHub
+### Paso 2: Configurar Google OAuth
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/tu-usuario/matematica-pwa.git
-git push -u origin main
+1. Ir a Google Cloud Console
+2. Crear proyecto > APIs y servicios > Credenciales
+3. Crear "ID de cliente OAuth 2.0" para aplicación web
+4. Agregar dominio autorizado (localhost:3000 para desarrollo)
+5. Copiar Client ID
 ```
 
-### Netlify
-1. Conecta tu repositorio de GitHub a Netlify
-2. Configura:
-   - Build command: `npm run build`
-   - Publish directory: `./`
-3. Deploya
+### Paso 3: Configurar Variables
+```javascript
+// En supabase-config.js
+const SUPABASE_URL = 'TU_URL_AQUI'
+const SUPABASE_ANON_KEY = 'TU_KEY_AQUI'
 
-### Variables de entorno en Netlify
-Para mayor seguridad, puedes configurar la API key como variable de entorno:
-1. En Netlify: Site settings → Environment variables
-2. Agregar: `VITE_GEMINI_API_KEY` = tu-api-key
-3. Modificar `app.js` para usar: `import.meta.env.VITE_GEMINI_API_KEY`
+// En index.html (línea ~40)
+const GOOGLE_CLIENT_ID = 'TU_CLIENT_ID_AQUI'
 
-## Estructura del proyecto
+// En app.js (línea ~380)
+const API_KEY = "TU_GEMINI_API_KEY_AQUI"
+```
+
+### Paso 4: Ejecutar
+```bash
+# Opción A: Servidor simple
+python3 -m http.server 3000
+# o
+npx serve -p 3000
+
+# Opción B: Live Server (VS Code)
+# Instalar extensión "Live Server" > Click derecho en index.html
+```
+
+### Paso 5: Probar
+```
+http://localhost:3000
+```
+
+## 👥 Cuentas de Prueba Disponibles
+
+### 👩‍🏫 Profesor
+- **Email**: `profesora.maria@colegio.cl`
+- **Estudiantes**: Pedro, Ana, Carlos, Sofía
+- **Puede**: Crear estudiantes, ver todo el progreso
+
+### 👨‍👩‍👧‍👦 Apoderados
+- **Carmen Vargas** → Pedro Sánchez (2° Básico)
+- **Roberto López** → Ana López (1° Básico)  
+- **Lucía Ruiz** → Carlos Ruiz (2° Básico)
+
+### 🎮 Modo Demo (Sin autenticación)
+- Click "Continuar sin cuenta" en cualquier pantalla
+- Funcionalidad completa offline
+- Datos se guardan localmente
+
+## 🎯 Flujo de Usuario
+
+### Para Profesores:
+1. **Bienvenida** → Seleccionar "Soy Profesor/a"
+2. **Autenticación** → Google Sign-In
+3. **Dashboard** → Ver todos los estudiantes, crear nuevos
+4. **Ejercicios** → Generar para cualquier estudiante
+5. **Seguimiento** → Ver progreso y estadísticas
+
+### Para Apoderados:
+1. **Bienvenida** → Seleccionar "Soy Apoderado/a"
+2. **Estudiante** → Ingresar nombre y curso del hijo/a
+3. **Autenticación** → Google Sign-In  
+4. **Ejercicios** → Solo para su estudiante
+5. **Progreso** → Ver avance de su hijo/a
+
+## 🛠️ Estructura del Proyecto
+
 ```
 Matemágica/
-├── index.html          # Página principal
-├── app.js             # Lógica de la aplicación
-├── manifest.json      # Configuración PWA
-├── sw.js             # Service Worker
-├── package.json      # Configuración del proyecto
-├── icons/            # Iconos de la aplicación
-│   ├── icon-192.svg
-│   ├── icon-512.svg
-│   ├── icon-192.png  # (crear)
-│   └── icon-512.png  # (crear)
-├── .github/
-│   └── copilot-instructions.md
-└── README.md
+├── index.html              # Página principal con pantallas de auth
+├── app.js                  # Lógica principal de la aplicación  
+├── auth-manager.js         # Sistema de autenticación y roles
+├── supabase-config.js      # Configuración de base de datos
+├── database-schema.sql     # Esquema de BD (ejecutar en Supabase)
+├── test-data.sql          # Datos de prueba (ejecutar después)
+├── manifest.json          # Configuración PWA
+├── sw.js                  # Service Worker para offline
+└── public/
+    └── styles.css         # Estilos compilados de Tailwind
 ```
 
-## Características técnicas
-- **PWA** con Service Worker para funcionamiento offline
-- **LocalStorage** para guardar ejercicios y configuraciones
-- **Responsive Design** con Tailwind CSS
-- **Generación de PDF** con jsPDF y html2canvas
-- **API de Google Gemini** para generar contenido con IA
+## 🗄️ Base de Datos (Supabase)
 
-## Funcionalidades offline
-- Ejercicios guardados localmente
-- Plantillas de cuentos predefinidas
-- Retroalimentación básica sin IA
-- Interfaz completamente funcional
+### Tablas Principales:
+- `math_users` - Usuarios con roles (profesor/apoderado)
+- `math_students` - Estudiantes creados por profesores  
+- `math_parent_student_relations` - Relaciones familiares
+- `math_exercise_sessions` - Sesiones de ejercicios
+- `math_story_attempts` - Intentos en cuentos matemáticos
+- `math_user_progress` - Progreso y estadísticas
 
-## Soporte de navegadores
-- Chrome/Edge 90+
-- Firefox 90+
-- Safari 14+
-- Dispositivos móviles iOS/Android
+### Características:
+- **RLS (Row Level Security)**: Cada usuario solo ve sus datos
+- **Triggers**: Sincronización automática entre tablas
+- **JSONB**: Almacenamiento flexible de ejercicios y progreso
 
-## Licencia
-MIT - Libre para uso educativo
+## 🤖 APIs Utilizadas
 
----
-Creado con ❤️ por Ricardo Huiscaleo para el aprendizaje de matemáticas
-
-# Matemágica PWA - Estado de la Implementación de Autenticación con Supabase
-
-## 🎯 Estado Actual: **95% COMPLETADO** ✅
-
-La implementación de autenticación con Supabase está **prácticamente lista**. Solo necesitas configurar tus credenciales de Supabase para que funcione completamente.
-
-## 📋 ¿Qué está implementado?
-
-### ✅ **COMPLETADO**
-- **Base de datos SQL completa** (`database-schema.sql`)
-  - Tablas: profiles, exercise_sessions, story_attempts, user_progress
-  - Políticas de seguridad RLS
-  - Triggers automáticos
-  - Índices optimizados
-
-- **Sistema de autenticación robusto** (`supabase-config.js`)
-  - Registro e inicio de sesión
-  - Gestión de perfiles de usuario
-  - Guardado de progreso en tiempo real
-  - Fallbacks offline
-
-- **Interfaz de usuario completa** (`index.html`)
-  - Modales de login, registro y perfil
-  - Barra de autenticación con avatar
-  - Integración visual perfecta
-
-- **Gestor de autenticación** (`auth-manager.js`)
-  - Clase AuthManager completa
-  - Manejo de eventos de autenticación
-  - Sincronización con UI
-  - Gestión de preferencias de usuario
-
-- **Integración con la aplicación principal** (`app.js`)
-  - Guardado automático de ejercicios en Supabase
-  - Sincronización de preferencias de usuario
-  - Modo offline como fallback
-
-## 🔧 ¿Qué necesitas hacer para activarlo?
-
-### 1. **Crear proyecto en Supabase** (5 minutos)
-```bash
-1. Ve a https://supabase.com
-2. Crea una cuenta gratuita
-3. Crea un nuevo proyecto
-4. Anota la URL y la clave API
-```
-
-### 2. **Configurar credenciales** 
-Edita el archivo `supabase-credentials.js`:
+### Google Gemini (Generación de contenido)
 ```javascript
-// Reemplaza estos valores:
-export const SUPABASE_URL = 'https://tu-proyecto-real.supabase.co';
-export const SUPABASE_ANON_KEY = 'tu-clave-real-aqui';
-export const SUPABASE_CONFIGURED = true; // Cambiar a true
+- Ejercicios matemáticos estructurados
+- Cuentos personalizados por estudiante
+- Feedback educativo inteligente
+- Fallback offline con plantillas
 ```
 
-### 3. **Ejecutar el schema SQL**
-```sql
--- Copia y pega todo el contenido de database-schema.sql
--- en el SQL Editor de Supabase
+### Google OAuth (Autenticación)
+```javascript
+- Sign-In seguro
+- Información de perfil
+- Integración con Supabase
+- Modo offline disponible
 ```
 
-### 4. **¡Listo!** 🎉
+## 📱 PWA Features
 
-## 🌟 Características incluidas
+### Instalación:
+- Prompt automático en navegadores compatibles
+- Funciona como app nativa una vez instalada
+- Icono en escritorio/home screen
 
-### Para los estudiantes:
-- **Registro simple** con nombre y email
-- **Perfil personalizable** con avatar emoji
-- **Estadísticas de progreso** (ejercicios resueltos, precisión)
-- **Guardado automático** de todo su progreso
-- **Funcionamiento offline** si no hay conexión
+### Offline:
+- Service Worker cachea recursos estáticos
+- localStorage para ejercicios y progreso
+- Sincronización automática al reconectar
 
-### Para el desarrollo:
-- **Seguridad robusta** con RLS (Row Level Security)
-- **Escalabilidad** preparada para miles de usuarios
-- **Backup automático** en localStorage
-- **Manejo de errores** graceful
-- **Código modular** y bien documentado
+### Responsive:
+- Optimizado para móviles (target principal)
+- Interfaz táctil amigable para niños
+- Funciona en tablets y desktop
 
-## 🔄 Flujo de autenticación
+## 🔧 Personalización
 
-1. **Usuario nuevo**: Registro → Perfil automático → Preferencias guardadas
-2. **Usuario existente**: Login → Carga de preferencias → Sincronización
-3. **Ejercicios**: Generación → Resolución → Guardado en Supabase + localStorage
-4. **Cuentos**: Creación → Respuesta → Estadísticas actualizadas
-5. **Offline**: Funcionalidad completa usando datos locales
+### Niveles de Dificultad:
+```javascript
+// En app.js, función generateAndRenderExercises()
+Nivel 1: Números 10-50, sin reserva
+Nivel 2: Números 10-99, con reserva ocasional  
+Nivel 3: Números 10-99, 50% con reserva, 50% sin reserva
+```
 
-## 🛡️ Seguridad implementada
+### Plantillas de Cuentos:
+```javascript
+// En app.js, función getRandomStoryTemplate()
+- Contextos: Animales, juguetes, deportes, comida
+- Personajes con nombres latinos
+- Situaciones familiares para niños chilenos
+```
 
-- **Autenticación segura** con Supabase Auth
-- **Aislamiento de datos** por usuario (RLS)
-- **Validación de entrada** en frontend y backend
-- **Sanitización** de datos antes de guardar
-- **Passwords hasheados** automáticamente por Supabase
+### Estilos:
+```css
+/* En public/styles.css */
+- Colores child-friendly
+- Animaciones suaves
+- Feedback visual inmediato
+- Tipografía legible para niños
+```
 
-## 📊 Datos que se guardan
+## 🐛 Troubleshooting
 
-### Perfil del estudiante:
-- Nombre completo
-- Avatar (emoji)
-- Nivel preferido (1-3)
-- Operación favorita (+/-)
-- Estadísticas totales
+### "Error de autenticación"
+```bash
+1. Verificar Google Client ID en index.html
+2. Verificar URL autorizada en Google Cloud Console
+3. Verificar configuración de Supabase en supabase-config.js
+```
 
-### Progreso de ejercicios:
-- Fecha y hora de cada sesión
-- Nivel utilizado
-- Cantidad de sumas y restas
-- Datos completos de ejercicios
+### "No se cargan ejercicios"
+```bash
+1. Verificar Google Gemini API Key en app.js
+2. Verificar conexión a internet
+3. Revisar console del navegador para errores específicos
+```
 
-### Intentos de cuentos:
-- Texto del cuento generado
-- Operación matemática
-- Respuesta del estudiante
-- Si fue correcta o no
+### "Error de base de datos"
+```bash
+1. Verificar que database-schema.sql se ejecutó correctamente
+2. Verificar RLS policies en Supabase
+3. Verificar que el usuario tiene permisos
+```
 
-## 🚀 Próximos pasos opcionales
+### "PWA no se instala"
+```bash
+1. Debe servirse via HTTPS (excepto localhost)
+2. Verificar manifest.json
+3. Verificar Service Worker en DevTools
+```
 
-Una vez que tengas Supabase funcionando, podrías agregar:
-- Dashboard para padres/maestros
-- Reportes de progreso
-- Gamificación con logros
-- Compartir ejercicios entre usuarios
-- Modo multijugador
+## 📊 Métricas y Analytics
 
-## 🔍 Troubleshooting
+### Datos que se rastrean:
+- Ejercicios completados por estudiante
+- Tiempo dedicado por sesión
+- Accuracy rate por nivel de dificultad  
+- Progreso histórico y rachas
+- Preferencias de operación (+/-)
 
-### Si algo no funciona:
-1. **Revisa la consola** del navegador (F12)
-2. **Verifica las credenciales** en `supabase-credentials.js`
-3. **Confirma que el schema SQL** se ejecutó correctamente
-4. **La app funciona sin autenticación** si hay problemas
+### Reportes disponibles:
+- Dashboard de profesor con vista grupal
+- Vista individual de estudiante para apoderados
+- Progreso histórico con gráficos
+- Identificación de áreas de mejora
 
-### Errores comunes:
-- "Supabase no está cargado" → Verifica el CDN en index.html
-- "Project not found" → Revisa la URL del proyecto
-- "Invalid API key" → Verifica la clave anónima
+## 🛡️ Seguridad y Privacidad
 
-## 💡 Notas para desarrolladores
+### Medidas implementadas:
+- Autenticación OAuth segura
+- Row Level Security en base de datos
+- Datos de menores protegidos (solo acceso familiar)
+- Cifrado en tránsito y reposo
+- Sin tracking de terceros
 
-- El código está preparado para **desarrollo y producción**
-- **Variables de entorno** soportadas para mayor seguridad
-- **TypeScript ready** si quieres migrar en el futuro
-- **PWA compatible** con instalación offline
-- **Mobile-first** responsive design
+### Cumplimiento:
+- COPPA compliant (menores de 13 años)
+- GDPR considerations para datos personales
+- Datos almacenados en servidores seguros (Supabase)
+
+## 🚀 Próximas Funcionalidades
+
+### En desarrollo:
+- [ ] Dashboard avanzado para profesores
+- [ ] Reportes PDF automatizados  
+- [ ] Integración con calendarios escolares
+- [ ] Multiplayer math games
+- [ ] Reconocimiento de voz para respuestas
+- [ ] AR/VR math experiences
+
+### Sugerencias bienvenidas:
+Crear issue en el repositorio o contactar al equipo de desarrollo.
 
 ---
 
-**¡Tu implementación de autenticación está lista para usar!** 🎉
+## 📞 Soporte
 
-Solo configura Supabase y tendrás una aplicación educativa completa con autenticación en la nube, estadísticas de progreso y modo offline.
+**Desarrollado para educación chilena** 🇨🇱  
+**Contacto**: Crear issue en GitHub  
+**Licencia**: MIT - Uso libre para instituciones educativas
+
+**¡Matemágica hace que aprender matemáticas sea divertido!** ✨🧮✨

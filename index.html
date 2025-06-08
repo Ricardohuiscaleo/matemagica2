@@ -3,888 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matemágica - Ejercicios de Sumas y Restas</title>
+    <title>Matemágica - Bienvenida</title>
+    <meta name="description" content="Generador de ejercicios de matemáticas con IA para niños">
     
-    <!-- PWA Meta Tags -->
-    <meta name="description" content="Aplicación para generar ejercicios de matemáticas con IA para estudiantes de primaria">
-    <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Matemágica">
-    
-    <!-- Manifest -->
+    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="theme-color" content="#667eea">
     
-    <!-- Icons -->
-    <link rel="icon" type="image/png" href="icons/icon-192.png">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
-    
-    <!-- Supabase CDN -->
+    <!-- External Libraries -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <!-- Librerías para generar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .exercise-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 1.5rem;
-        }
-        .exercise-item {
-            text-align: right;
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            background-color: white;
-            position: relative;
-            font-size: 1.1rem;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .exercise-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-        .exercise-item .operator {
-            margin-right: 0.5rem;
-        }
-        .exercise-item .line {
-            border-bottom: 2px solid #000;
-            margin-top: 0.25rem;
-            margin-bottom: 0.5rem;
-        }
-        .story-button {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            background-color: #f59e0b;
-            color: white;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid white;
-            cursor: pointer;
-            transition: transform 0.2s;
-            font-size: 16px;
-            animation: pulse 2s infinite;
-        }
-        .story-button:hover {
-            transform: scale(1.1);
-        }
-        h1, h2 {
-             font-family: 'Pacifico', cursive;
-        }
-        .level-label {
-            display: block;
-            padding: 0.5rem 1rem;
-            border: 2px solid #ddd;
-            border-radius: 9999px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background-color: white;
-        }
-        .level-label:has(input:checked) {
-            background-color: #3b82f6;
-            color: white;
-            border-color: #2563eb;
-        }
-        .pdf-page {
-            background-color: white;
-            padding: 2rem;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            transform: scale(0.9);
-            transition: transform 0.3s;
-        }
-        .modal-overlay.visible .modal-content {
-            transform: scale(1);
-        }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 1rem auto;
-        }
-        .feedback-correct {
-            border-color: #10b981;
-            background-color: #d1fae5;
-        }
-        .feedback-incorrect {
-            border-color: #f59e0b;
-            background-color: #fef3c7;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .install-prompt {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: #2563eb;
-            color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            transform: translateY(100px);
-            transition: transform 0.3s ease;
-        }
-        .install-prompt.show {
-            transform: translateY(0);
-        }
-        
-        /* Estilos para autenticación */
-        .success-toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            z-index: 1100;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            max-width: 350px;
-        }
-        
-        .success-toast.show {
-            transform: translateX(0);
-        }
-        
-        .loader-small {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
-        
-        /* Nuevas animaciones y efectos */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        @keyframes bounceIn {
-            0% { transform: scale(0.3); opacity: 0; }
-            50% { transform: scale(1.05); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        @keyframes slideInUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
-            20%, 40%, 60%, 80% { transform: translateX(3px); }
-        }
-        
-        .animate-bounce-in {
-            animation: bounceIn 0.6s ease-out;
-        }
-        
-        .animate-slide-up {
-            animation: slideInUp 0.5s ease-out;
-        }
-        
-        .animate-shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        
-        /* Efectos de hover mejorados */
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-        }
-        
-        /* Indicadores de progreso */
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #10b981, #34d399);
-            border-radius: 4px;
-            transition: width 0.3s ease;
-            position: relative;
-        }
-        
-        .progress-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background-image: linear-gradient(
-                -45deg,
-                rgba(255, 255, 255, .2) 25%,
-                transparent 25%,
-                transparent 50%,
-                rgba(255, 255, 255, .2) 50%,
-                rgba(255, 255, 255, .2) 75%,
-                transparent 75%,
-                transparent
-            );
-            background-size: 50px 50px;
-            animation: move 2s linear infinite;
-        }
-        
-        @keyframes move {
-            0% { background-position: 0 0; }
-            100% { background-position: 50px 50px; }
-        }
-        
-        /* Efectos de card mejorados */
-        .exercise-card {
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .exercise-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(147,51,234,0.1));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            border-radius: 0.5rem;
-            z-index: -1;
-        }
-        
-        .exercise-card:hover::before {
-            opacity: 1;
-        }
-        
-        /* Toast notifications mejoradas */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 10px 15px -1px rgba(0, 0, 0, 0.1);
-            z-index: 1100;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            min-width: 300px;
-        }
-        
-        .toast.show {
-            transform: translateX(0);
-        }
-        
-        .toast.success {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-        
-        .toast.error {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-        
-        .toast.info {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-        }
-        
-        /* Responsive mejorado */
-        @media (max-width: 640px) {
-            .exercise-grid {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                gap: 1rem;
-            }
-            
-            .modal-content {
-                padding: 1.5rem;
-                margin: 1rem;
-            }
-            
-            .toast {
-                right: 10px;
-                left: 10px;
-                transform: translateY(-100px);
-                min-width: auto;
-            }
-            
-            .toast.show {
-                transform: translateY(0);
-            }
-        }
-    </style>
-</head>
-<body class="bg-blue-50 text-gray-800">
-
-    <!-- Install Prompt -->
-    <div id="install-prompt" class="install-prompt">
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="font-bold">¡Instala Matemágica!</h3>
-                <p class="text-sm">Úsala offline en tu dispositivo</p>
-            </div>
-            <div class="flex gap-2">
-                <button id="install-button" class="bg-white text-blue-600 px-4 py-2 rounded font-bold text-sm">Instalar</button>
-                <button id="dismiss-install" class="text-white text-xl">&times;</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="container mx-auto p-4 md:p-8">
-        
-        <!-- Barra de Autenticación -->
-        <div id="auth-bar" class="flex justify-between items-center mb-4 p-3 bg-white rounded-lg shadow-sm">
-            <div id="user-profile" class="hidden flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold" id="user-avatar">
-                    G
-                </div>
-                <div>
-                    <p class="font-semibold text-gray-800" id="user-name">Gaby</p>
-                    <p class="text-xs text-gray-500" id="user-email">gaby@example.com</p>
-                </div>
-            </div>
-            <div id="auth-buttons" class="flex space-x-2">
-                <button id="login-btn" class="auth-button bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-                    🔐 Iniciar Sesión
-                </button>
-                <button id="register-btn" class="auth-button bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-                    📝 Registrarse
-                </button>
-            </div>
-            <div id="user-actions" class="hidden flex space-x-2">
-                <button id="profile-btn" class="auth-button bg-purple-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
-                    👤 Mi Perfil
-                </button>
-                <button id="logout-btn" class="auth-button bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors">
-                    🚪 Salir
-                </button>
-            </div>
-        </div>
-        
-        <div id="main-content">
-            <header class="text-center mb-8 pt-8">
-                <h1 class="text-4xl md:text-5xl font-bold text-blue-600 mb-2">Matemágica</h1>
-                <p class="text-xl text-gray-700 mt-4">Sumas y Restas con el poder de la IA</p>
-                <p class="text-md text-gray-500 italic">By Ricardo Huiscaleo</p>
-                <div class="mt-6 text-left max-w-md mx-auto bg-white p-4 rounded-lg shadow-sm" id="user-info-header">
-                    <div class="flex items-center mb-2">
-                        <strong class="mr-2">Para:</strong>
-                        <input type="text" id="name-input" value="Gaby" class="p-1 border border-gray-200 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    </div>
-                    <p><strong>Fecha:</strong> <span id="current-date"></span></p>
-                </div>
-            </header>
-            
-            <div id="exercises-container" class="px-4">
-                 <div id="loader" class="text-center py-10">
-                    <div class="loader"></div>
-                    <p class="text-lg text-gray-600">Creando ejercicios mágicos para ti...</p>
-                </div>
-                
-                <div id="content" class="hidden">
-                    <section id="additions-section" class="mb-12">
-                        <h2 class="text-3xl font-bold text-blue-500 pb-2 mb-6">Tabla de Sumas</h2>
-                        <div id="additions-grid" class="exercise-grid"></div>
-                    </section>
-                    <section id="subtractions-section">
-                        <h2 class="text-3xl font-bold text-red-500 pb-2 mb-6">Tabla de Restas</h2>
-                        <div id="subtractions-grid" class="exercise-grid"></div>
-                    </section>
-                </div>
-            </div>
-        </div>
-
-        <!-- Creador de problemas escritos -->
-        <section class="my-12 p-6 bg-white rounded-lg shadow-md no-print">
-            <h2 class="text-3xl font-bold text-amber-500 pb-2 mb-4 text-center">Crea tu Propio Cuento Matemático</h2>
-            <div class="flex flex-wrap items-center justify-center gap-4">
-                <input type="number" id="num1-input" class="p-2 border border-gray-300 rounded-md w-24 text-center" placeholder="Nº 1">
-                <select id="operator-select" class="p-2 border border-gray-300 rounded-md">
-                    <option value="+">+</option>
-                    <option value="-">-</option>
-                </select>
-                <input type="number" id="num2-input" class="p-2 border border-gray-300 rounded-md w-24 text-center" placeholder="Nº 2">
-                <button id="create-story-btn" class="bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M6 1h4a1 1 0 0 1 1 1v4.117a4.5 4.5 0 0 1-.555 2.144L6.94 14.12a.5.5 0 0 1-.876-.44l.24-1.205L3.646 9.47a.5.5 0 0 1 .434-.748L5.5 8.51V2a1 1 0 0 1 1-1zM2.5 9.04a1 1 0 0 0-1.03 1.06l.154.772a1 1 0 0 0 1.03 1.06L4.5 11.5l-2-2.46z"/></svg>
-                    ¡Crear Cuento!
-                </button>
-            </div>
-            <div id="custom-story-loader" class="hidden"><div class="loader"></div></div>
-            <div id="custom-story-output" class="mt-4 text-center hidden">
-                <p class="p-4 border-l-4 border-amber-400 bg-amber-50 rounded-r-lg text-left" id="custom-story-text"></p>
-                <div class="mt-4 answer-section">
-                    <input type="number" id="custom-story-answer" class="p-2 border border-gray-300 rounded-md w-32 text-center" placeholder="Tu respuesta">
-                    <button id="custom-story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Revisar mi respuesta</button>
-                    <div id="custom-feedback-loader" class="hidden"><div class="loader"></div></div>
-                    <div id="custom-feedback" class="mt-4 p-3 rounded-lg hidden"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Controles -->
-        <div class="text-center my-10 no-print">
-            <div id="level-selector" class="flex justify-center flex-wrap gap-2 sm:gap-4 mb-6">
-                <label class="level-label"><input type="radio" name="level" value="1" class="hidden" checked> Nivel 1 (Fácil)</label>
-                <label class="level-label"><input type="radio" name="level" value="2" class="hidden"> Nivel 2 (Medio)</label>
-                <label class="level-label"><input type="radio" name="level" value="3" class="hidden"> Nivel 3 (Difícil)</label>
-            </div>
-            <div class="flex justify-center items-center space-x-4">
-                 <button id="generate-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M8 3a.5.5 0 0 1 .5.5v3.5a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/><path d="M6.354 1.146a.5.5 0 0 1 0 .708L5.707 2.5l.647.646a.5.5 0 1 1-.708.708l-.646-.647-.647.647a.5.5 0 1 1-.708-.708l.647-.646L4.95 1.854a.5.5 0 1 1 .708-.708l.646.647.647-.647a.5.5 0 0 1 .708 0zM8 13a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1H8.5a.5.5 0 0 1-.5-.5z"/><path d="M6.354 14.854a.5.5 0 0 1 0-.708l.647-.646.646.647a.5.5 0 1 1-.708.708l-.647-.646-.646.647a.5.5 0 1 1-.708-.708l.646-.647.647-.646a.5.5 0 0 1 .708.708l-.647.647.646.646a.5.5 0 0 1 0 .708zM12.5 8a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1h-3.5a.5.5 0 0 1-.5-.5zM1.5 8a.5.5 0 0 1 .5-.5h3.5a.5.5 0 0 1 0 1H2a.5.5 0 0 1-.5-.5zM1.146 6.354a.5.5 0 0 1 .708 0l.646.647.647-.646a.5.5 0 1 1 .708.708l-.646.647.647.646a.5.5 0 1 1-.708-.708L2.5 8.707l-.646.647a.5.5 0 1 1-.708-.708l.646-.647-.646-.647a.5.5 0 0 1 0-.708zM14.854 6.354a.5.5 0 0 1 .708 0l.646.647.646-.646a.5.5 0 1 1 .708.708l-.646.647.647.646a.5.5 0 1 1-.708.708l-.647-.646.646-.647a.5.5 0 0 1 0-.708z"/></svg>
-                    Generar Ejercicios
-                </button>
-                <button id="print-pdf-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-md flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1h10v-1a2 2 0 0 0-2-2H5zm-1 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4v-1z"/></svg>
-                    Guardar como PDF
-                </button>
-            </div>
-        </div>
-        
-        <p id="error-message" class="text-center text-red-600 font-bold hidden mt-8"></p>
-    </div>
-
-    <!-- Modales de Autenticación -->
+    <!-- Styles - Tailwind CSS compilado + Estilos personalizados -->
+    <link rel="stylesheet" href="./public/styles.css">
+    <link rel="stylesheet" href="./styles.css">
     
-    <!-- Modal de Login -->
-    <div id="login-modal" class="modal-overlay hidden no-print">
-        <div class="modal-content">
-            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-            <h3 class="text-2xl font-bold text-blue-600 mb-4">🔐 Iniciar Sesión</h3>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <input type="email" id="login-email" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="📧 Correo electrónico" required>
-                </div>
-                <div>
-                    <input type="password" id="login-password" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="🔒 Contraseña" required>
-                </div>
-                <button type="submit" id="login-submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                    🚀 Entrar
+    <!-- Config -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+</head>
+<body>
+    <!-- Pantalla de Bienvenida -->
+    <div id="welcome-screen" class="pantalla-bienvenida">
+        <div class="tarjeta-principal">
+            <div class="encabezado-bienvenida">
+                <h1 class="titulo-magico">🧮 Matemágica</h1>
+                <p class="subtitulo-bienvenida">¡Genera ejercicios personalizados con IA!</p>
+            </div>
+            <div class="botones-rol">
+                <h2 class="pregunta-rol">¿Quién eres?</h2>
+                <button id="teacher-role-btn" class="btn-rol btn-profesor">
+                    👩‍🏫 Soy Profesor/a
                 </button>
-            </form>
-            <div class="mt-4 text-center">
-                <p class="text-sm text-gray-600">¿No tienes cuenta? 
-                    <button type="button" onclick="document.getElementById('login-modal').classList.add('hidden'); document.getElementById('register-modal').classList.remove('hidden');" class="text-blue-600 font-semibold hover:underline">Regístrate aquí</button>
+                <button id="parent-role-btn" class="btn-rol btn-apoderado">
+                    👨‍👩‍👧‍👦 Soy Apoderado/a
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Autenticación -->
+    <div id="auth-screen" class="pantalla-auth hidden">
+        <div class="tarjeta-auth">
+            <div class="icono-auth">🎓</div>
+            <h1 class="titulo-auth">¡Bienvenido/a!</h1>
+            <div class="descripcion-rol">
+                <p id="role-description">
+                    Como <span id="user-role-text">profesor/a</span>, podrás gestionar estudiantes 
+                    y crear ejercicios personalizados con inteligencia artificial.
                 </p>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal de Registro -->
-    <div id="register-modal" class="modal-overlay hidden no-print">
-        <div class="modal-content">
-            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-            <h3 class="text-2xl font-bold text-green-600 mb-4">🌟 Crear Cuenta</h3>
-            <form id="register-form" class="space-y-4">
-                <div>
-                    <input type="text" id="register-name" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="👤 Tu nombre" required maxlength="50">
-                </div>
-                <div>
-                    <input type="email" id="register-email" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="📧 Correo electrónico" required>
-                </div>
-                <div>
-                    <input type="password" id="register-password" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none" placeholder="🔒 Contraseña (mín. 6 caracteres)" required minlength="6">
-                </div>
-                <button type="submit" id="register-submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                    🌟 Crear Cuenta
-                </button>
-            </form>
-            <div class="mt-4 text-center">
-                <p class="text-sm text-gray-600">¿Ya tienes cuenta? 
-                    <button type="button" onclick="document.getElementById('register-modal').classList.add('hidden'); document.getElementById('login-modal').classList.remove('hidden');" class="text-green-600 font-semibold hover:underline">Inicia sesión aquí</button>
-                </p>
+            <div class="mensaje-aventura">
+                <span>✨</span>
+                <span>¡La aventura matemática está por comenzar!</span>
+                <span>✨</span>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal de Perfil -->
-    <div id="profile-modal" class="modal-overlay hidden no-print">
-        <div class="modal-content max-w-lg">
-            <button class="modal-close absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-            <h3 class="text-2xl font-bold text-purple-600 mb-4">👤 Mi Perfil</h3>
             
-            <!-- Estadísticas -->
-            <div class="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-blue-600" id="stat-exercises">0</div>
-                    <div class="text-xs text-gray-600">Ejercicios</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-green-600" id="stat-accuracy">0%</div>
-                    <div class="text-xs text-gray-600">Precisión</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-purple-600" id="stat-sessions">0</div>
-                    <div class="text-xs text-gray-600">Sesiones</div>
+            <div id="auth-options" class="opciones-auth">
+                <div id="google-auth-btn" class="btn-google">
+                    <div class="contenido-google">
+                        <div class="icono-google">
+                            <svg viewBox="0 0 24 24" class="logo-google">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                        </div>
+                        <span>Continuar con Google</span>
+                        <div class="flecha-google">→</div>
+                    </div>
+                    <p class="texto-seguro">🔒 Seguro y protegido</p>
                 </div>
             </div>
+            
+            <div id="auth-loading" class="cargando-auth hidden">
+                <div class="spinner"></div>
+                <p>Iniciando sesión...</p>
+            </div>
+            
+            <button id="back-to-welcome-btn" class="btn-volver-bienvenida">
+                ← Volver al inicio
+            </button>
+        </div>
+    </div>
 
-            <form id="profile-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre:</label>
-                    <input type="text" id="profile-name" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none" required maxlength="50">
+    <!-- Pantalla de Formulario del Estudiante (solo para apoderados) -->
+    <div id="student-form-screen" class="pantalla-auth hidden">
+        <div class="tarjeta-auth">
+            <div class="icono-auth">👨‍👩‍👧‍👦</div>
+            <h1 class="titulo-auth">Cuéntanos sobre tu hijo/a</h1>
+            <div class="descripcion-rol">
+                <p>Para generar ejercicios personalizados, necesitamos conocer a tu pequeño matemático.</p>
+            </div>
+            
+            <form id="student-form" class="formulario-estudiante">
+                <div class="campo-form">
+                    <label for="student-name" class="etiqueta-form">Nombre del estudiante:</label>
+                    <input 
+                        type="text" 
+                        id="student-name" 
+                        name="student-name" 
+                        class="input-form" 
+                        placeholder="Ej: María González"
+                        required
+                    >
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nivel preferido:</label>
-                    <select id="profile-level" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none">
-                        <option value="1">Nivel 1 - Fácil</option>
-                        <option value="2">Nivel 2 - Medio</option>
-                        <option value="3">Nivel 3 - Difícil</option>
+                
+                <div class="campo-form">
+                    <label for="student-age" class="etiqueta-form">Edad:</label>
+                    <select id="student-age" name="student-age" class="input-form" required>
+                        <option value="">Selecciona la edad</option>
+                        <option value="6">6 años</option>
+                        <option value="7">7 años</option>
+                        <option value="8">8 años</option>
+                        <option value="9">9 años</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Operación favorita:</label>
-                    <select id="profile-operation" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none">
-                        <option value="+">Suma (+)</option>
-                        <option value="-">Resta (-)</option>
+                
+                <div class="campo-form">
+                    <label for="student-grade" class="etiqueta-form">Curso:</label>
+                    <select id="student-grade" name="student-grade" class="input-form" required>
+                        <option value="">Selecciona el curso</option>
+                        <option value="1° Básico">1° Básico</option>
+                        <option value="2° Básico">2° Básico</option>
+                        <option value="3° Básico">3° Básico</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Avatar (emoji):</label>
-                    <input type="text" id="profile-avatar" class="p-3 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none" placeholder="🦄 (opcional)" maxlength="2">
+                
+                <div class="campo-form">
+                    <label for="student-level" class="etiqueta-form">Nivel de matemáticas:</label>
+                    <select id="student-level" name="student-level" class="input-form" required>
+                        <option value="">¿Qué nivel maneja?</option>
+                        <option value="1">🟢 Fácil - Sumas y restas simples</option>
+                        <option value="2">🟡 Medio - Con llevar y pedir prestado</option>
+                        <option value="3">🔴 Difícil - Operaciones complejas</option>
+                    </select>
                 </div>
-                <button type="submit" id="profile-submit" class="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors">
-                    💾 Guardar Cambios
+                
+                <button type="submit" class="btn-continuar">
+                    ✨ Empezar Aventura Matemática
                 </button>
             </form>
+            
+            <button id="back-to-auth" class="btn-volver-bienvenida">
+                ← Volver
+            </button>
         </div>
     </div>
 
-    <!-- Modal para Cuento -->
-    <div id="story-modal" class="modal-overlay no-print">
-        <div class="modal-content">
-            <h3 id="story-title" class="text-2xl font-bold text-amber-500 mb-4">Un Cuento Matemático ✨</h3>
-            <div id="story-loader" class="hidden"><div class="loader"></div></div>
-            <p id="story-text" class="text-gray-700 text-lg mb-4 text-left"></p>
-            <div class="answer-section">
-                <input type="number" id="story-answer-input" class="p-2 border border-gray-300 rounded-md w-32 text-center" placeholder="Tu respuesta">
-                <button id="story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Revisar</button>
-            </div>
-            <div id="modal-feedback-loader" class="hidden"><div class="loader"></div></div>
-            <div id="modal-feedback" class="mt-4 p-3 rounded-lg hidden"></div>
-            <button id="close-modal-btn" class="mt-6 bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-400 transition-colors">Cerrar</button>
+    <!-- Loading Global -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner-grande"></div>
+            <p id="loading-text">Preparando tu experiencia matemática...</p>
         </div>
     </div>
 
-    <!-- NUEVO: Script inline para autenticación (sin módulos ES6) -->
-    <script>
-        // Configuración de Supabase inline
-        const SUPABASE_URL = 'https://uznvakpuuxnpdhoejrog.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg';
-        
-        // Cliente Supabase global
-        let supabaseClient;
-        
-        // Función para mostrar mensajes - AÑADIDA
-        function mostrarMensaje(mensaje, tipo = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `toast show ${tipo}`;
-            
-            let icono = '📝';
-            if (tipo === 'success') icono = '✅';
-            if (tipo === 'error') icono = '❌';
-            if (tipo === 'info') icono = 'ℹ️';
-            
-            toast.innerHTML = `
-                <div class="flex items-center">
-                    <span class="mr-2">${icono}</span>
-                    <span>${mensaje}</span>
+    <!-- ✅ NUEVO: Pantalla de la aplicación principal -->
+    <div id="app-screen" class="hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold">🧮 Matemágica</h1>
+                <div class="flex items-center gap-4">
+                    <span id="user-name" data-user-name>Usuario</span>
+                    <button id="btn-cerrar-sesion" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
+                        Cerrar Sesión
+                    </button>
                 </div>
-            `;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 4000);
-        }
-        
-        // Hacer mostrarMensaje disponible globalmente
-        window.mostrarMensaje = mostrarMensaje;
-        
-        // Inicializar cuando la página cargue
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🚀 Inicializando Matemágica...');
-            
-            // Inicializar Supabase
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                window.supabaseClient = supabaseClient;
-                console.log('✅ Supabase inicializado');
-                
-                // Inicializar AuthManager después de que se haya cargado
-                if (window.authManager) {
-                    await window.authManager.initialize();
-                    console.log('✅ AuthManager inicializado');
-                }
-            } else {
-                console.error('❌ Supabase no está cargado');
-                mostrarMensaje('⚠️ Sistema de autenticación no disponible', 'error');
-            }
-            
-            // Configurar botones de autenticación
-            configurarBotonesAuth();
-        });
-        
-        function configurarBotonesAuth() {
-            console.log('🔧 Configurando botones de autenticación...');
-            
-            // Botón de login
-            const loginBtn = document.getElementById('login-btn');
-            if (loginBtn) {
-                loginBtn.addEventListener('click', function() {
-                    console.log('👆 Click en botón login');
-                    mostrarModalLogin();
-                });
-                console.log('✅ Botón login configurado');
-            }
-            
-            // Botón de registro
-            const registerBtn = document.getElementById('register-btn');
-            if (registerBtn) {
-                registerBtn.addEventListener('click', function() {
-                    console.log('👆 Click en botón registro');
-                    mostrarModalRegistro();
-                });
-                console.log('✅ Botón registro configurado');
-            }
-            
-            // Botón de logout
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function() {
-                    console.log('👆 Click en botón logout');
-                    cerrarSesion();
-                });
-                console.log('✅ Botón logout configurado');
-            }
-            
-            // Botón de perfil
-            const profileBtn = document.getElementById('profile-btn');
-            if (profileBtn) {
-                profileBtn.addEventListener('click', function() {
-                    console.log('👆 Click en botón perfil');
-                    mostrarModalPerfil();
-                });
-                console.log('✅ Botón perfil configurado');
-            }
-        }
-        
-        function mostrarModalLogin() {
-            const modal = document.getElementById('login-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('visible');
-                console.log('📱 Modal de login mostrado');
-            }
-        }
-        
-        function mostrarModalRegistro() {
-            const modal = document.getElementById('register-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('visible');
-                console.log('📱 Modal de registro mostrado');
-            }
-        }
-        
-        function mostrarModalPerfil() {
-            const modal = document.getElementById('profile-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('visible');
-                console.log('📱 Modal de perfil mostrado');
-            }
-        }
-        
-        function cerrarModales() {
-            document.querySelectorAll('.modal-overlay').forEach(modal => {
-                modal.classList.add('hidden');
-                modal.classList.remove('visible');
-            });
-            console.log('❌ Modales cerrados');
-        }
-        
-        async function manejarRegistro(event) {
-            event.preventDefault();
-            console.log('📝 Procesando registro...');
-            
-            const nombre = document.getElementById('register-name').value;
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            
-            if (!nombre || !email || !password) {
-                mostrarMensaje('Por favor completa todos los campos 📝', 'error');
-                return;
-            }
-            
-            if (password.length < 6) {
-                mostrarMensaje('La contraseña debe tener al menos 6 caracteres 🔒', 'error');
-                return;
-            }
-            
-            try {
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            display_name: nombre,
-                            user_type: 'student'
-                        }
-                    }
-                });
-                
-                if (error) throw error;
-                
-                mostrarMensaje(`¡Cuenta creada! Revisa tu email para confirmar 📧`, 'success');
-                cerrarModales();
-                console.log('✅ Registro exitoso');
-                
-            } catch (error) {
-                console.error('❌ Error en registro:', error);
-                mostrarMensaje(`Error: ${error.message} 😞`, 'error');
-            }
-        }
-        
-        async function manejarLogin(event) {
-            event.preventDefault();
-            console.log('🔐 Procesando login...');
-            
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            
-            if (!email || !password) {
-                mostrarMensaje('Por favor completa todos los campos 📝', 'error');
-                return;
-            }
-            
-            try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-                
-                if (error) throw error;
-                
-                cerrarModales();
-                console.log('✅ Login exitoso');
-                
-            } catch (error) {
-                console.error('❌ Error en login:', error);
-                let mensaje = 'Error de inicio de sesión 😞';
-                
-                if (error.message.includes('Invalid login credentials')) {
-                    mensaje = 'Email o contraseña incorrectos 🔐';
-                } else if (error.message.includes('Email not confirmed')) {
-                    mensaje = 'Por favor confirma tu email primero 📧';
-                }
-                
-                mostrarMensaje(mensaje, 'error');
-            }
-        }
-        
-        async function cerrarSesion() {
-            console.log('🚪 Cerrando sesión...');
-            
-            try {
-                const { error } = await supabaseClient.auth.signOut();
-                if (error) throw error;
-                
-                console.log('✅ Sesión cerrada');
-                
-            } catch (error) {
-                console.error('❌ Error cerrando sesión:', error);
-                mostrarMensaje('Error cerrando sesión 😞', 'error');
-            }
-        }
-    </script>
+            </div>
+        </div>
 
-    <!-- Scripts principales -->
+        <!-- Contenido principal -->
+        <div class="container mx-auto p-4">
+            <!-- Estado de APIs -->
+            <div id="api-status" class="mb-4"></div>
+
+            <!-- Configuración de ejercicios -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-xl font-bold mb-4">⚙️ Configurar Ejercicios</h2>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="nivelSelect" class="block text-sm font-medium text-gray-700 mb-2">Nivel:</label>
+                        <select id="nivelSelect" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="1">🟢 Fácil</option>
+                            <option value="2">🟡 Medio</option>
+                            <option value="3">🔴 Difícil</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="cantidadSelect" class="block text-sm font-medium text-gray-700 mb-2">Cantidad:</label>
+                        <select id="cantidadSelect" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="5">5 ejercicios</option>
+                            <option value="10" selected>10 ejercicios</option>
+                            <option value="15">15 ejercicios</option>
+                            <option value="20">20 ejercicios</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="tipoSelect" class="block text-sm font-medium text-gray-700 mb-2">Tipo:</label>
+                        <select id="tipoSelect" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="mixto" selected>Mixto (Sumas y Restas)</option>
+                            <option value="suma">Solo Sumas</option>
+                            <option value="resta">Solo Restas</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-4 mt-6">
+                    <button id="btn-generar-ia" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg font-medium">
+                        🤖 Generar con IA
+                    </button>
+                    <button id="btn-generar-offline" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium">
+                        📚 Generar Offline
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div id="seccion-resultados" class="hidden">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4">📝 Ejercicios Generados</h2>
+                    
+                    <div class="flex gap-4 mb-6">
+                        <button id="btn-descargar-pdf" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                            📄 Descargar PDF
+                        </button>
+                        <button id="btn-generar-cuento" class="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded">
+                            📖 Generar Cuento
+                        </button>
+                    </div>
+                    
+                    <div id="ejercicios-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Los ejercicios se cargan aquí dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para cuentos -->
+        <div id="modal-cuento" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto m-4">
+                <div id="contenido-cuento"></div>
+                <button id="btn-cerrar-cuento" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="gemini-ai.js"></script>
+    <script src="auth-manager.js"></script>
+    <script src="math-mode-system.js"></script>
     <script src="app.js"></script>
+    <script src="auth-flow.js"></script>
 </body>
 </html>

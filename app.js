@@ -1,838 +1,697 @@
 // Variables globales
-let deferredPrompt;
-let authManager; // Agregar referencia al AuthManager
+let ejerciciosGenerados = [];
+let configuracionActual = {};
+// isOfflineMode se obtiene de config.js - no redeclarar aquí
 
-// Eliminar el import dinámico problemático y usar la instancia global
-window.addEventListener('DOMContentLoaded', async () => {
-    // Esperar a que se carguen los módulos de autenticación
-    // El authManager se cargará automáticamente desde auth-manager.js
+// ✅ NUEVO: Flag para controlar la inicialización
+let isAppInitialized = false;
+
+// Inicialización cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando Matemágica PWA...');
     
-    // Pequeña espera para asegurar que los módulos estén cargados
-    setTimeout(() => {
-        // El authManager está disponible globalmente
-        if (window.authManager) {
-            authManager = window.authManager;
-            console.log('AuthManager cargado correctamente');
-            setupAuthIntegration();
-        } else {
-            console.warn('AuthManager no está disponible, pero la app funcionará sin autenticación');
-        }
-        
-        // Resto de la inicialización
+    // ✅ NUEVO: Esperar a que el sistema de autenticación esté listo
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isAuthenticated()) {
         initializeApp();
-    }, 100);
+    } else {
+        // Escuchar evento de autenticación exitosa
+        window.addEventListener('userAuthenticated', initializeApp);
+        console.log('⏳ Esperando autenticación del usuario...');
+    }
 });
 
-function setupAuthIntegration() {
-    if (!authManager) return;
-    
-    // Actualizar nombre del usuario en el header cuando se autentique
-    window.addEventListener('userAuthenticated', (event) => {
-        const profile = event.detail.profile;
-        if (profile && profile.full_name) {
-            document.getElementById('name-input').value = profile.full_name;
-        }
-    });
-    
-    // Configurar nivel preferido del usuario
-    window.addEventListener('userAuthenticated', (event) => {
-        const profile = event.detail.profile;
-        if (profile && profile.preferred_level) {
-            const levelRadio = document.querySelector(`input[name="level"][value="${profile.preferred_level}"]`);
-            if (levelRadio) {
-                levelRadio.checked = true;
-            }
-        }
-    });
-}
-
-// Función para guardar progreso de ejercicios con autenticación
-async function saveExerciseProgress(exerciseData) {
-    if (authManager && authManager.isAuthenticated) {
-        try {
-            await authManager.saveExerciseProgress(exerciseData);
-            console.log('Progreso guardado en Supabase');
-        } catch (error) {
-            console.error('Error guardando en Supabase:', error);
-        }
+// ✅ NUEVO: Función de inicialización separada
+function initializeApp() {
+    if (isAppInitialized) {
+        console.log('ℹ️ App ya inicializada, saltando...');
+        return;
     }
     
-    // Siempre guardar localmente como backup
-    localStorage.setItem('lastExercises', JSON.stringify(exerciseData));
-}
-
-// Función para guardar progreso de cuentos con autenticación
-async function saveStoryProgress(storyData) {
-    if (authManager && authManager.isAuthenticated) {
-        try {
-            await authManager.saveStoryProgress(storyData);
-            console.log('Cuento guardado en Supabase');
-        } catch (error) {
-            console.error('Error guardando cuento en Supabase:', error);
-        }
-    }
-}
-
-// Elementos del DOM
-const generateBtn = document.getElementById('generate-btn');
-const printPdfBtn = document.getElementById('print-pdf-btn');
-const mainLoader = document.getElementById('loader');
-const content = document.getElementById('content');
-const errorMessage = document.getElementById('error-message');
-const additionsGrid = document.getElementById('additions-grid');
-const subtractionsGrid = document.getElementById('subtractions-grid');
-
-// Validar que todos los elementos críticos existan
-if (!generateBtn || !printPdfBtn || !mainLoader || !content || !errorMessage) {
-    console.error('Error: No se pudieron encontrar elementos críticos del DOM');
-}
-
-// Cuento Personalizado
-const createStoryBtn = document.getElementById('create-story-btn');
-const customStoryLoader = document.getElementById('custom-story-loader');
-const customStoryOutput = document.getElementById('custom-story-output');
-const customStoryText = document.getElementById('custom-story-text');
-const customStoryAnswerInput = document.getElementById('custom-story-answer');
-const customCheckBtn = document.getElementById('custom-story-check-btn');
-const customFeedbackLoader = document.getElementById('custom-feedback-loader');
-const customFeedbackDiv = document.getElementById('custom-feedback');
-
-// Modal
-const storyModal = document.getElementById('story-modal');
-const storyTitle = document.getElementById('story-title');
-const storyTextEl = document.getElementById('story-text');
-const storyLoader = document.getElementById('story-loader');
-const closeModalBtn = document.getElementById('close-modal-btn');
-const storyAnswerInput = document.getElementById('story-answer-input');
-const storyCheckBtn = document.getElementById('story-check-btn');
-const modalFeedbackLoader = document.getElementById('modal-feedback-loader');
-const modalFeedbackDiv = document.getElementById('modal-feedback');
-
-// PWA Install
-const installPrompt = document.getElementById('install-prompt');
-const installButton = document.getElementById('install-button');
-const dismissInstallBtn = document.getElementById('dismiss-install');
-
-// Configuración API - ACTUALIZADA para 2025
-const API_KEY = "AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI";
-const API_URL_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
-
-// Registro del Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then((registration) => {
-                console.log('SW registrado: ', registration);
-            })
-            .catch((registrationError) => {
-                console.log('SW registro falló: ', registrationError);
-            });
-    });
-}
-
-// PWA Install Prompt
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallPrompt();
-});
-
-function showInstallPrompt() {
-    // Solo mostrar si no está instalada y no fue rechazada previamente
-    if (!localStorage.getItem('installDismissed') && !window.matchMedia('(display-mode: standalone)').matches) {
-        installPrompt.classList.add('show');
-    }
-}
-
-installButton.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
+    console.log('🎯 Inicializando aplicación principal...');
     
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    // Verificar disponibilidad de APIs (sin Supabase si no autenticado)
+    verificarAPIs();
     
-    if (outcome === 'accepted') {
-        console.log('Usuario aceptó instalar la PWA');
+    // Configurar eventos
+    configurarEventos();
+    
+    // Cargar datos del usuario
+    cargarDatosUsuario();
+    
+    // Configurar modo híbrido
+    if (window.MathModeSystem) {
+        window.MathModeSystem.updateModeDisplay();
     }
     
-    deferredPrompt = null;
-    hideInstallPrompt();
-});
-
-dismissInstallBtn.addEventListener('click', () => {
-    localStorage.setItem('installDismissed', 'true');
-    hideInstallPrompt();
-});
-
-function hideInstallPrompt() {
-    installPrompt.classList.remove('show');
+    isAppInitialized = true;
+    console.log('✅ Matemágica PWA inicializada correctamente');
 }
 
-// Funciones API mejoradas
-async function callGemini(payload) {
-    if (!API_KEY) {
-        throw new Error('⚠️ API key de Google Gemini no configurada');
-    }
+function verificarAPIs() {
+    // Verificar Gemini AI
+    const geminiDisponible = window.isGeminiConfigured && window.isGeminiConfigured();
+    console.log('🤖 Gemini AI disponible:', geminiDisponible);
     
-    try {
-        console.log('🤖 Llamando a Gemini API...');
+    // ✅ CORREGIDO: Verificar Supabase de manera más directa y robusta
+    let supabaseDisponible = false;
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isAuthenticated()) {
+        // Verificar si tenemos un cliente de Supabase funcional
+        supabaseDisponible = !!(window.supabaseClient && window.authService);
+        console.log('☁️ Supabase disponible:', supabaseDisponible);
         
-        const response = await fetch(API_URL_GENERATE, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'x-goog-api-key': API_KEY
-            },
-            body: JSON.stringify(payload)
+        // Información adicional para debugging
+        if (supabaseDisponible) {
+            console.log('✅ Supabase cliente y servicios disponibles');
+        } else {
+            console.log('⚠️ Usuario autenticado pero Supabase no disponible');
+            console.log('- supabaseClient:', !!window.supabaseClient);
+            console.log('- authService:', !!window.authService);
+        }
+    } else {
+        console.log('☁️ Supabase: Usuario no autenticado, modo offline');
+    }
+    
+    // Mostrar estado en UI
+    mostrarEstadoAPIs(geminiDisponible, supabaseDisponible);
+}
+
+function mostrarEstadoAPIs(gemini, supabase) {
+    // ✅ MEJORADO: Indicadores visuales más informativos
+    const statusContainer = document.getElementById('api-status');
+    if (statusContainer) {
+        let statusHTML = '<div class="flex gap-2 text-sm">';
+        
+        if (gemini) {
+            statusHTML += '<span class="bg-green-100 text-green-800 px-2 py-1 rounded">🤖 IA Activa</span>';
+        } else {
+            statusHTML += '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">🤖 IA Offline</span>';
+        }
+        
+        if (supabase) {
+            statusHTML += '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">☁️ Cloud Activo</span>';
+        } else {
+            statusHTML += '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded">☁️ Modo Local</span>';
+        }
+        
+        statusHTML += '</div>';
+        statusContainer.innerHTML = statusHTML;
+    }
+    
+    if (!gemini && !supabase) {
+        console.warn('⚠️ Funcionando en modo completamente offline');
+    }
+}
+
+function configurarEventos() {
+    // Eventos para generación de ejercicios
+    const btnGenerarIA = document.getElementById('btn-generar-ia');
+    const btnGenerarOffline = document.getElementById('btn-generar-offline');
+    
+    if (btnGenerarIA) {
+        btnGenerarIA.addEventListener('click', () => generarEjercicios('ia'));
+    }
+    
+    if (btnGenerarOffline) {
+        btnGenerarOffline.addEventListener('click', () => generarEjercicios('offline'));
+    }
+    
+    // Eventos para resultados
+    const btnDescargarPDF = document.getElementById('btn-descargar-pdf');
+    const btnGenerarCuento = document.getElementById('btn-generar-cuento');
+    
+    if (btnDescargarPDF) {
+        btnDescargarPDF.addEventListener('click', descargarPDF);
+    }
+    
+    if (btnGenerarCuento) {
+        btnGenerarCuento.addEventListener('click', generarCuentoMatematico);
+    }
+    
+    // Cerrar sesión
+    const btnCerrarSesion = document.getElementById('btn-cerrar-sesion');
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener('click', cerrarSesion);
+    }
+}
+
+// ✅ NUEVO: Configurar botón de cerrar sesión
+function configurarCerrarSesion() {
+    const btnCerrarSesion = document.getElementById('btn-cerrar-sesion');
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener('click', async () => {
+            console.log('👋 Iniciando cierre de sesión...');
+            
+            // Mostrar confirmación
+            const confirmar = confirm('¿Estás seguro de que quieres cerrar sesión?');
+            if (!confirmar) return;
+            
+            try {
+                // Usar el manager de autenticación para cerrar sesión
+                if (window.welcomeAuthManager) {
+                    await window.welcomeAuthManager.signOut();
+                } else if (window.authManager) {
+                    await window.authManager.signOut();
+                }
+                
+                console.log('✅ Sesión cerrada exitosamente');
+                
+            } catch (error) {
+                console.error('❌ Error cerrando sesión:', error);
+                // Fallback: recargar la página
+                window.location.reload();
+            }
         });
         
-        if (!response.ok) {
-            const errorData = await response.text();
-            console.error('❌ Error de API:', response.status, errorData);
-            
-            if (response.status === 403) {
-                throw new Error('🔑 API key inválida o sin permisos. Verifica tu configuración.');
-            } else if (response.status === 429) {
-                throw new Error('⏰ Límite de peticiones excedido. Intenta en unos minutos.');
-            } else {
-                throw new Error(`💥 Error de la API: ${response.status} - ${response.statusText}`);
-            }
-        }
-        
-        const result = await response.json();
-        console.log('✅ Respuesta de Gemini recibida');
-        return result;
-        
-    } catch (error) {
-        console.error('❌ Error llamando a Gemini:', error);
-        throw error;
+        console.log('🔗 Botón de cerrar sesión configurado');
     }
 }
 
-// Función principal para generar ejercicios - MEJORADA
-async function generateAndRenderExercises() {
-    console.log('🎯 Generando ejercicios...');
+function cargarDatosUsuario() {
+    // ✅ CORREGIDO: Usar el nuevo sistema de autenticación
+    let user = null;
     
-    mainLoader.classList.remove('hidden');
-    content.classList.add('hidden');
-    errorMessage.classList.add('hidden');
-    generateBtn.disabled = true;
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isAuthenticated()) {
+        user = window.welcomeAuthManager.getCurrentUser();
+    } else {
+        // Fallback a localStorage para compatibilidad
+        const userData = localStorage.getItem('currentUser');
+        if (userData) {
+            try {
+                user = JSON.parse(userData);
+            } catch (error) {
+                console.error('❌ Error al cargar datos del usuario desde localStorage:', error);
+            }
+        }
+    }
+    
+    if (user) {
+        console.log('👤 Usuario cargado:', user.name || user.email);
+        actualizarUIUsuario(user);
+    } else {
+        console.log('👤 No hay usuario autenticado');
+    }
+}
 
-    const selectedLevel = document.querySelector('input[name="level"]:checked').value;
-    const userName = document.getElementById('name-input').value || 'estudiante';
+function actualizarUIUsuario(user) {
+    // ✅ MEJORADO: Actualización más robusta de la UI
+    const nombreUsuario = user.name || user.email || 'Usuario';
     
-    let levelInstructions = '';
-    let difficultyContext = '';
+    // Actualizar nombre del usuario en elementos específicos del dashboard
+    const elementosNombre = document.querySelectorAll('[data-user-name], #nombre-usuario, #user-name');
+    elementosNombre.forEach(el => {
+        if (el && el.textContent !== nombreUsuario) {
+            el.textContent = nombreUsuario;
+        }
+    });
     
-    switch (selectedLevel) {
-        case '2':
-            levelInstructions = "Nivel 2 (Medio): En sumas, puede haber reserva (llevadas). En restas, puede haber reserva (préstamos). Incluye números del 10 al 99.";
-            difficultyContext = "ejercicios de dificultad media con algunas operaciones que requieren reagrupación";
+    // Actualizar avatar si existe
+    const elementosAvatar = document.querySelectorAll('[data-user-avatar], #avatar-usuario, #user-avatar');
+    elementosAvatar.forEach(el => {
+        if (el && user.avatar) {
+            el.src = user.avatar;
+            el.alt = `Avatar de ${nombreUsuario}`;
+        }
+    });
+    
+    // Actualizar email si está disponible
+    const elementosEmail = document.querySelectorAll('[data-user-email], #email-usuario');
+    elementosEmail.forEach(el => {
+        if (el && user.email) {
+            el.textContent = user.email;
+        }
+    });
+}
+
+async function generarEjercicios(metodo = 'offline') {
+    const nivel = document.getElementById('nivelSelect')?.value || '1';
+    const cantidad = document.getElementById('cantidadSelect')?.value || '10';
+    const tipo = document.getElementById('tipoSelect')?.value || 'mixto';
+    
+    configuracionActual = { nivel, cantidad, tipo, metodo };
+    
+    console.log('🎯 Generando ejercicios:', configuracionActual);
+    
+    mostrarCarga(`Generando ${cantidad} ejercicios de nivel ${nivel}...`);
+    
+    try {
+        let ejercicios = [];
+        
+        // ✅ CORREGIDO: Verificar disponibilidad de IA de forma más robusta
+        const puedeUsarIA = metodo === 'ia' && 
+                           window.isGeminiConfigured && 
+                           window.isGeminiConfigured() && 
+                           !window.MathModeSystem?.isOfflineMode();
+        
+        if (puedeUsarIA) {
+            console.log('🤖 Intentando generar con IA...');
+            try {
+                ejercicios = await generarConIA(configuracionActual);
+            } catch (error) {
+                console.warn('⚠️ Error con IA, fallback a offline:', error.message);
+                ejercicios = generarOffline(configuracionActual);
+            }
+        } else {
+            // Usar generador offline
+            ejercicios = generarOffline(configuracionActual);
+        }
+        
+        if (ejercicios && ejercicios.length > 0) {
+            ejerciciosGenerados = ejercicios;
+            mostrarEjercicios(ejercicios);
+            
+            // ✅ CORREGIDO: Guardar solo si el usuario está autenticado
+            if (window.MathModeSystem && window.welcomeAuthManager?.isAuthenticated()) {
+                try {
+                    await window.MathModeSystem.saveDataHybrid(
+                        'ultimo-ejercicio-generado',
+                        { ejercicios, configuracion: configuracionActual, fecha: new Date().toISOString() }
+                    );
+                } catch (error) {
+                    console.warn('⚠️ No se pudo guardar en cloud, solo local:', error.message);
+                    // Guardar solo en localStorage como fallback
+                    localStorage.setItem('ultimo-ejercicio-generado', JSON.stringify({
+                        ejercicios, configuracion: configuracionActual, fecha: new Date().toISOString()
+                    }));
+                }
+            }
+            
+            if (window.mostrarNotificacion) {
+                window.mostrarNotificacion(`✅ ${ejercicios.length} ejercicios generados correctamente`, 'success');
+            }
+        } else {
+            throw new Error('No se pudieron generar ejercicios');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error generando ejercicios:', error);
+        
+        if (window.mostrarNotificacion) {
+            window.mostrarNotificacion('❌ Error al generar ejercicios. Intentando modo offline...', 'warning');
+        }
+        
+        // Fallback a offline
+        if (metodo === 'ia') {
+            return generarEjercicios('offline');
+        } else {
+            alert('Error al generar ejercicios. Por favor intenta nuevamente.');
+        }
+    } finally {
+        ocultarCarga();
+    }
+}
+
+async function generarConIA(config) {
+    if (!window.generarEjerciciosConGemini) {
+        throw new Error('Generador de IA no disponible');
+    }
+    
+    console.log('🤖 Generando con Gemini AI...');
+    return await window.generarEjerciciosConGemini(
+        parseInt(config.nivel),
+        parseInt(config.cantidad),
+        config.tipo
+    );
+}
+
+function generarOffline(config) {
+    console.log('📚 Generando con plantillas offline...');
+    
+    const ejercicios = [];
+    const cantidad = parseInt(config.cantidad);
+    const nivel = parseInt(config.nivel);
+    const tipo = config.tipo;
+    
+    for (let i = 0; i < cantidad; i++) {
+        let ejercicio;
+        
+        if (tipo === 'mixto') {
+            ejercicio = Math.random() > 0.5 ? generarSuma(nivel) : generarResta(nivel);
+        } else if (tipo === 'suma') {
+            ejercicio = generarSuma(nivel);
+        } else {
+            ejercicio = generarResta(nivel);
+        }
+        
+        ejercicios.push({
+            numero: i + 1,
+            operacion: ejercicio.operacion,
+            resultado: ejercicio.resultado,
+            tipo: ejercicio.tipo,
+            nivel: nivel
+        });
+    }
+    
+    return ejercicios;
+}
+
+function generarSuma(nivel) {
+    let num1, num2;
+    
+    switch (nivel) {
+        case 1: // Fácil - sin reserva
+            num1 = Math.floor(Math.random() * 45) + 10; // 10-54
+            num2 = Math.floor(Math.random() * (99 - num1 - 10)) + 10; // Asegurar que no pase de 99
             break;
-        case '3':
-            levelInstructions = "Nivel 3 (Difícil): Mezcla estratégica de problemas con y sin reserva. Para cada operación: 25 ejercicios CON reserva/reagrupación y 25 SIN reserva. Varía la posición donde ocurre la reagrupación.";
-            difficultyContext = "ejercicios desafiantes que combinan operaciones simples y complejas para desarrollar flexibilidad mental";
+        case 2: // Medio - con reserva
+            num1 = Math.floor(Math.random() * 45) + 15; // 15-59
+            num2 = Math.floor(Math.random() * 40) + 15; // 15-54, puede dar reserva
+            break;
+        case 3: // Difícil - mixto
+            num1 = Math.floor(Math.random() * 60) + 10; // 10-69
+            num2 = Math.floor(Math.random() * 50) + 10; // 10-59
             break;
         default:
-            levelInstructions = "Nivel 1 (Fácil): Sumas y restas SIN reserva ni reagrupación. Solo números del 10 al 50 para mantener simplicidad.";
-            difficultyContext = "ejercicios básicos y accesibles para construir confianza";
+            num1 = Math.floor(Math.random() * 40) + 10;
+            num2 = Math.floor(Math.random() * 40) + 10;
+    }
+    
+    return {
+        operacion: `${num1} + ${num2} = ____`,
+        resultado: num1 + num2,
+        tipo: 'suma'
+    };
+}
+
+function generarResta(nivel) {
+    let num1, num2;
+    
+    switch (nivel) {
+        case 1: // Fácil - sin prestado
+            num1 = Math.floor(Math.random() * 40) + 50; // 50-89
+            num2 = Math.floor(Math.random() * 30) + 10; // 10-39
+            // Asegurar que no hay prestado
+            if (num1 % 10 < num2 % 10) {
+                num2 = num1 % 10 + Math.floor(num2 / 10) * 10;
+            }
             break;
+        case 2: // Medio - con prestado
+            num1 = Math.floor(Math.random() * 50) + 30; // 30-79
+            num2 = Math.floor(Math.random() * 40) + 15; // 15-54
+            break;
+        case 3: // Difícil - mixto
+            num1 = Math.floor(Math.random() * 60) + 25; // 25-84
+            num2 = Math.floor(Math.random() * (num1 - 5)) + 5; // 5 hasta num1-5
+            break;
+        default:
+            num1 = Math.floor(Math.random() * 50) + 30;
+            num2 = Math.floor(Math.random() * 25) + 5;
     }
     
-    // Prompt mejorado con más contexto educativo
-    const prompt = `Eres un experto en educación matemática para niños de 7-8 años. Genera exactamente 50 problemas de suma y 50 de resta de dos dígitos.
-
-CONTEXTO EDUCATIVO:
-- Estudiante: ${userName}
-- Objetivo: Desarrollar fluidez en operaciones básicas
-- Enfoque: ${difficultyContext}
-
-REGLAS ESPECÍFICAS:
-${levelInstructions}
-
-REQUISITOS DE CALIDAD:
-- Números apropiados para la edad (evita 0 en unidades/decenas cuando sea confuso)
-- En restas: el minuendo siempre debe ser mayor que el sustraendo
-- Distribución equilibrada de dificultad dentro del nivel
-- Variedad en los números para evitar patrones obvios
-
-Devuelve ÚNICAMENTE un objeto JSON válido con la estructura especificada.`;
-
-    const schema = {
-        type: "OBJECT",
-        properties: {
-            "additions": { 
-                type: "ARRAY", 
-                items: { 
-                    type: "OBJECT", 
-                    properties: { 
-                        "num1": { type: "INTEGER", minimum: 10, maximum: 99 }, 
-                        "num2": { type: "INTEGER", minimum: 10, maximum: 99 } 
-                    },
-                    required: ["num1", "num2"]
-                },
-                minItems: 50,
-                maxItems: 50
-            },
-            "subtractions": { 
-                type: "ARRAY", 
-                items: { 
-                    type: "OBJECT", 
-                    properties: { 
-                        "num1": { type: "INTEGER", minimum: 10, maximum: 99 }, 
-                        "num2": { type: "INTEGER", minimum: 10, maximum: 99 } 
-                    },
-                    required: ["num1", "num2"]
-                },
-                minItems: 50,
-                maxItems: 50
-            }
-        },
-        required: ["additions", "subtractions"]
+    return {
+        operacion: `${num1} - ${num2} = ____`,
+        resultado: num1 - num2,
+        tipo: 'resta'
     };
+}
+
+function mostrarEjercicios(ejercicios) {
+    const container = document.getElementById('ejercicios-container');
+    const seccionResultados = document.getElementById('seccion-resultados');
     
-    const payload = {
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { 
-            responseMimeType: "application/json", 
-            responseSchema: schema,
-            temperature: 0.7,
-            maxOutputTokens: 4000
-        }
-    };
-
-    try {
-        const result = await callGemini(payload);
-        
-        // Validación adicional de la respuesta
-        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-            throw new Error('🤖 Respuesta de IA incompleta');
-        }
-        
-        const data = JSON.parse(result.candidates[0].content.parts[0].text);
-        
-        // Validar que tenemos el número correcto de ejercicios
-        if (!data.additions || !data.subtractions || 
-            data.additions.length !== 50 || data.subtractions.length !== 50) {
-            throw new Error('📊 Número incorrecto de ejercicios generados');
-        }
-        
-        // Validar que las restas son válidas (num1 > num2)
-        data.subtractions = data.subtractions.map(sub => {
-            if (sub.num1 <= sub.num2) {
-                // Intercambiar números si es necesario
-                [sub.num1, sub.num2] = [sub.num2, sub.num1];
-            }
-            return sub;
-        });
-        
-        renderGrid(data.additions, additionsGrid, '+');
-        renderGrid(data.subtractions, subtractionsGrid, '-');
-        content.classList.remove('hidden');
-        
-        // Guardar ejercicios en localStorage para modo offline
-        localStorage.setItem('lastExercises', JSON.stringify(data));
-        localStorage.setItem('exerciseLevel', selectedLevel);
-        localStorage.setItem('exerciseTimestamp', new Date().toISOString());
-        
-        // Guardar progreso en Supabase si el usuario está autenticado
-        const exerciseData = {
-            additions: data.additions,
-            subtractions: data.subtractions,
-            level: parseInt(selectedLevel),
-            additions_count: data.additions.length,
-            subtractions_count: data.subtractions.length,
-            student_name: userName,
-            date: new Date().toISOString()
-        };
-        await saveExerciseProgress(exerciseData);
-        
-        // Mostrar mensaje de éxito
-        mostrarMensajeExito(`¡Ejercicios listos para ${userName}! 🎯`);
-        
-    } catch (error) {
-        console.error("❌ Error generando ejercicios:", error);
-        
-        // Intentar cargar ejercicios guardados
-        const savedExercises = localStorage.getItem('lastExercises');
-        if (savedExercises) {
-            try {
-                const data = JSON.parse(savedExercises);
-                renderGrid(data.additions, additionsGrid, '+');
-                renderGrid(data.subtractions, subtractionsGrid, '-');
-                content.classList.remove('hidden');
-                
-                mostrarMensajeError('📱 Sin conexión - Mostrando ejercicios guardados anteriormente.');
-            } catch (parseError) {
-                mostrarErrorEjercicios();
-            }
-        } else {
-            mostrarErrorEjercicios();
-        }
-    } finally {
-        mainLoader.classList.add('hidden');
-        generateBtn.disabled = false;
+    if (!container || !seccionResultados) {
+        console.warn('⚠️ Contenedores de ejercicios no encontrados');
+        return;
     }
-}
-
-// Funciones de mensajes
-function mostrarMensajeExito(mensaje) {
-    const toast = document.createElement('div');
-    toast.className = 'success-toast show';
-    toast.innerHTML = `<div class="flex items-center"><span class="mr-2">✅</span><span>${mensaje}</span></div>`;
-    document.body.appendChild(toast);
     
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-function mostrarMensajeError(mensaje) {
-    errorMessage.textContent = mensaje;
-    errorMessage.className = 'text-center text-amber-600 font-bold mt-8 p-4 bg-amber-50 rounded-lg';
-    errorMessage.classList.remove('hidden');
-}
-
-function mostrarErrorEjercicios() {
-    errorMessage.textContent = '❌ No se pudieron crear los ejercicios y no hay ejercicios guardados. Verifica tu conexión e intenta de nuevo.';
-    errorMessage.className = 'text-center text-red-600 font-bold mt-8 p-4 bg-red-50 rounded-lg border border-red-200';
-    errorMessage.classList.remove('hidden');
-}
-
-function renderGrid(problems, gridElement, operator) {
-    gridElement.innerHTML = '';
-    problems.forEach(problem => {
-        const item = document.createElement('div');
-        item.className = 'exercise-item';
-        
-        const storyButton = document.createElement('button');
-        storyButton.className = 'story-button';
-        storyButton.innerHTML = '✨';
-        storyButton.title = 'Crear un cuento';
-        storyButton.onclick = () => generateAndShowWordProblemInModal(problem.num1, problem.num2, operator);
-        
-        item.innerHTML = `
-            <div>${problem.num1}</div>
-            <div><span class="operator">${operator}</span>${problem.num2}</div>
-            <div class="line"></div>
+    container.innerHTML = '';
+    
+    ejercicios.forEach((ejercicio, index) => {
+        const card = document.createElement('div');
+        card.className = 'ejercicio-card';
+        card.innerHTML = `
+            <div class="ejercicio-numero">Ejercicio ${ejercicio.numero || index + 1}</div>
+            <div class="ejercicio-operacion">${ejercicio.operacion}</div>
+            <div class="text-sm text-gray-600 mt-2">
+                Nivel: ${getNivelTexto(ejercicio.nivel)} | Tipo: ${ejercicio.tipo}
+            </div>
         `;
-        item.prepend(storyButton);
-        gridElement.appendChild(item);
+        container.appendChild(card);
     });
+    
+    seccionResultados.classList.remove('hidden');
+    
+    // Scroll suave a los resultados
+    seccionResultados.scrollIntoView({ behavior: 'smooth' });
 }
 
-async function generateAndShowWordProblemInModal(num1, num2, operator) {
-    storyModal.classList.add('visible');
-    storyTextEl.classList.add('hidden');
-    storyLoader.classList.remove('hidden');
-    modalFeedbackDiv.classList.add('hidden');
-    storyAnswerInput.value = '';
-    storyTitle.textContent = `Creando cuento para ${num1} ${operator} ${num2}`;
-
-    const problemText = await getWordProblemText(num1, num2, operator);
-    storyTextEl.innerHTML = problemText;
-    
-    storyCheckBtn.onclick = () => checkAnswer(num1, num2, operator, storyAnswerInput, modalFeedbackDiv, modalFeedbackLoader);
-
-    storyLoader.classList.add('hidden');
-    storyTextEl.classList.remove('hidden');
-}
-
-async function getWordProblemText(num1, num2, operator) {
-    const userName = document.getElementById('name-input').value || 'estudiante';
-    const operationWord = operator === '+' ? 'suma' : 'resta';
-    
-    // Prompt mejorado para cuentos más educativos y contextualizados
-    const prompt = `Eres un experto en educación matemática infantil. Crea un problema de cuento corto y atractivo en español para ${userName}, un niño de 7-8 años.
-
-OPERACIÓN: ${num1} ${operator} ${num2}
-
-REQUERIMIENTOS DEL CUENTO:
-- Contexto familiar y divertido (animales, juguetes, frutas, deportes)
-- Personajes con nombres latinos comunes
-- Situación realista y apropiada para la edad
-- Lenguaje simple y claro
-- Termina con una pregunta directa
-- Máximo 3 oraciones
-
-EJEMPLOS DE CONTEXTOS APROPIADOS:
-- Colección de cartas, stickers o juguetes
-- Animales en una granja o zoológico
-- Frutas en una canasta o mercado
-- Niños jugando en el parque
-- Deportes como fútbol (goles, jugadores)
-
-Crea un cuento original que motive a ${userName} a resolver esta ${operationWord}. Responde SOLO con el texto del cuento.`;
-
-    const payload = { 
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 200
-        }
-    };
-    
-    try {
-        const result = await callGemini(payload);
-        if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-            throw new Error('Respuesta de IA incompleta para cuento');
-        }
-        
-        const rawText = result.candidates[0].content.parts[0].text;
-        return convertMarkdownToHtml(rawText);
-    } catch (error) {
-        console.error("Error generando cuento con IA:", error);
-        return getRandomStoryTemplate(num1, num2, operator);
+function getNivelTexto(nivel) {
+    switch (parseInt(nivel)) {
+        case 1: return '🟢 Fácil';
+        case 2: return '🟡 Medio';
+        case 3: return '🔴 Difícil';
+        default: return 'Desconocido';
     }
 }
 
-// Plantillas de cuento offline mejoradas
-function getRandomStoryTemplate(num1, num2, operator) {
-    const templates = {
-        addition: [
-            `🎈 En la fiesta de cumpleaños hay ${num1} globos azules. Llegan ${num2} globos rojos más. ¿Cuántos globos hay en total para decorar?`,
-            `🦆 En el lago nadan ${num1} patitos. Llegan ${num2} patitos más con su mamá. ¿Cuántos patitos nadan ahora en el lago?`,
-            `🍎 María tiene ${num1} manzanas en su mochila. Su abuela le da ${num2} manzanas más. ¿Cuántas manzanas tiene María en total?`,
-            `⚽ En el primer tiempo del partido, el equipo de Carlos metió ${num1} goles. En el segundo tiempo metieron ${num2} goles más. ¿Cuántos goles metieron en total?`,
-            `🎨 Ana tiene ${num1} crayones en su estuche. Su hermano le presta ${num2} crayones más. ¿Cuántos crayones puede usar Ana para dibujar?`
-        ],
-        subtraction: [
-            `🍪 Pablo tenía ${num1} galletas en su lonchera. En el recreo se comió ${num2} galletas. ¿Cuántas galletas le quedan?`,
-            `🐱 En el refugio de animales había ${num1} gatitos. Hoy adoptaron ${num2} gatitos. ¿Cuántos gatitos quedan en el refugio?`,
-            `🎪 En el circo había ${num1} payasos. Al final del show se fueron ${num2} payasos. ¿Cuántos payasos se quedaron?`,
-            `🚗 En el estacionamiento había ${num1} carros. Salieron ${num2} carros. ¿Cuántos carros quedan estacionados?`,
-            `📚 En la biblioteca había ${num1} libros de cuentos. Los niños pidieron prestados ${num2} libros. ¿Cuántos libros de cuentos quedan?`
-        ]
-    };
+function mostrarCarga(mensaje = 'Cargando...') {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
     
-    const operationTemplates = operator === '+' ? templates.addition : templates.subtraction;
-    const randomTemplate = operationTemplates[Math.floor(Math.random() * operationTemplates.length)];
-    
-    return randomTemplate;
+    if (loadingText) loadingText.textContent = mensaje;
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 }
 
-async function checkAnswer(num1, num2, operator, answerInput, feedbackDiv, feedbackLoader) {
-    const userAnswer = answerInput.value;
-    if (!userAnswer) {
-        feedbackDiv.innerHTML = '📝 Por favor, escribe una respuesta.';
-        feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
-        feedbackDiv.classList.remove('hidden');
+function ocultarCarga() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) loadingOverlay.classList.add('hidden');
+}
+
+async function descargarPDF() {
+    if (!ejerciciosGenerados || ejerciciosGenerados.length === 0) {
+        alert('No hay ejercicios para descargar');
         return;
     }
-
-    feedbackLoader.classList.remove('hidden');
-    feedbackDiv.classList.add('hidden');
-
-    const correctAnswer = (operator === '+') ? (num1 + num2) : (num1 - num2);
-    const userName = document.getElementById('name-input').value || "campeón/a";
     
-    const prompt = `Eres un profesor amigable para un niño llamado ${userName}. El problema era ${num1} ${operator} ${num2}. La respuesta correcta es ${correctAnswer}. La respuesta de ${userName} fue ${userAnswer}. Evalúa su respuesta. Si es correcta, felicítalo (ej: '¡Excelente, ${userName}! ¡Respuesta correcta!'). Si es incorrecta, anímale con una pista sin darle la respuesta (ej: '¡Casi lo tienes, ${userName}! Revisa la suma de las unidades.'). Responde solo con el feedback para el niño.`;
-    const payload = { 
-        contents: [{ role: "user", parts: [{ text: prompt }] }] 
-    };
-
+    console.log('📄 Generando PDF...');
+    mostrarCarga('Preparando PDF para descarga...');
+    
     try {
-        const result = await callGemini(payload);
-        const rawFeedback = result.candidates[0].content.parts[0].text;
-        const htmlFeedback = convertMarkdownToHtml(rawFeedback);
-        feedbackDiv.innerHTML = htmlFeedback;
-        feedbackDiv.className = `mt-4 p-3 rounded-lg ${userAnswer == correctAnswer ? 'feedback-correct' : 'feedback-incorrect'}`;
-        
-        if (userAnswer == correctAnswer) {
-            createConfetti();
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        // Feedback offline
-        if (userAnswer == correctAnswer) {
-            feedbackDiv.innerHTML = `¡Excelente, <strong>${userName}</strong>! ¡Respuesta correcta! 🎉`;
-            feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-correct';
-            createConfetti();
+        if (window.jsPDF) {
+            await generarPDFConJSPDF();
         } else {
-            feedbackDiv.innerHTML = `¡Casi lo tienes, <strong>${userName}</strong>! La respuesta correcta es <strong>${correctAnswer}</strong>. ¡Sigue intentando! 💪`;
-            feedbackDiv.className = 'mt-4 p-3 rounded-lg feedback-incorrect';
+            console.warn('⚠️ jsPDF no disponible, usando método alternativo');
+            window.print();
         }
+    } catch (error) {
+        console.error('❌ Error al generar PDF:', error);
+        alert('Error al generar PDF. Usando impresión del navegador...');
+        window.print();
     } finally {
-        feedbackLoader.classList.add('hidden');
-        feedbackDiv.classList.remove('hidden');
+        ocultarCarga();
     }
 }
 
-async function handleCustomProblemSubmit() {
-    const num1 = parseInt(document.getElementById('num1-input').value);
-    const num2 = parseInt(document.getElementById('num2-input').value);
-    const operator = document.getElementById('operator-select').value;
+async function generarPDFConJSPDF() {
+    const { jsPDF } = window.jsPDF;
+    const pdf = new jsPDF();
     
-    if (isNaN(num1) || isNaN(num2)) {
-        customStoryText.innerHTML = "📝 Por favor, ingresa ambos números.";
-        customStoryOutput.classList.remove('hidden');
-        return;
-    }
-
-    customStoryLoader.classList.remove('hidden');
-    customStoryOutput.classList.add('hidden');
-    createStoryBtn.disabled = true;
-
-    const problemText = await getWordProblemText(num1, num2, operator);
-    customStoryText.innerHTML = problemText;
-    customFeedbackDiv.classList.add('hidden');
-    customStoryAnswerInput.value = '';
+    // Configurar fuente y título
+    pdf.setFontSize(20);
+    pdf.text('Matemágica - Ejercicios de Práctica', 20, 30);
     
-    customCheckBtn.onclick = () => checkAnswer(num1, num2, operator, customStoryAnswerInput, customFeedbackDiv, customFeedbackLoader);
-
-    customStoryLoader.classList.add('hidden');
-    customStoryOutput.classList.remove('hidden');
-    createStoryBtn.disabled = false;
-}
-
-// Función para establecer la fecha - CORREGIDA
-function setDate() {
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const today = new Date();
-        const options = { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            weekday: 'long'
-        };
-        
-        try {
-            // Intentar formato chileno primero
-            dateElement.textContent = today.toLocaleDateString('es-CL', options);
-        } catch (error) {
-            // Fallback a formato español general
-            console.warn('⚠️ Formato es-CL no disponible, usando es-ES');
-            dateElement.textContent = today.toLocaleDateString('es-ES', options);
-        }
-        
-        console.log('📅 Fecha establecida:', dateElement.textContent);
-    } else {
-        console.error('❌ Elemento current-date no encontrado');
-    }
-}
-
-function preventNonNumericInput(event) {
-    if ([46, 8, 9, 27, 13, 37, 39].indexOf(event.keyCode) !== -1 ||
-        (event.keyCode === 65 && (event.ctrlKey === true || event.metaKey === true)) ||
-        (event.keyCode >= 35 && event.keyCode <= 40)) {
-        return;
-    }
-    if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-        event.preventDefault();
-    }
-}
-
-async function printToPDF() {
-    const printButton = document.getElementById('print-pdf-btn');
-    const originalButtonText = printButton.innerHTML;
-    printButton.disabled = true;
-    printButton.innerHTML = `<div class="loader" style="width:20px; height:20px; border-width: 2px; margin: auto;"></div>`;
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 10;
-
-    const addCanvasToPdf = async (element) => {
-        const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const canvasAspectRatio = canvas.width / canvas.height;
-        const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = imgWidth / canvasAspectRatio;
-        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-    };
-
-    try {
-        // Crear el contenido de las páginas para el PDF
-        const headerElement = document.querySelector('header').cloneNode(true);
-        const sumsElement = document.getElementById('additions-section').cloneNode(true);
-        const subtractionsElement = document.getElementById('subtractions-section').cloneNode(true);
-
-        // Página 1: Header + Sumas
-        const page1 = document.createElement('div');
-        page1.className = 'pdf-page';
-        page1.appendChild(headerElement);
-        page1.appendChild(sumsElement);
-        document.body.appendChild(page1);
-        await addCanvasToPdf(page1);
-        document.body.removeChild(page1);
-
-        // Página 2: Header + Restas
-        pdf.addPage();
-        const page2 = document.createElement('div');
-        page2.className = 'pdf-page';
-        page2.appendChild(headerElement.cloneNode(true));
-        page2.appendChild(subtractionsElement);
-        document.body.appendChild(page2);
-        await addCanvasToPdf(page2);
-        document.body.removeChild(page2);
-        
-        // Página 3: Cuento personalizado (si existe)
-        if (!customStoryOutput.classList.contains('hidden') && customStoryText.textContent) {
+    pdf.setFontSize(12);
+    pdf.text(`Nivel: ${getNivelTexto(configuracionActual.nivel)}`, 20, 45);
+    pdf.text(`Cantidad: ${configuracionActual.cantidad} ejercicios`, 20, 55);
+    pdf.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, 65);
+    
+    // Agregar ejercicios
+    let yPos = 85;
+    const lineHeight = 15;
+    
+    ejerciciosGenerados.forEach((ejercicio, index) => {
+        if (yPos > 250) { // Nueva página
             pdf.addPage();
-            const page3 = document.createElement('div');
-            page3.className = 'pdf-page';
-
-            const storyPrintHeader = document.createElement('h2');
-            storyPrintHeader.className = 'text-3xl font-bold text-amber-500 pb-2 mb-6 text-center';
-            storyPrintHeader.textContent = 'Tu Cuento Matemático';
-
-            const storyPrintText = document.createElement('p');
-            storyPrintText.className = 'text-lg text-gray-800';
-            storyPrintText.style.whiteSpace = 'pre-wrap';
-            storyPrintText.textContent = customStoryText.textContent + '\n\nRespuesta: _________________________';
-            
-            page3.appendChild(headerElement.cloneNode(true));
-            page3.appendChild(storyPrintHeader);
-            page3.appendChild(storyPrintText);
-            document.body.appendChild(page3);
-            await addCanvasToPdf(page3);
-            document.body.removeChild(page3);
+            yPos = 30;
         }
         
-        pdf.save('matematica-ejercicios.pdf');
-        mostrarMensajeExito('📄 PDF generado exitosamente');
+        pdf.setFontSize(14);
+        pdf.text(`${index + 1}. ${ejercicio.operacion}`, 30, yPos);
+        yPos += lineHeight * 2;
+    });
+    
+    // Descargar
+    pdf.save(`matematica-ejercicios-${Date.now()}.pdf`);
+    
+    if (window.mostrarNotificacion) {
+        window.mostrarNotificacion('✅ PDF descargado correctamente', 'success');
+    }
+}
+
+async function generarCuentoMatematico() {
+    if (!ejerciciosGenerados || ejerciciosGenerados.length === 0) {
+        alert('Primero genera algunos ejercicios');
+        return;
+    }
+    
+    console.log('📖 Generando cuento matemático...');
+    mostrarCarga('Creando un cuento mágico...');
+    
+    try {
+        let cuento;
+        
+        if (window.generarCuentoConGemini && !window.MathModeSystem?.isOfflineMode()) {
+            cuento = await window.generarCuentoConGemini(ejerciciosGenerados.slice(0, 3));
+        } else {
+            cuento = generarCuentoOffline();
+        }
+        
+        mostrarModalCuento(cuento);
         
     } catch (error) {
-        console.error('Error generando PDF:', error);
-        mostrarMensajeError('❌ Error al generar el PDF. Intenta de nuevo.');
+        console.error('❌ Error generando cuento:', error);
+        mostrarModalCuento(generarCuentoOffline());
     } finally {
-        printButton.disabled = false;
-        printButton.innerHTML = originalButtonText;
+        ocultarCarga();
     }
 }
 
-// Función para convertir markdown simple a HTML
-function convertMarkdownToHtml(text) {
-    if (!text) return '';
-    
-    return text
-        // Convertir **texto** a <strong>texto</strong>
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // Convertir *texto* a <em>texto</em>
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        // Convertir saltos de línea a <br>
-        .replace(/\n/g, '<br>')
-        // Limpiar espacios múltiples
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-// Función para crear efecto confetti cuando el niño responde correctamente
-function createConfetti() {
-    const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6'];
-    for (let i = 0; i < 50; i++) {
-        const confetti = document.createElement('div');
-        confetti.className = 'confetti-piece';
-        confetti.style.cssText = `
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            background: ${colors[Math.floor(Math.random() * colors.length)]};
-            left: ${Math.random() * 100}vw;
-            top: -10px;
-            z-index: 1000;
-            animation: fall ${2 + Math.random() * 3}s linear forwards;
-        `;
-        document.body.appendChild(confetti);
-        
-        setTimeout(() => {
-            confetti.remove();
-        }, 5000);
-    }
-}
-
-// Añadir CSS para animación de confetti
-if (!document.getElementById('confetti-style')) {
-    const style = document.createElement('style');
-    style.id = 'confetti-style';
-    style.textContent = `
-        @keyframes fall {
-            to {
-                transform: translateY(100vh) rotate(360deg);
-            }
+function generarCuentoOffline() {
+    const cuentos = [
+        {
+            titulo: "La Aventura de los Números Mágicos",
+            contenido: `Había una vez una pequeña maga llamada Luna que vivía en el Reino de los Números. 
+            Un día, encontró un cofre mágico que solo se abría resolviendo operaciones matemáticas.
+            
+            "Para abrir este cofre", pensó Luna, "debo ser muy cuidadosa con mis cálculos."
+            
+            Luna sabía que cada número tenía su propia personalidad: los números grandes eran orgullosos, 
+            los pequeños eran tímidos, y todos juntos formaban hermosas operaciones.
+            
+            Con su varita mágica, Luna comenzó a resolver cada problema, uno por uno, hasta que el cofre 
+            se abrió revelando el tesoro más hermoso: ¡la satisfacción de aprender matemáticas!`
+        },
+        {
+            titulo: "El Robot Calculador",
+            contenido: `En una ciudad futurista, había un robot llamado Calc que ayudaba a los niños con las matemáticas.
+            
+            Calc tenía una pantalla brillante donde aparecían números que bailaban y se transformaban en sumas y restas.
+            
+            "¡Beep beep!", decía Calc. "Las matemáticas son como un juego divertido. Cada operación es un rompecabezas 
+            que podemos resolver juntos."
+            
+            Los niños del futuro aprendieron que las matemáticas no eran difíciles, solo necesitaban práctica y 
+            un amigo robot que los motivara a seguir intentando.`
         }
+    ];
+    
+    return cuentos[Math.floor(Math.random() * cuentos.length)];
+}
+
+function mostrarModalCuento(cuento) {
+    const modal = document.getElementById('modal-cuento');
+    const contenido = document.getElementById('contenido-cuento');
+    
+    if (!modal || !contenido) {
+        console.warn('⚠️ Modal de cuento no encontrado');
+        return;
+    }
+    
+    contenido.innerHTML = `
+        <h3 class="text-xl font-bold text-purple-600 mb-4">${cuento.titulo}</h3>
+        <div class="prose text-gray-700 leading-relaxed">
+            ${cuento.contenido.split('\n').map(p => `<p class="mb-3">${p.trim()}</p>`).join('')}
+        </div>
+        <div class="mt-6 p-4 bg-purple-50 rounded-lg">
+            <p class="text-sm text-purple-700">
+                ✨ <strong>¡Ahora es tu turno!</strong> Resuelve los ejercicios como los héroes de este cuento.
+            </p>
+        </div>
     `;
-    document.head.appendChild(style);
+    
+    modal.classList.remove('hidden');
+    
+    // Event listener para cerrar
+    const btnCerrar = document.getElementById('btn-cerrar-cuento');
+    if (btnCerrar) {
+        btnCerrar.onclick = () => modal.classList.add('hidden');
+    }
+    
+    // Cerrar con click fuera del modal
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    };
 }
 
-// Función de inicialización principal - MEJORADA
-function initializeApp() {
-    console.log('🚀 Inicializando Matemágica...');
+// Actualizar función de inicialización
+function inicializarApp() {
+    console.log('🚀 Inicializando Matemágica PWA...');
     
-    // Establecer fecha
-    setDate();
+    // Verificar si el usuario ya está autenticado
+    const isAuthenticated = window.authManager?.isAuthenticated() || 
+                           window.welcomeAuthManager?.isAuthenticated();
     
-    // Cargar ejercicios guardados si existen
-    const savedExercises = localStorage.getItem('lastExercises');
-    if (savedExercises) {
-        try {
-            const data = JSON.parse(savedExercises);
-            if (data.additions && data.subtractions) {
-                renderGrid(data.additions, additionsGrid, '+');
-                renderGrid(data.subtractions, subtractionsGrid, '-');
-                content.classList.remove('hidden');
-                mainLoader.classList.add('hidden');
-                
-                console.log('📦 Ejercicios guardados cargados');
-                mostrarMensajeError('📱 Mostrando ejercicios guardados. Genera nuevos para actualizar.');
-            } else {
-                throw new Error('Datos inválidos');
-            }
-        } catch (error) {
-            console.log('🎯 Generando ejercicios nuevos...');
-            generateAndRenderExercises();
-        }
+    if (isAuthenticated) {
+        console.log('🎯 Inicializando aplicación principal...');
+        inicializarAplicacionPrincipal();
     } else {
-        console.log('🎯 Generando ejercicios iniciales...');
-        generateAndRenderExercises();
+        console.log('⏳ Esperando autenticación del usuario...');
+        // Esperar evento de autenticación
+        window.addEventListener('userAuthenticated', (event) => {
+            console.log('👤 Usuario autenticado, inicializando app...');
+            inicializarAplicacionPrincipal();
+        });
     }
+}
 
-    // Configurar inputs numéricos
-    const numericInputs = ['num1-input', 'num2-input', 'custom-story-answer', 'story-answer-input'];
-    numericInputs.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('keydown', preventNonNumericInput);
-        }
-    });
+function inicializarAplicacionPrincipal() {
+    // Configurar eventos principales
+    configurarEventos();
     
-    console.log('✅ Matemágica inicializada correctamente');
+    // Configurar cerrar sesión
+    configurarCerrarSesion();
+    
+    // Cargar datos del usuario
+    cargarDatosUsuario();
+    
+    // Verificar servicios disponibles
+    verificarServicios();
+    
+    console.log('✅ Matemágica PWA inicializada correctamente');
 }
 
-// Event Listeners principales
-if (generateBtn) {
-    generateBtn.addEventListener('click', generateAndRenderExercises);
-}
-
-if (printPdfBtn) {
-    printPdfBtn.addEventListener('click', printToPDF);
-}
-
-document.querySelectorAll('input[name="level"]').forEach(radio => {
-    radio.addEventListener('change', generateAndRenderExercises);
-});
-
-if (createStoryBtn) {
-    createStoryBtn.addEventListener('click', handleCustomProblemSubmit);
-}
-
-if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', () => storyModal.classList.remove('visible'));
-}
-
-if (storyModal) {
-    storyModal.addEventListener('click', (e) => {
-        if (e.target === storyModal) storyModal.classList.remove('visible');
-    });
-}
-
-// Detectar cuando la app se está ejecutando como PWA
-window.addEventListener('load', () => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('📱 La aplicación se está ejecutando como PWA instalada');
-        hideInstallPrompt();
+function cerrarSesion() {
+    if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+        console.log('🚪 Cerrando sesión...');
+        
+        // ✅ CORREGIDO: Usar el nuevo sistema de autenticación
+        if (window.welcomeAuthManager) {
+            window.welcomeAuthManager.signOut();
+        } else {
+            // Fallback para limpiar datos manualmente
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('isAuthenticated');
+            
+            if (window.mostrarNotificacion) {
+                window.mostrarNotificacion('👋 Sesión cerrada. ¡Hasta pronto!', 'success');
+            }
+            
+            setTimeout(() => {
+                window.location.href = '/index.html';
+            }, 1000);
+        }
     }
-});
+}
+
+// ✅ NUEVO: Función para verificar estado de autenticación
+function verificarAutenticacion() {
+    if (window.welcomeAuthManager) {
+        return window.welcomeAuthManager.isAuthenticated();
+    }
+    return localStorage.getItem('isAuthenticated') === 'true';
+}
+
+// Exportar funciones para uso global
+window.MathApp = {
+    generarEjercicios,
+    descargarPDF,
+    generarCuentoMatematico,
+    ejerciciosGenerados: () => ejerciciosGenerados,
+    configuracionActual: () => configuracionActual,
+    // ✅ NUEVO: Exportar función de verificación de autenticación
+    verificarAutenticacion,
+    initializeApp
+};
+
+console.log('✅ App.js cargado correctamente');

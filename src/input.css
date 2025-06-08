@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+/* Estilos base para Matemágica PWA */
+:root {
+  --font-fredoka: 'Fredoka', sans-serif;
+  --font-pacifico: 'Pacifico', cursive;
+  --gradient-magico: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-profesor: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-apoderado: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+body {
+  font-family: var(--font-fredoka);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Pantallas principales */
+.pantalla-bienvenida {
+  @apply min-h-screen flex items-center justify-center p-4;
+  background: var(--gradient-magico);
+}
+
+.pantalla-auth {
+  @apply min-h-screen flex items-center justify-center p-4;
+  background: var(--gradient-magico);
+}
+
+/* Tarjetas principales */
+.tarjeta-principal {
+  @apply bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.tarjeta-auth {
+  @apply bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Encabezados */
+.encabezado-bienvenida {
+  @apply mb-8;
+}
+
+.titulo-magico {
+  font-family: var(--font-pacifico);
+  @apply text-4xl font-bold mb-3;
+  background: var(--gradient-magico);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: float 3s ease-in-out infinite;
+}
+
+.subtitulo-bienvenida {
+  @apply text-gray-600 text-lg;
+}
+
+.titulo-auth {
+  @apply text-3xl font-bold mb-4 text-gray-800;
+}
+
+/* Sección de roles */
+.botones-rol {
+  @apply space-y-6;
+}
+
+.pregunta-rol {
+  @apply text-xl font-semibold text-gray-700 mb-6;
+}
+
+.btn-rol {
+  @apply w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg;
+}
+
+.btn-profesor {
+  background: var(--gradient-profesor);
+  @apply text-white;
+}
+
+.btn-profesor:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+}
+
+.btn-apoderado {
+  background: var(--gradient-apoderado);
+  @apply text-white;
+}
+
+.btn-apoderado:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(250, 112, 154, 0.3);
+}
+
+/* Iconos y decoración */
+.icono-auth {
+  @apply text-6xl mb-4;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Descripción de rol */
+.descripcion-rol {
+  @apply mb-6 text-gray-600 leading-relaxed;
+}
+
+.mensaje-aventura {
+  @apply flex items-center justify-center space-x-2 mb-6 text-amber-600 font-medium;
+}
+
+/* Opciones de autenticación */
+.opciones-auth {
+  @apply space-y-4 mb-6;
+}
+
+.btn-google {
+  @apply w-full bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all duration-300 cursor-pointer;
+}
+
+.contenido-google {
+  @apply flex items-center justify-between;
+}
+
+.icono-google {
+  @apply w-6 h-6 flex-shrink-0;
+}
+
+.logo-google {
+  @apply w-full h-full;
+}
+
+.flecha-google {
+  @apply text-gray-400 font-bold text-xl;
+}
+
+.texto-seguro {
+  @apply text-xs text-gray-500 text-center mt-2;
+}
+
+/* Estados de carga */
+.cargando-auth {
+  @apply flex flex-col items-center space-y-3;
+}
+
+.spinner {
+  @apply w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin;
+}
+
+.spinner-grande {
+  @apply w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin;
+}
+
+/* Botones de navegación */
+.btn-volver-bienvenida {
+  @apply text-gray-500 hover:text-gray-700 font-medium transition-colors mt-6;
+}
+
+/* Formulario de estudiante */
+.formulario-estudiante {
+  @apply space-y-4 mb-6;
+}
+
+.campo-form {
+  @apply text-left;
+}
+
+.etiqueta-form {
+  @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+.input-form {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.btn-continuar {
+  @apply w-full py-4 px-6 rounded-xl font-semibold text-lg text-white transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg;
+  background: var(--gradient-magico);
+}
+
+.btn-continuar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Loading overlay global */
+.loading-overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
+}
+
+.loading-content {
+  @apply bg-white rounded-xl p-8 text-center;
+}
+
+/* Componentes específicos de ejercicios */
+@layer components {
+  .exercise-item {
+    @apply bg-white rounded-lg shadow-md p-4 text-center font-bold text-lg border-2 border-gray-200 hover:border-amber-400 transition-all duration-200 relative;
+  }
+  
+  .story-button {
+    @apply absolute top-2 right-2 bg-amber-400 hover:bg-amber-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold transition-all duration-200 hover:scale-110;
+  }
+  
+  .operator {
+    @apply text-amber-600 mr-2;
+  }
+  
+  .line {
+    @apply border-t-2 border-gray-400 mt-2;
+  }
+  
+  .feedback-correct {
+    @apply bg-green-100 border border-green-300 text-green-800;
+  }
+  
+  .feedback-incorrect {
+    @apply bg-red-100 border border-red-300 text-red-800;
+  }
+  
+  .success-toast {
+    @apply fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 z-50;
+  }
+  
+  .success-toast.show {
+    @apply translate-x-0;
+  }
+  
+  .pdf-page {
+    @apply bg-white p-8 min-h-screen;
+  }
+}
+
+/* Animaciones para elementos infantiles */
+@layer utilities {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-rainbow {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7);
+    background-size: 400% 400%;
+    animation: rainbow 2s ease infinite;
+  }
+  
+  @keyframes rainbow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
+  
+  .animate-pulse-gentle {
+    animation: pulse-gentle 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-gentle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+}

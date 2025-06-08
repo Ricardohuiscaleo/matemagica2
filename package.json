@@ -6,7 +6,10 @@
   "scripts": {
     "start": "python3 -m http.server 8000",
     "serve": "python3 -m http.server 8000",
-    "build": "echo 'No build process needed for this static PWA'",
+    "build-css": "postcss src/input.css -o public/styles.css",
+    "watch-css": "postcss src/input.css -o public/styles.css --watch",
+    "build": "npm run build-css",
+    "dev": "npm run build-css && npm run serve",
     "icons": "echo 'Convert SVG icons to PNG manually or use online tool'"
   },
   "keywords": [
@@ -21,9 +24,20 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tu-usuario/matematica-pwa.git"
+    "url": "git+https://github.com/tu-usuario/matematica-pwa.git"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.50.0"
-  }
+    "@supabase/supabase-js": "^2.50.0",
+    "@tailwindcss/postcss": "^4.1.8",
+    "@tailwindcss/vite": "^4.1.8",
+    "postcss": "^8.5.4"
+  },
+  "devDependencies": {
+    "postcss-cli": "^11.0.1",
+    "tailwindcss": "^4.1.8"
+  },
+  "bugs": {
+    "url": "https://github.com/tu-usuario/matematica-pwa/issues"
+  },
+  "homepage": "https://github.com/tu-usuario/matematica-pwa#readme"
 }

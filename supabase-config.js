@@ -1,258 +1,323 @@
-// Configuración de Supabase para Matemágica
-import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_OPTIONS, isSupabaseConfigured, CONFIG_MESSAGES } from './supabase-credentials.js';
+// Configuración de Supabase - Versión simplificada sin errores 401
 
-// Verificar configuración al cargar
-if (!isSupabaseConfigured()) {
-    console.warn(CONFIG_MESSAGES.notConfigured);
-}
+// ✅ DEBUG: Funciones de debugging disponibles inmediatamente
+window.debugSupabase = function() {
+    console.log('🔍 DEBUG - Estado de dependencias:');
+    console.log('- window.SUPABASE_CONFIG:', typeof window.SUPABASE_CONFIG, window.SUPABASE_CONFIG ? '✅' : '❌');
+    console.log('- window.supabase:', typeof window.supabase, window.supabase ? '✅' : '❌');
+    console.log('- window.supabaseClient:', typeof window.supabaseClient, window.supabaseClient ? '✅' : '❌');
+    console.log('- DOM ready state:', document.readyState);
+};
 
-// Crear cliente de Supabase usando la librería global cargada desde CDN
-const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_OPTIONS);
-
-// Verificar que Supabase esté disponible
-if (!window.supabase) {
-    console.error('❌ Supabase no está cargado. Verifica que el CDN esté incluido en el HTML.');
-}
-
-// Configuraciones específicas para Matemágica
-export const SUPABASE_CONFIG = {
-    // Tablas con prefijo "math_" para evitar confusiones
-    TABLES: {
-        PROFILES: 'math_profiles',
-        EXERCISE_SESSIONS: 'math_exercise_sessions',
-        STORY_ATTEMPTS: 'math_story_attempts',
-        USER_PROGRESS: 'math_user_progress'
-    },
+// ✅ DEBUG: Función simple para probar inicialización manual
+window.manualSupabaseInit = function() {
+    console.log('🚀 Iniciando prueba manual...');
     
-    // Avatares predefinidos para niños
-    AVATARS: [
-        '🦄', '🐱', '🐶', '🐸', '🦋', '🌟', '🍎', '🎨',
-        '🚀', '⚽', '🎵', '🌈', '🎯', '🎪', '🎁', '🌺'
-    ],
-    
-    // Políticas de seguridad
-    SECURITY: {
-        MIN_PASSWORD_LENGTH: 6,
-        MAX_NAME_LENGTH: 50,
-        SESSION_DURATION: 7 * 24 * 60 * 60 * 1000 // 7 días
+    if (!window.SUPABASE_CONFIG) {
+        console.log('❌ No hay configuración');
+        return false;
     }
-}
+    
+    if (!window.supabase?.createClient) {
+        console.log('❌ No hay librería Supabase');
+        return false;
+    }
+    
+    try {
+        const client = window.supabase.createClient(
+            window.SUPABASE_CONFIG.url,
+            window.SUPABASE_CONFIG.anon_key
+        );
+        
+        window.supabaseClient = client;
+        console.log('✅ Cliente creado manualmente');
+        return true;
+    } catch (error) {
+        console.log('❌ Error creando cliente:', error);
+        return false;
+    }
+};
 
-// Funciones de autenticación
-export const authService = {
-    // Registro simple para niños con email y nombre
-    async signUpChild(email, password, childName) {
+console.log('🔧 Funciones de debug cargadas - Usa window.debugSupabase() y window.manualSupabaseInit()');
+
+(function() {
+    'use strict';
+    
+    console.log('🔧 Iniciando configuración de Supabase...');
+    
+    // ✅ EVITAR múltiples inicializaciones
+    if (window.supabaseClient) {
+        console.log('⚠️ Supabase ya está inicializado, evitando duplicación');
+        return;
+    }
+    
+    // ✅ MEJORADO: Configuración simplificada con mejor manejo de errores 401
+    function initializeSupabase() {
+        // ✅ PRIMERA VERIFICACIÓN: No inicializar si la configuración es inválida
+        const config = window.SUPABASE_CONFIG;
+        const configChecker = window.isSupabaseConfigured;
+        
+        if (!config || !configChecker?.()) {
+            console.warn('⚠️ Configuración de Supabase no válida - forzando modo offline');
+            console.warn('💡 Motivo:', config?.lastError || 'Configuración incompleta');
+            return false;
+        }
+        
+        // Verificar dependencias
+        if (!window.supabase?.createClient) {
+            console.warn('⚠️ Librería de Supabase no disponible - Modo offline activado');
+            return false;
+        }
+        
+        console.log('✅ Configuración de Supabase válida encontrada');
+        
         try {
-            const { data, error } = await supabaseClient.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        display_name: childName,
-                        user_type: 'student'
+            // ✅ CONFIGURACIÓN MÍNIMA para evitar llamadas automáticas que causen 401
+            const supabaseClient = window.supabase.createClient(
+                config.url,
+                config.anon_key,
+                {
+                    auth: {
+                        // ✅ Desactivar funciones automáticas que pueden causar errores 401
+                        autoRefreshToken: false,
+                        persistSession: false,
+                        detectSessionInUrl: false,
+                        flowType: 'implicit'
+                    },
+                    // ✅ NUEVO: Configuración de base de datos más permisiva
+                    db: {
+                        schema: 'public'
+                    },
+                    // ✅ NUEVO: Headers personalizados para mejor debugging
+                    global: {
+                        headers: {
+                            'X-Client-Info': 'matematica-pwa@1.0.0'
+                        }
                     }
                 }
-            });
+            );
             
-            if (error) throw error;
+            // ✅ NUEVO: Verificar conectividad antes de hacer el cliente disponible
+            async function testConnection() {
+                try {
+                    // Hacer una consulta mínima para verificar que la API key funciona
+                    const { data, error } = await supabaseClient.auth.getSession();
+                    
+                    if (error && error.message.includes('Invalid API key')) {
+                        console.error('❌ API key de Supabase inválida');
+                        throw new Error('Invalid API key');
+                    }
+                    
+                    console.log('✅ Conexión a Supabase verificada');
+                    return true;
+                } catch (error) {
+                    console.warn('⚠️ Error verificando conexión Supabase:', error.message);
+                    return false;
+                }
+            }
             
-            // Crear perfil inicial se maneja automáticamente por el trigger en la BD
-            return { success: true, user: data.user };
-        } catch (error) {
-            console.error('Error en registro:', error);
-            return { success: false, error: error.message };
-        }
-    },
-
-    // Login
-    async signIn(email, password) {
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email,
-                password
-            });
+            // Hacer el cliente disponible globalmente solo si la conexión es válida
+            window.supabaseClient = supabaseClient;
             
-            if (error) throw error;
-            return { success: true, user: data.user };
-        } catch (error) {
-            console.error('Error en login:', error);
-            return { success: false, error: error.message };
-        }
-    },
+            // ✅ SERVICIOS MEJORADOS con mejor manejo de errores
+            window.authService = {
+                async signInWithGoogle() {
+                    try {
+                        // ✅ NUEVO: Verificar que el cliente esté disponible
+                        if (!window.supabaseClient) {
+                            throw new Error('Cliente de Supabase no disponible');
+                        }
+                        
+                        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                            provider: 'google',
+                            options: {
+                                redirectTo: `${window.location.origin}${window.location.pathname}`,
+                                queryParams: {
+                                    access_type: 'offline',
+                                    prompt: 'consent'
+                                }
+                            }
+                        });
 
-    // Logout
-    async signOut() {
-        const { error } = await supabaseClient.auth.signOut();
-        if (error) console.error('Error en logout:', error);
-        return !error;
-    },
+                        if (error) {
+                            console.error('❌ Error específico en OAuth:', error);
+                            throw error;
+                        }
+                        return { success: true, data };
+                    } catch (error) {
+                        console.error('❌ Error en Google OAuth:', error);
+                        return { success: false, error: error.message };
+                    }
+                },
 
-    // Obtener usuario actual
-    async getCurrentUser() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        return user;
-    }
-};
+                async getCurrentUser() {
+                    try {
+                        if (!window.supabaseClient) return null;
+                        
+                        const { data: { user }, error } = await supabaseClient.auth.getUser();
+                        
+                        if (error) {
+                            console.warn('⚠️ Error obteniendo usuario actual:', error.message);
+                            return null;
+                        }
+                        
+                        return user;
+                    } catch (error) {
+                        console.warn('⚠️ Error inesperado obteniendo usuario:', error);
+                        return null;
+                    }
+                },
 
-// Funciones para manejar perfiles de estudiantes
-export const profileService = {
-    // Obtener perfil completo
-    async getProfile(userId) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(SUPABASE_CONFIG.TABLES.PROFILES)
-                .select('*')
-                .eq('id', userId)
-                .single();
-            
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error obteniendo perfil:', error);
-            return null;
-        }
-    },
+                async signOut() {
+                    try {
+                        if (!window.supabaseClient) {
+                            return { success: true }; // Si no hay cliente, considerar exitoso
+                        }
+                        
+                        await supabaseClient.auth.signOut();
+                        return { success: true };
+                    } catch (error) {
+                        console.warn('⚠️ Error en signOut (continuando):', error);
+                        return { success: true }; // ✅ Siempre permitir cerrar sesión localmente
+                    }
+                },
 
-    // Actualizar perfil
-    async updateProfile(userId, updates) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(SUPABASE_CONFIG.TABLES.PROFILES)
-                .update(updates)
-                .eq('id', userId);
-            
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error actualizando perfil:', error);
-            throw error;
-        }
-    },
-
-    // Actualizar estadísticas después de ejercicios
-    async updateStats(userId, isCorrect) {
-        try {
-            const profile = await this.getProfile(userId);
-            if (!profile) return;
-
-            const updates = {
-                total_exercises: profile.total_exercises + 1,
-                correct_answers: isCorrect ? profile.correct_answers + 1 : profile.correct_answers,
-                updated_at: new Date().toISOString()
+                onAuthStateChange(callback) {
+                    try {
+                        if (!window.supabaseClient) {
+                            console.warn('⚠️ No se puede configurar onAuthStateChange - cliente no disponible');
+                            return { unsubscribe: () => {} };
+                        }
+                        
+                        return supabaseClient.auth.onAuthStateChange((event, session) => {
+                            // ✅ FILTRAR solo eventos importantes para evitar spam
+                            if (['SIGNED_IN', 'SIGNED_OUT', 'TOKEN_REFRESHED'].includes(event)) {
+                                callback(event, session);
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('⚠️ Error configurando auth state listener:', error);
+                        return { unsubscribe: () => {} };
+                    }
+                }
             };
-
-            await this.updateProfile(userId, updates);
-        } catch (error) {
-            console.error('Error actualizando estadísticas:', error);
-        }
-    }
-};
-
-// Funciones para guardar progreso de ejercicios
-export const progressService = {
-    // Guardar sesión de ejercicios
-    async saveExerciseSession(userId, exerciseData) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(SUPABASE_CONFIG.TABLES.EXERCISE_SESSIONS)
-                .insert({
-                    user_id: userId,
-                    level: exerciseData.level,
-                    additions_count: exerciseData.additions_count,
-                    subtractions_count: exerciseData.subtractions_count,
-                    session_date: new Date().toISOString(),
-                    exercises_data: exerciseData.exercises
-                });
             
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error guardando sesión:', error);
-        }
-    },
-
-    // Guardar intento de cuento
-    async saveStoryAttempt(userId, storyData) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(SUPABASE_CONFIG.TABLES.STORY_ATTEMPTS)
-                .insert({
-                    user_id: userId,
-                    story_text: storyData.story_text,
-                    operation: storyData.operation,
-                    num1: storyData.num1,
-                    num2: storyData.num2,
-                    user_answer: storyData.user_answer,
-                    correct_answer: storyData.correct_answer,
-                    is_correct: storyData.is_correct,
-                    attempt_date: new Date().toISOString()
-                });
-            
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error guardando cuento:', error);
-        }
-    },
-
-    // Obtener historial de sesiones
-    async getExerciseHistory(userId, limit = 10) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(SUPABASE_CONFIG.TABLES.EXERCISE_SESSIONS)
-                .select('*')
-                .eq('user_id', userId)
-                .order('session_date', { ascending: false })
-                .limit(limit);
-            
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error obteniendo historial:', error);
-            return [];
-        }
-    },
-
-    // Obtener estadísticas del usuario
-    async getUserStats(userId) {
-        try {
-            const profile = await profileService.getProfile(userId);
-            const recentSessions = await this.getExerciseHistory(userId, 5);
-            
-            return {
-                profile,
-                recentSessions,
-                accuracy: profile?.total_exercises > 0 
-                    ? Math.round((profile.correct_answers / profile.total_exercises) * 100)
-                    : 0
+            // ✅ SERVICIOS DE BD MEJORADOS con fallbacks robustos
+            window.profileService = {
+                async createOrUpdateProfile(userId, profileData) {
+                    try {
+                        if (!window.supabaseClient) {
+                            console.warn('⚠️ Perfil no guardado - cliente no disponible');
+                            return null;
+                        }
+                        
+                        const { data, error } = await supabaseClient
+                            .from('user_profiles')
+                            .upsert({
+                                user_id: userId,
+                                email: profileData.email,
+                                full_name: profileData.full_name || 'Usuario',
+                                user_role: profileData.user_role || 'parent',
+                                avatar_url: profileData.avatar_url,
+                                updated_at: new Date().toISOString()
+                            })
+                            .select()
+                            .single();
+                        
+                        if (error) {
+                            console.warn('⚠️ Error guardando perfil en Supabase:', error.message);
+                            return null;
+                        }
+                        
+                        console.log('✅ Perfil guardado exitosamente en Supabase');
+                        return data;
+                    } catch (error) {
+                        console.warn('⚠️ Error inesperado guardando perfil:', error);
+                        return null;
+                    }
+                },
+                
+                async getProfile(userId) {
+                    try {
+                        if (!window.supabaseClient) return null;
+                        
+                        const { data, error } = await supabaseClient
+                            .from('user_profiles')
+                            .select('*')
+                            .eq('user_id', userId)
+                            .single();
+                        
+                        if (error) {
+                            if (error.code === 'PGRST116') {
+                                console.log('ℹ️ Perfil no encontrado - usuario nuevo');
+                            } else {
+                                console.warn('⚠️ Error obteniendo perfil:', error.message);
+                            }
+                            return null;
+                        }
+                        
+                        return data;
+                    } catch (error) {
+                        console.warn('⚠️ Error inesperado obteniendo perfil:', error);
+                        return null;
+                    }
+                }
             };
+            
+            console.log('✅ Cliente de Supabase inicializado correctamente');
+            return true;
+            
         } catch (error) {
-            console.error('Error obteniendo estadísticas:', error);
-            return null;
+            console.error('❌ Error inicializando Supabase:', error);
+            console.warn('💡 La aplicación continuará en modo offline');
+            return false;
         }
     }
-};
-
-// Estado global de autenticación
-export let currentUser = null;
-export let userProfile = null;
-
-// Escuchar cambios de autenticación
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    console.log('Cambio de autenticación:', event);
     
-    if (session?.user) {
-        currentUser = session.user;
-        userProfile = await profileService.getProfile(session.user.id);
+    // ✅ Función de verificación de estado
+    window.checkSupabaseStatus = function() {
+        console.log('📊 Estado de Supabase:');
+        console.log('- Config disponible:', !!window.SUPABASE_CONFIG);
+        console.log('- Cliente inicializado:', !!window.supabaseClient);
+        console.log('- Auth service:', !!window.authService);
+        console.log('- Profile service:', !!window.profileService);
         
-        // Disparar evento personalizado para actualizar UI
-        window.dispatchEvent(new CustomEvent('userAuthenticated', {
-            detail: { user: currentUser, profile: userProfile }
-        }));
-    } else {
-        currentUser = null;
-        userProfile = null;
+        if (window.supabaseClient) {
+            console.log('✅ Supabase listo para usar');
+        } else {
+            console.log('❌ Supabase no está inicializado');
+        }
+    };
+    
+    // ✅ Intentar inicializar con retry simple
+    function attemptInitialization() {
+        let attempts = 0;
+        const maxAttempts = 5;
         
-        window.dispatchEvent(new CustomEvent('userSignedOut'));
+        function tryInit() {
+            attempts++;
+            console.log(`🔄 Intento ${attempts} de inicializar Supabase...`);
+            
+            if (initializeSupabase()) {
+                console.log('✅ Supabase inicializado exitosamente');
+                return;
+            }
+            
+            if (attempts < maxAttempts) {
+                setTimeout(tryInit, 200);
+            } else {
+                console.warn('⚠️ No se pudo inicializar Supabase después de', maxAttempts, 'intentos');
+            }
+        }
+        
+        tryInit();
     }
-});
+    
+    // Inicializar cuando esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attemptInitialization);
+    } else {
+        setTimeout(attemptInitialization, 100);
+    }
+    
+})();

@@ -1,0 +1,402 @@
+/* Matemágica PWA - Estilos personalizados */
+:root {
+  --font-fredoka: 'Fredoka', sans-serif;
+  --font-pacifico: 'Pacifico', cursive;
+  --gradient-magico: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-profesor: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-apoderado: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+body {
+  font-family: var(--font-fredoka);
+  background: var(--gradient-magico);
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Pantallas principales - Corregido para usar IDs */
+#welcome-screen,
+#auth-screen,
+.pantalla-bienvenida,
+.pantalla-auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--gradient-magico);
+}
+
+/* Tarjetas principales */
+.tarjeta-principal,
+.tarjeta-auth {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 2rem;
+  max-width: 28rem;
+  width: 100%;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+/* ✅ NUEVO: Estilos para ejercicios generados */
+.ejercicio-card {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.ejercicio-card:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+    transform: translateY(-2px);
+}
+
+.ejercicio-numero {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.ejercicio-operacion {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    font-family: 'Fredoka', cursive;
+    text-align: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 8px;
+    border: 2px dashed #d1d5db;
+}
+
+/* Encabezados */
+.encabezado-bienvenida {
+  margin-bottom: 2rem;
+}
+
+.titulo-magico {
+  font-family: var(--font-pacifico);
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+  background: var(--gradient-magico);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: float 3s ease-in-out infinite;
+}
+
+.subtitulo-bienvenida {
+  color: #6b7280;
+  font-size: 1.125rem;
+}
+
+.titulo-auth {
+  font-size: 1.875rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+/* Sección de roles */
+.botones-rol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pregunta-rol {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1.5rem;
+}
+
+.btn-rol {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  transform: scale(1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-profesor {
+  background: var(--gradient-profesor);
+  color: white;
+}
+
+.btn-profesor:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+}
+
+.btn-apoderado {
+  background: var(--gradient-apoderado);
+  color: white;
+}
+
+.btn-apoderado:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(250, 112, 154, 0.3);
+}
+
+/* Iconos y decoración */
+.icono-auth {
+  font-size: 3.75rem;
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Descripción de rol */
+.descripcion-rol {
+  margin-bottom: 1.5rem;
+  color: #6b7280;
+  line-height: 1.625;
+}
+
+.mensaje-aventura {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* Opciones de autenticación */
+.opciones-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-google {
+  width: 100%;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-google:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.contenido-google {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.icono-google {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.logo-google {
+  width: 100%;
+  height: 100%;
+}
+
+.flecha-google {
+  color: #9ca3af;
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.texto-seguro {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Estados de carga */
+.cargando-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 4px solid #60a5fa;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-grande {
+  width: 4rem;
+  height: 4rem;
+  border: 4px solid white;
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Botones de navegación */
+.btn-volver-bienvenida {
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.btn-volver-bienvenida:hover {
+  color: #374151;
+}
+
+/* Formulario de estudiante */
+.formulario-estudiante {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.campo-form {
+  text-align: left;
+}
+
+.etiqueta-form {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.input-form {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.input-form:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn-continuar {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--gradient-magico);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-continuar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Loading overlay global */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.loading-content {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Contenedor principal responsive */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Ajustes para la pantalla principal */
+#app-screen {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ejercicio-card {
+        padding: 1rem;
+    }
+    
+    .ejercicio-operacion {
+        font-size: 1.25rem;
+        padding: 0.75rem;
+    }
+    
+    .container {
+        padding: 0 0.5rem;
+    }
+}
+
+/* Utilidades */
+.hidden {
+  display: none !important;
+}
+
+/* Animaciones */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px); 
+  }
+  50% { 
+    transform: translateY(-10px); 
+  }
+}
+
+@keyframes spin {
+  from { 
+    transform: rotate(0deg); 
+  }
+  to { 
+    transform: rotate(360deg); 
+  }
+}

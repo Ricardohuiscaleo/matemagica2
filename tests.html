@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Tests - Matemágica PWA</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        .test-passed { @apply bg-green-100 border-green-500 text-green-800; }
+        .test-failed { @apply bg-red-100 border-red-500 text-red-800; }
+        .test-running { @apply bg-yellow-100 border-yellow-500 text-yellow-800; }
+        .test-pending { @apply bg-gray-100 border-gray-500 text-gray-800; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm p-4">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-lg">🧪</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">Tests - Matemágica PWA</h1>
+                    <p class="text-sm text-gray-600">Sistema de pruebas automatizadas</p>
+                </div>
+            </div>
+            <button onclick="window.location.href='index.html'" 
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                🏠 Volver a la App
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6">
+        <!-- Control Panel -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <button id="runAllTests" 
+                            class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium">
+                        ▶️ Ejecutar Todos los Tests
+                    </button>
+                    <button id="runQuickTests" 
+                            class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                        ⚡ Tests Rápidos
+                    </button>
+                    <button id="clearResults" 
+                            class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium">
+                        🗑️ Limpiar
+                    </button>
+                </div>
+                <div class="flex items-center space-x-4 text-sm">
+                    <span id="testStats" class="text-gray-600">Tests: 0 / 0</span>
+                    <span id="testStatus" class="font-medium">Listo</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Results -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- System Tests -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    ⚙️ Tests del Sistema
+                </h2>
+                <div id="systemTests" class="space-y-3">
+                    <!-- Tests se insertan aquí -->
+                </div>
+            </div>
+
+            <!-- Math Logic Tests -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    🔢 Tests de Lógica Matemática
+                </h2>
+                <div id="mathTests" class="space-y-3">
+                    <!-- Tests se insertan aquí -->
+                </div>
+            </div>
+
+            <!-- API Tests -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    🌐 Tests de APIs
+                </h2>
+                <div id="apiTests" class="space-y-3">
+                    <!-- Tests se insertan aquí -->
+                </div>
+            </div>
+
+            <!-- UI Tests -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    🎨 Tests de UI
+                </h2>
+                <div id="uiTests" class="space-y-3">
+                    <!-- Tests se insertan aquí -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Console -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                📝 Consola de Tests
+            </h2>
+            <div id="testConsole" class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-48 overflow-y-auto">
+                <div class="text-gray-500">Esperando inicio de tests...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="math-mode-system.js"></script>
+    <script src="gemini-ai.js"></script>
+    <script src="tests.js"></script>
+</body>
+</html>
