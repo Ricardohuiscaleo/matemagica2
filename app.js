@@ -598,20 +598,55 @@ function mostrarModalCuento(cuento) {
         </div>
     `;
     
-    modal.classList.remove('hidden');
+    toggleModalCuento(true);
+}
+
+// Función para mostrar/ocultar el modal de cuento
+function toggleModalCuento(mostrar = false) {
+    const modal = document.getElementById('modal-cuento');
+    if (!modal) return;
     
-    // Event listener para cerrar
-    const btnCerrar = document.getElementById('btn-cerrar-cuento');
-    if (btnCerrar) {
-        btnCerrar.onclick = () => modal.classList.add('hidden');
+    if (mostrar) {
+        // Eliminar hidden y agregar flex correctamente
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevenir scroll
+    } else {
+        // Ocultar correctamente
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restaurar scroll
+    }
+}
+
+// Configurar botones para abrir/cerrar el modal de cuento
+function configurarModalCuento() {
+    const btnGenerarCuento = document.getElementById('btn-generar-cuento');
+    const btnCerrarCuento = document.getElementById('btn-cerrar-cuento');
+    
+    if (btnGenerarCuento) {
+        btnGenerarCuento.addEventListener('click', () => {
+            generarCuento().then(() => {
+                toggleModalCuento(true);
+            });
+        });
     }
     
-    // Cerrar con click fuera del modal
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-        }
-    };
+    if (btnCerrarCuento) {
+        btnCerrarCuento.addEventListener('click', () => {
+            toggleModalCuento(false);
+        });
+    }
+    
+    // Cerrar modal al hacer clic fuera del contenido
+    const modal = document.getElementById('modal-cuento');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                toggleModalCuento(false);
+            }
+        });
+    }
 }
 
 // Actualizar función de inicialización

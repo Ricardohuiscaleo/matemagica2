@@ -92,8 +92,8 @@ function initializeAuthFlow() {
             studentForm.addEventListener('submit', handleStudentForm);
         }
         
-        // Verificar si ya hay una sesión activa
-        checkExistingSession();
+        // ✅ CORREGIDO: NO verificar sesión automáticamente para evitar bucles
+        // ELIMINADO: checkExistingSession();
         
         console.log('✅ Auth flow inicializado correctamente');
         
@@ -103,92 +103,126 @@ function initializeAuthFlow() {
 }
 
 function selectRole(role) {
-    console.log(`👤 Rol seleccionado en auth-flow: ${role}`);
-    selectedUserRole = role;
-    
-    // Actualizar UI según el rol
-    const roleText = document.getElementById('user-role-text');
-    const roleDescription = document.getElementById('role-description');
-    
-    if (roleText && roleDescription) {
-        if (role === 'teacher') {
-            roleText.textContent = 'profesor/a';
-            roleDescription.innerHTML = `
-                Como <span class="font-bold text-blue-600">profesor/a</span>, podrás gestionar múltiples estudiantes 
-                y crear ejercicios personalizados para cada uno de ellos.
-            `;
-        } else {
-            roleText.textContent = 'apoderado/a';
-            roleDescription.innerHTML = `
-                Como <span class="font-bold text-pink-600">apoderado/a</span>, podrás generar ejercicios 
-                personalizados para tu hijo/a y seguir su progreso.
-            `;
-        }
-    }
-    
-    showAuthScreen();
-}
-
-function showWelcomeScreen() {
-    console.log('🏠 Mostrando pantalla de bienvenida (auth-flow)');
-    if (welcomeScreen) welcomeScreen.classList.remove('hidden');
-    if (authScreen) authScreen.classList.add('hidden');
-    if (studentFormScreen) studentFormScreen.classList.add('hidden');
-    selectedUserRole = null;
-}
-
-function showAuthScreen() {
-    console.log('🔐 Mostrando pantalla de autenticación (auth-flow)');
-    if (welcomeScreen) welcomeScreen.classList.add('hidden');
-    if (authScreen) authScreen.classList.remove('hidden');
-    if (studentFormScreen) studentFormScreen.classList.add('hidden');
-}
-
-function showStudentFormScreen() {
-    console.log('👨‍👩‍👧‍👦 Mostrando formulario de estudiante (auth-flow)');
-    if (welcomeScreen) welcomeScreen.classList.add('hidden');
-    if (authScreen) authScreen.classList.add('hidden');
-    if (studentFormScreen) studentFormScreen.classList.remove('hidden');
-}
-
-function showLoading(message = 'Cargando...') {
-    const loadingText = document.getElementById('loading-text');
-    if (loadingText) loadingText.textContent = message;
-    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-}
-
-function hideLoading() {
-    if (loadingOverlay) loadingOverlay.classList.add('hidden');
-}
-
-async function handleGoogleAuth() {
-    if (!selectedUserRole) {
-        alert('⚠️ Por favor selecciona tu rol primero');
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando selección de rol a WelcomeAuthManager');
+        window.welcomeAuthManager.selectRole(role);
         return;
     }
     
-    console.log('🔐 Iniciando autenticación con Google (auth-flow)...');
-    showLoading('Iniciando sesión con Google...');
+    console.log('👤 Rol seleccionado en auth-flow:', role);
+    selectedUserRole = role;
+    
+    if (role === 'student') {
+        showStudentFormScreen();
+    } else {
+        showAuthScreen();
+    }
+}
+
+function showWelcomeScreen() {
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando showWelcomeScreen a WelcomeAuthManager');
+        window.welcomeAuthManager.showWelcomeScreen();
+        return;
+    }
+    
+    console.log('👋 Mostrando pantalla de bienvenida (auth-flow)');
+    
+    if (welcomeScreen && authScreen && studentFormScreen) {
+        welcomeScreen.style.display = 'flex';
+        authScreen.style.display = 'none';
+        studentFormScreen.style.display = 'none';
+    } else {
+        console.warn('⚠️ Elementos no encontrados para showWelcomeScreen');
+    }
+}
+
+function showAuthScreen() {
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando showAuthScreen a WelcomeAuthManager');
+        window.welcomeAuthManager.showAuthScreen();
+        return;
+    }
+    
+    console.log('🔐 Mostrando pantalla de autenticación (auth-flow)');
+    
+    if (welcomeScreen && authScreen && studentFormScreen) {
+        welcomeScreen.style.display = 'none';
+        authScreen.style.display = 'flex';
+        studentFormScreen.style.display = 'none';
+        
+        // Actualizar descripción del rol
+        const roleDescription = document.getElementById('user-role-text');
+        if (roleDescription) {
+            roleDescription.textContent = selectedUserRole === 'teacher' ? 'profesor/a' : 'apoderado/a';
+        }
+    } else {
+        console.warn('⚠️ Elementos no encontrados para showAuthScreen');
+    }
+}
+
+function showStudentFormScreen() {
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando showStudentForm a WelcomeAuthManager');
+        window.welcomeAuthManager.showStudentForm();
+        return;
+    }
+    
+    console.log('📝 Mostrando formulario de estudiante (auth-flow)');
+    
+    if (welcomeScreen && authScreen && studentFormScreen) {
+        welcomeScreen.style.display = 'none';
+        authScreen.style.display = 'none';
+        studentFormScreen.style.display = 'flex';
+    } else {
+        console.warn('⚠️ Elementos no encontrados para showStudentFormScreen');
+    }
+}
+
+function showLoading(message = 'Cargando...') {
+    if (loadingOverlay) {
+        const loadingText = document.getElementById('loading-text');
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+        loadingOverlay.style.display = 'none';
+    }
+}
+
+async function handleGoogleAuth() {
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando autenticación Google a WelcomeAuthManager');
+        return window.welcomeAuthManager.handleGoogleAuth();
+    }
     
     try {
-        // ✅ MEJORADO: Intentar usar el sistema principal si está disponible
-        if (window.welcomeAuthManager && window.welcomeAuthManager.handleGoogleAuth) {
-            console.log('🔄 Delegando autenticación al sistema principal...');
-            await window.welcomeAuthManager.handleGoogleAuth();
-            return;
-        }
+        console.log('🔐 Iniciando autenticación con Google (auth-flow)');
+        showLoading('Conectando con Google...');
         
-        // Fallback: Sistema básico de autenticación simulado
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Usuario simulado
+        // Autenticación simulada para modo fallback
+        // En una implementación real, aquí se usaría una API de autenticación
         const simulatedUser = {
-            id: 'user_' + Date.now(),
-            email: 'usuario@ejemplo.com',
-            name: 'Usuario Demo',
-            role: selectedUserRole,
-            avatar: '/icons/icon-72.png'
+            id: `user_${Date.now()}`,
+            name: 'Usuario de Prueba',
+            email: 'usuario.prueba@ejemplo.com',
+            avatar: 'https://ui-avatars.com/api/?name=Usuario+Prueba&background=random',
+            role: selectedUserRole
         };
+        
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simular tiempo de red
         
         // Guardar en localStorage
         localStorage.setItem('currentUser', JSON.stringify(simulatedUser));
@@ -212,73 +246,69 @@ async function handleGoogleAuth() {
 }
 
 function redirectToTeacherDashboard() {
-    console.log('👩‍🏫 Redirigiendo a dashboard del profesor...');
-    showLoading('Preparando dashboard del profesor...');
-    
-    setTimeout(() => {
-        window.location.href = '/profesor.html';
-    }, 1000);
+    console.log('👨‍🏫 Redirigiendo a dashboard de profesor...');
+    window.location.href = 'profesor.html';
 }
 
 function redirectToParentFlow() {
     console.log('👨‍👩‍👧‍👦 Redirigiendo a formulario de estudiante...');
-    hideLoading();
     showStudentFormScreen();
 }
 
 async function handleStudentForm(event) {
     event.preventDefault();
     
-    const formData = new FormData(event.target);
-    
-    // ✅ CORREGIDO: Obtener usuario actual del sistema principal
-    const currentUser = window.welcomeAuthManager?.getCurrentUser() || 
-                       JSON.parse(localStorage.getItem('currentUser') || '{}');
-    
-    const studentData = {
-        name: formData.get('student-name'),
-        age: formData.get('student-age'),
-        grade: formData.get('student-grade'),
-        level: formData.get('student-level'),
-        parentId: currentUser.id || 'temp_' + Date.now()
-    };
-    
-    console.log('📝 Guardando datos del estudiante:', studentData);
-    showLoading('Configurando perfil del estudiante...');
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
+        console.log('🔄 Delegando manejo de formulario a WelcomeAuthManager');
+        // Un enfoque directo sería llamar al método equivalente en WelcomeAuthManager
+        // Sin embargo, no llamamos directamente porque esperamos que los eventos del DOM
+        // sean manejados por WelcomeAuthManager
+        return;
+    }
     
     try {
-        // Simular guardado (aquí integrarías con Supabase)
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        const studentNameInput = document.getElementById('student-name');
+        const studentGradeSelect = document.getElementById('student-grade');
+        
+        const name = studentNameInput?.value?.trim();
+        const grade = studentGradeSelect?.value;
+        
+        if (!name || !grade) {
+            alert('Por favor, completa todos los campos');
+            return;
+        }
+        
+        console.log('👶 Datos del estudiante:', { name, grade });
+        showLoading('Procesando información...');
         
         // Guardar datos del estudiante
+        const studentData = { name, grade };
         localStorage.setItem('studentData', JSON.stringify(studentData));
         
-        console.log('✅ Estudiante configurado exitosamente');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simular procesamiento
         
-        // Redirigir al dashboard del apoderado
         redirectToParentDashboard();
         
     } catch (error) {
-        console.error('❌ Error al guardar estudiante:', error);
-        alert('Error al configurar el perfil. Por favor intenta nuevamente.');
+        console.error('❌ Error procesando formulario:', error);
+        alert('Error al procesar el formulario. Inténtalo nuevamente.');
+    } finally {
         hideLoading();
     }
 }
 
 function redirectToParentDashboard() {
-    console.log('👨‍👩‍👧‍👦 Redirigiendo a dashboard del apoderado...');
-    showLoading('Preparando dashboard familiar...');
-    
-    setTimeout(() => {
-        window.location.href = '/apoderado.html';
-    }, 1000);
+    console.log('🔄 Redirigiendo a dashboard de apoderado...');
+    window.location.href = 'apoderado.html';
 }
 
+// MODIFICADO para evitar bucles infinitos - NO se ejecuta automáticamente
 function checkExistingSession() {
     // ✅ MEJORADO: Verificar primero el sistema principal
     if (window.welcomeAuthManager && window.welcomeAuthManager.isAuthenticated()) {
         console.log('✅ Sesión activa encontrada en sistema principal');
-        return;
+        return true;
     }
     
     // Fallback: Verificar localStorage
@@ -289,18 +319,14 @@ function checkExistingSession() {
         try {
             const user = JSON.parse(userData);
             console.log('🔄 Sesión existente encontrada en localStorage:', user);
-            
-            // Redirigir según el rol
-            if (user.role === 'teacher') {
-                window.location.href = '/profesor.html';
-            } else {
-                window.location.href = '/apoderado.html';
-            }
+            return true;
         } catch (error) {
             console.warn('⚠️ Error al parsear datos de usuario, limpiando sesión');
             clearSession();
         }
     }
+    
+    return false;
 }
 
 function clearSession() {
@@ -317,13 +343,19 @@ function clearSession() {
 
 // Función global para cerrar sesión (usada por otras páginas)
 window.logout = function() {
-    console.log('🚪 Cerrando sesión...');
+    // Preferir usar el sistema principal si está disponible
+    if (window.welcomeAuthManager) {
+        console.log('🔄 Delegando cierre de sesión a WelcomeAuthManager');
+        return window.welcomeAuthManager.signOut();
+    }
+    
+    console.log('🚪 Cerrando sesión (auth-flow)...');
     clearSession();
-    window.location.href = '/index.html';
+    window.location.href = 'index.html';
 };
 
 // Sistema de notificaciones para el modo híbrido
-function mostrarNotificacion(mensaje, tipo = 'info') {
+window.mostrarNotificacion = function(mensaje, tipo = 'info') {
     // Crear elemento de notificación
     const notification = document.createElement('div');
     notification.className = `notification ${tipo}`;
@@ -341,12 +373,4 @@ function mostrarNotificacion(mensaje, tipo = 'info') {
             }
         }, 300);
     }, 3000);
-}
-
-// Exportar funciones para uso en otras páginas
-window.authFlow = {
-    getCurrentUser: () => window.welcomeAuthManager?.getCurrentUser() || JSON.parse(localStorage.getItem('currentUser') || 'null'),
-    getSelectedRole: () => selectedUserRole,
-    logout: window.logout,
-    checkSession: checkExistingSession
 };

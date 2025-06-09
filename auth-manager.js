@@ -356,6 +356,12 @@ class WelcomeAuthManager {
     // Verificar sesión existente
     async checkExistingSession() {
         try {
+            // Protección anti-bucle: Si ya verificamos la sesión, no volver a hacerlo
+            if (this.authProcessingCompleted) {
+                console.log('⏩ Ya se verificó la sesión previamente, saltando verificación');
+                return;
+            }
+            
             console.log('🔍 Verificando sesión existente después de posible callback...');
             
             // ✅ MEJORADO: Verificar si hay parámetros de callback en la URL
@@ -366,41 +372,28 @@ class WelcomeAuthManager {
                 console.log('🔄 Detectado callback de Google OAuth - esperando procesamiento...');
                 this.showAuthLoader(true);
                 
-                // ✅ MEJORADO: Intentos múltiples con intervalos más cortos
-                let attempts = 0;
-                const maxAttempts = 10; // 10 intentos = 10 segundos máximo
+                // ✅ MEJORADO: Un solo intento para evitar bucles
+                const sessionFound = await this.checkSupabaseSession();
+                this.showAuthLoader(false);
                 
-                const checkSessionInterval = async () => {
-                    attempts++;
-                    console.log(`🔍 Intento ${attempts}/${maxAttempts} - Verificando sesión después de callback...`);
-                    
-                    const sessionFound = await this.checkSupabaseSession();
-                    
-                    if (sessionFound) {
-                        console.log('✅ Sesión encontrada en intento', attempts);
-                        return; // Éxito - detener intentos
-                    } else if (attempts >= maxAttempts) {
-                        console.warn('⏰ Agotados intentos de verificación de sesión después de callback');
-                        console.log('🆕 Fallback: Mostrar bienvenida después de timeout');
-                        this.showAuthLoader(false);
-                        this.showWelcomeScreen();
-                        return;
-                    } else {
-                        // Continuar intentando
-                        setTimeout(checkSessionInterval, 1000); // 1 segundo entre intentos
-                    }
-                };
+                if (!sessionFound) {
+                    console.log('⚠️ No se encontró sesión después del callback');
+                    this.showWelcomeScreen();
+                }
                 
-                // Empezar intentos después de un delay inicial
-                setTimeout(checkSessionInterval, 1000);
+                // Marcar como completado para evitar bucles
+                this.authProcessingCompleted = true;
                 return;
             }
             
-            // Verificar sesión de Supabase primero (sin callback)
+            // Verificar sesión de Supabase una sola vez (sin callback)
             const sessionFound = await this.checkSupabaseSession();
             if (!sessionFound) {
                 this.showWelcomeScreen();
             }
+            
+            // Marcar como completado
+            this.authProcessingCompleted = true;
             
         } catch (error) {
             console.error('❌ Error verificando sesión:', error);
@@ -1629,7 +1622,6 @@ class WelcomeAuthManager {
             
         } catch (error) {
             console.error('❌ Error cerrando sesión:', error);
-            
             // Fallback: forzar limpieza y redirección
             localStorage.clear();
             window.location.href = '/index.html';
