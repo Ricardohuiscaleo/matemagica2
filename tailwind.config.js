@@ -2,9 +2,13 @@
 module.exports = {
   content: [
     "./index.html",
-    "./app.js",
-    "./auth-manager.js",
-    "./**/*.{html,js}"
+    "./dashboard.html", 
+    "./tests.html",
+    "./js/**/*.js",
+    "./profesor-dashboard.js",
+    "./apoderado-dashboard.js",
+    "./gemini-ai.js",
+    "./math-mode-system.js"
   ],
   theme: {
     extend: {

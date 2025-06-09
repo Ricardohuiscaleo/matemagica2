@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Estilos base para Matemágica PWA */
 :root {
@@ -18,26 +20,51 @@ body {
 
 /* Pantallas principales */
 .pantalla-bienvenida {
-  @apply min-h-screen flex items-center justify-center p-4;
+  @apply min-h-screen p-4;
   background: var(--gradient-magico);
+  /* FORZAR centrado perfecto */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: column !important;
 }
 
 .pantalla-auth {
-  @apply min-h-screen flex items-center justify-center p-4;
+  @apply min-h-screen p-4;
   background: var(--gradient-magico);
+  /* FORZAR centrado perfecto para la autenticación */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-/* Tarjetas principales */
+/* Tarjetas principales - CENTRADO PERFECTO */
 .tarjeta-principal {
-  @apply bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center;
+  @apply bg-white rounded-xl shadow-lg text-center;
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.95);
+  padding: 2rem;
+  max-width: 28rem;
+  width: 100%;
+  /* CENTRADO HORIZONTAL AUTOMÁTICO */
+  margin: 0 auto !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  /* Asegurar que esté siempre centrada */
+  position: relative;
 }
 
 .tarjeta-auth {
-  @apply bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center;
+  @apply bg-white rounded-xl shadow-lg text-center;
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.95);
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+  /* CENTRADO HORIZONTAL AUTOMÁTICO */
+  margin: 0 auto !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  /* Asegurar que esté siempre centrada */
+  position: relative;
 }
 
 /* Encabezados */

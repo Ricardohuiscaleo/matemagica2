@@ -6,10 +6,11 @@
   "scripts": {
     "start": "python3 -m http.server 8000",
     "serve": "python3 -m http.server 8000",
-    "build-css": "postcss src/input.css -o public/styles.css",
-    "watch-css": "postcss src/input.css -o public/styles.css --watch",
-    "build": "npm run build-css",
-    "dev": "npm run build-css && npm run serve",
+    "build-css": "npx tailwindcss -i src/input.css -o styles.css --watch",
+    "build-css-prod": "npx tailwindcss -i src/input.css -o styles.css --minify",
+    "build": "npm run build-css-prod",
+    "dev": "npm run build-css & npm run serve",
+    "deploy": "npm run build && echo 'Listo para deployment'",
     "icons": "echo 'Convert SVG icons to PNG manually or use online tool'"
   },
   "keywords": [
@@ -27,14 +28,13 @@
     "url": "git+https://github.com/tu-usuario/matematica-pwa.git"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.50.0",
-    "@tailwindcss/postcss": "^4.1.8",
-    "@tailwindcss/vite": "^4.1.8",
-    "postcss": "^8.5.4"
+    "@supabase/supabase-js": "^2.50.0"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
     "postcss-cli": "^11.0.1",
-    "tailwindcss": "^4.1.8"
+    "tailwindcss": "^3.4.17"
   },
   "bugs": {
     "url": "https://github.com/tu-usuario/matematica-pwa/issues"

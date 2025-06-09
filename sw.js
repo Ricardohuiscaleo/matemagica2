@@ -1,20 +1,18 @@
 // Service Worker para Matemágica PWA
 // 🔄 VERSIÓN ACTUALIZADA para limpiar errores acumulativos
-const CACHE_NAME = 'matematica-pwa-v4.0'; // ⬅️ NUEVA VERSIÓN FORZADA
-const CACHE_OLD_NAMES = ['matematica-pwa-v1.0', 'matematica-pwa-v2.0', 'matematica-pwa-v3.0']; // Incluir v3.0 para eliminar
+const CACHE_NAME = 'matematica-pwa-v5.0'; // ⬅️ NUEVA VERSIÓN
+const CACHE_OLD_NAMES = ['matematica-pwa-v1.0', 'matematica-pwa-v2.0', 'matematica-pwa-v3.0', 'matematica-pwa-v4.0'];
 
 const urlsToCache = [
     '/',
     '/index.html',
-    '/app.js',
-    '/integrated-auth.js',
-    '/auth-manager.js',
-    '/supabase-config.js',
-    '/public/styles.css',
+    '/js/auth.js',
+    '/js/dashboard.js',
+    '/js/dashboard-auth.js',
+    '/styles.css', // ⬅️ CSS compilado local (sin CDN)
     '/manifest.json',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
-    'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
 ];
