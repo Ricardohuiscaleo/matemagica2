@@ -366,279 +366,131 @@ class WelcomeAuthManager {
             
             // ✅ MEJORADO: Verificar si hay parámetros de callback en la URL
             const urlParams = new URLSearchParams(window.location.search);
-            const hasAuthCode = urlParams.has('code') || window.location.hash.includes('access_token');
+            const urlHash = window.location.hash;
+            const hasAuthCode = urlParams.has('code') || urlHash.includes('access_token');
             
+            // Si detectamos un callback, procesarlo primero
             if (hasAuthCode) {
-                console.log('🔄 Detectado callback de Google OAuth - esperando procesamiento...');
+                console.log('🔄 Detectado callback de autenticación - procesando...');
                 this.showAuthLoader(true);
                 
-                // ✅ MEJORADO: Un solo intento para evitar bucles
-                const sessionFound = await this.checkSupabaseSession();
-                this.showAuthLoader(false);
-                
-                if (!sessionFound) {
-                    console.log('⚠️ No se encontró sesión después del callback');
-                    this.showWelcomeScreen();
+                // Intentar procesar el token según documentación
+                if (urlHash.includes('access_token')) {
+                    const tokenData = this.extractTokenFromUrl();
+                    if (tokenData) {
+                        console.log('🔑 Token encontrado en URL, procesando...');
+                        const success = await this.processUrlToken(tokenData);
+                        if (success) {
+                            console.log('✅ Token procesado exitosamente');
+                            this.authProcessingCompleted = true;
+                            this.showAuthLoader(false);
+                            return;
+                        }
+                    }
                 }
                 
-                // Marcar como completado para evitar bucles
-                this.authProcessingCompleted = true;
-                return;
-            }
-            
-            // Verificar sesión de Supabase una sola vez (sin callback)
-            const sessionFound = await this.checkSupabaseSession();
-            if (!sessionFound) {
+                // ✅ SEGÚN DOCUMENTACIÓN: Esperar a que Supabase detecte el código
+                console.log('⏳ Esperando que Supabase procese el código...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Verificar si ya tenemos sesión activa
+                const hasSession = await this.hasActiveSession();
+                if (hasSession) {
+                    console.log('✅ Sesión encontrada después del callback');
+                    // La sesión ya fue procesada por el listener de onAuthStateChange
+                    this.authProcessingCompleted = true;
+                    this.showAuthLoader(false);
+                    return;
+                } else {
+                    console.log('⚠️ No se encontró sesión después del callback');
+                    this.showWelcomeScreen();
+                    this.showAuthLoader(false);
+                }
+            } else {
+                // No hay callback, verificar sesión existente
+                console.log('🔍 Verificando sesión existente...');
+                
+                // ✅ SEGÚN DOCUMENTACIÓN: Usar hasActiveSession primero
+                const hasSession = await this.hasActiveSession();
+                
+                if (hasSession) {
+                    // Sesión activa en Supabase
+                    console.log('🎯 Sesión de Supabase encontrada, procesando...');
+                    const { data: { user } } = await window.supabaseClient.auth.getUser();
+                    if (user) {
+                        console.log('👤 Usuario recuperado:', user.email);
+                        this.currentUser = user;
+                        await this.createOrUpdateUserProfile(user);
+                        this.authProcessingCompleted = true;
+                        await this.showMainApp();
+                        return;
+                    }
+                }
+                
+                // ✅ FALLBACK: Si no hay sesión de Supabase, intentar con localStorage
+                console.log('🗄️ Verificando sesión en localStorage...');
+                const savedUser = localStorage.getItem('matemagica_user');
+                const savedProfile = localStorage.getItem('matemagica_profile');
+                
+                if (savedUser && savedProfile) {
+                    try {
+                        const user = JSON.parse(savedUser);
+                        const profile = JSON.parse(savedProfile);
+                        
+                        console.log('✅ Datos de sesión encontrados en localStorage:', user.email);
+                        
+                        // Restaurar estado desde localStorage
+                        this.currentUser = user;
+                        this.userProfile = profile;
+                        this.selectedRole = profile.user_role;
+                        this.authProcessingCompleted = true;
+                        
+                        await this.showMainApp();
+                        return;
+                    } catch (parseError) {
+                        console.warn('⚠️ Error al parsear datos de localStorage:', parseError);
+                        localStorage.removeItem('matemagica_user');
+                        localStorage.removeItem('matemagica_profile');
+                    }
+                }
+                
+                // Si llegamos aquí, no hay sesión activa
+                console.log('🆕 No hay sesión existente - mostrando bienvenida');
                 this.showWelcomeScreen();
             }
             
-            // Marcar como completado
             this.authProcessingCompleted = true;
             
         } catch (error) {
             console.error('❌ Error verificando sesión:', error);
             this.showWelcomeScreen();
+            this.authProcessingCompleted = true;
         }
     }
 
-    // ✅ NUEVO: Verificar sesión de Supabase específicamente
-    async checkSupabaseSession() {
+    // ✅ NUEVO: Verificar si hay una sesión activa en Supabase según documentación
+    async hasActiveSession() {
         try {
-            // ✅ NUEVO: Primero intentar procesar token de la URL si existe
-            const hashToken = this.extractTokenFromUrl();
-            if (hashToken) {
-                console.log('🔑 Token encontrado en URL, procesando manualmente...');
-                const sessionFromToken = await this.processUrlToken(hashToken);
-                if (sessionFromToken) {
-                    return true; // ✅ Éxito procesando token de URL
-                }
-            }
-            
-            // Intentar obtener sesión actual de Supabase
-            if (this.isSupabaseReady && window.supabaseClient) {
-                console.log('🔍 Verificando sesión activa en Supabase...');
-                
-                // ✅ NUEVO: Logging detallado del estado de Supabase
-                console.log('🔧 Estado detallado de Supabase:');
-                console.log('- supabaseClient existe:', !!window.supabaseClient);
-                console.log('- supabaseClient.auth existe:', !!window.supabaseClient?.auth);
-                console.log('- URL actual:', window.location.href);
-                console.log('- URL params:', window.location.search);
-                console.log('- URL hash:', window.location.hash);
-                
-                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
-                
-                console.log('📊 Resultado de getSession():');
-                console.log('- session existe:', !!session);
-                console.log('- session.user existe:', !!session?.user);
-                console.log('- session.access_token existe:', !!session?.access_token);
-                console.log('- error:', error?.message || 'ninguno');
-                
-                if (session?.user) {
-                    console.log('👤 Datos del usuario encontrado:');
-                    console.log('- ID:', session.user.id);
-                    console.log('- Email:', session.user.email);
-                    console.log('- Metadata:', session.user.user_metadata);
-                    console.log('- Created at:', session.user.created_at);
-                }
-                
-                if (session?.user && !error) {
-                    console.log('✅ Sesión activa encontrada en Supabase:', session.user.email);
-                    console.log('🚀 Restaurando sesión desde Supabase');
-                    
-                    // Usar datos de Supabase como fuente principal
-                    await this.handleSuccessfulAuth(session.user);
-                    return true; // ✅ NUEVO: Indicar éxito
-                } else {
-                    console.log('⚠️ No hay sesión activa en Supabase:', error?.message || 'sin error específico');
-                    
-                    // ✅ NUEVO: Intentar forzar refresh de sesión
-                    console.log('🔄 Intentando forzar refresh de sesión...');
-                    const { data: refreshedSession, error: refreshError } = await window.supabaseClient.auth.refreshSession();
-                    
-                    if (refreshedSession?.session?.user && !refreshError) {
-                        console.log('✅ Sesión recuperada después de refresh:', refreshedSession.session.user.email);
-                        await this.handleSuccessfulAuth(refreshedSession.session.user);
-                        return true;
-                    } else {
-                        console.log('❌ Refresh de sesión falló:', refreshError?.message || 'sin error específico');
-                    }
-                }
-            } else {
-                console.log('❌ Supabase no está listo para verificar sesión');
-                console.log('- isSupabaseReady:', this.isSupabaseReady);
-                console.log('- window.supabaseClient:', !!window.supabaseClient);
-            }
-            
-            // Fallback: verificar localStorage
-            const savedUser = localStorage.getItem('matemagica_user');
-            const savedProfile = localStorage.getItem('matemagica_profile');
-            
-            console.log('🔍 Verificando localStorage:');
-            console.log('- matemagica_user existe:', !!savedUser);
-            console.log('- matemagica_profile existe:', !!savedProfile);
-            
-            if (savedUser && savedProfile) {
-                try {
-                    const user = JSON.parse(savedUser);
-                    const profile = JSON.parse(savedProfile);
-                    
-                    console.log('✅ Sesión encontrada en localStorage:', user.email);
-                    console.log('🚀 Restaurando sesión desde localStorage');
-                    
-                    // Restaurar estado del usuario
-                    this.currentUser = user;
-                    this.userProfile = profile;
-                    this.selectedRole = profile.user_role;
-                    
-                    // Ir a la aplicación principal
-                    await this.showMainApp();
-                    return true; // ✅ NUEVO: Indicar éxito
-                } catch (parseError) {
-                    console.warn('⚠️ Error parseando datos guardados:', parseError);
-                    // Limpiar datos corruptos
-                    localStorage.removeItem('matemagica_user');
-                    localStorage.removeItem('matemagica_profile');
-                }
-            }
-            
-            // Si llegamos aquí, no hay sesión activa
-            console.log('🆕 No hay sesión existente - mostrar bienvenida');
-            return false; // ✅ NUEVO: Indicar fallo
-            
-        } catch (error) {
-            console.error('❌ Error verificando sesión de Supabase:', error);
-            console.log('🔍 Stack trace completo:', error.stack);
-            return false; // ✅ NUEVO: Indicar fallo
-        }
-    }
-
-    // ✅ NUEVO: Extraer token de la URL
-    extractTokenFromUrl() {
-        try {
-            const hash = window.location.hash;
-            if (!hash || !hash.includes('access_token=')) {
-                return null;
-            }
-            
-            console.log('🔍 Procesando hash de URL:', hash.substring(0, 100) + '...');
-            
-            // Convertir hash a URLSearchParams
-            const hashParams = new URLSearchParams(hash.substring(1));
-            
-            const accessToken = hashParams.get('access_token');
-            const refreshToken = hashParams.get('refresh_token');
-            const expiresAt = hashParams.get('expires_at');
-            const tokenType = hashParams.get('token_type');
-            
-            if (!accessToken) {
-                console.log('⚠️ No se encontró access_token en el hash');
-                return null;
-            }
-            
-            console.log('✅ Token extraído exitosamente:', {
-                hasAccessToken: !!accessToken,
-                hasRefreshToken: !!refreshToken,
-                expiresAt: expiresAt,
-                tokenType: tokenType
-            });
-            
-            return {
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                expires_at: expiresAt ? parseInt(expiresAt) : null,
-                token_type: tokenType || 'bearer'
-            };
-            
-        } catch (error) {
-            console.error('❌ Error extrayendo token de URL:', error);
-            return null;
-        }
-    }
-
-    // ✅ NUEVO: Procesar token de URL manualmente
-    async processUrlToken(tokenData) {
-        try {
-            console.log('🔧 Procesando token de URL manualmente...');
-            
-            if (!window.supabaseClient) {
-                console.error('❌ supabaseClient no disponible para procesar token');
+            // Verificar si hay cliente disponible
+            if (!window.supabaseClient || !window.supabaseClient.auth) {
+                console.log('⚠️ Supabase no disponible para verificar sesión');
                 return false;
             }
             
-            // ✅ ESTRATEGIA 1: Intentar setSession con el token
-            console.log('🔧 Intentando setSession con token extraído...');
+            console.log('🔍 Verificando sesión activa en Supabase...');
+            const { data: { session }, error } = await window.supabaseClient.auth.getSession();
             
-            try {
-                const { data: sessionData, error: setError } = await Promise.race([
-                    window.supabaseClient.auth.setSession({
-                        access_token: tokenData.access_token,
-                        refresh_token: tokenData.refresh_token
-                    }),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout en setSession')), 5000))
-                ]);
-                
-                if (sessionData?.session?.user && !setError) {
-                    console.log('✅ Sesión establecida exitosamente con setSession:', sessionData.session.user.email);
-                    
-                    // Limpiar URL para evitar problemas futuros
-                    this.cleanupUrlAfterAuth();
-                    
-                    // Procesar autenticación exitosa
-                    await this.handleSuccessfulAuth(sessionData.session.user);
-                    return true;
-                }
-                
-                console.warn('⚠️ setSession falló:', setError?.message || 'sin error específico');
-                
-            } catch (setSessionError) {
-                console.warn('⏰ setSession timeout - intentando estrategia alternativa:', setSessionError.message);
+            if (error) {
+                console.warn('⚠️ Error al obtener sesión:', error.message);
+                return false;
             }
             
-            // ✅ ESTRATEGIA 2: Crear usuario manualmente desde token
-            console.log('🔧 Creando usuario manualmente desde token...');
-            const userFromToken = await this.createUserFromToken(tokenData.access_token);
-            if (userFromToken) {
-                console.log('✅ Usuario creado manualmente desde token:', userFromToken.email);
-                
-                // Limpiar URL
-                this.cleanupUrlAfterAuth();
-                
-                // Procesar autenticación exitosa
-                await this.handleSuccessfulAuth(userFromToken);
-                return true;
-            }
+            const isActive = !!session?.user;
+            console.log(`${isActive ? '✅' : '❌'} Sesión activa: ${isActive ? session.user.email : 'No'}`);
             
-            console.warn('⚠️ No se pudo procesar el token de ninguna manera');
-            return false;
-            
+            return isActive;
         } catch (error) {
-            console.error('❌ Error procesando token de URL:', error);
-            
-            // ✅ FALLBACK SIMPLIFICADO: Procesar básico sin redirecciones complejas
-            try {
-                console.log('🆘 Fallback: Procesamiento básico de token...');
-                
-                const basicUser = await this.createBasicUserFromToken(tokenData.access_token);
-                if (basicUser) {
-                    console.log('✅ Usuario básico creado desde token:', basicUser.email);
-                    
-                    // Limpiar URL simple
-                    try {
-                        const cleanUrl = window.location.origin + window.pathname;
-                        window.history.replaceState({}, document.title, cleanUrl);
-                    } catch (urlError) {
-                        console.warn('⚠️ Error limpiando URL, continuando...', urlError);
-                    }
-                    
-                    // Procesar autenticación
-                    await this.handleSuccessfulAuth(basicUser);
-                    return true;
-                }
-            } catch (fallbackError) {
-                console.error('❌ Fallback también falló:', fallbackError);
-            }
-            
+            console.error('❌ Error en hasActiveSession:', error);
             return false;
         }
     }
