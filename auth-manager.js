@@ -1822,6 +1822,107 @@ class WelcomeAuthManager {
             return null;
         }
     }
+
+    // ✅ NUEVO: Procesar token de URL manualmente
+    async processUrlToken(tokenData) {
+        try {
+            console.log('🔧 Procesando token de URL manualmente...');
+            
+            if (!window.supabaseClient) {
+                console.error('❌ supabaseClient no disponible para procesar token');
+                return false;
+            }
+            
+            // ✅ ESTRATEGIA 1: Intentar setSession con el token
+            console.log('🔧 Intentando setSession con token extraído...');
+            
+            try {
+                const { data: sessionData, error: setError } = await Promise.race([
+                    window.supabaseClient.auth.setSession({
+                        access_token: tokenData.access_token,
+                        refresh_token: tokenData.refresh_token
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout en setSession')), 5000))
+                ]);
+                
+                if (sessionData?.session?.user && !setError) {
+                    console.log('✅ Sesión establecida exitosamente con setSession:', sessionData.session.user.email);
+                    
+                    // Limpiar URL para evitar problemas futuros
+                    this.cleanupUrlAfterAuth();
+                    
+                    // Procesar autenticación exitosa
+                    await this.handleSuccessfulAuth(sessionData.session.user);
+                    return true;
+                }
+                
+                console.warn('⚠️ setSession falló:', setError?.message || 'sin error específico');
+                
+            } catch (setSessionError) {
+                console.warn('⏰ setSession timeout - intentando estrategia alternativa:', setSessionError.message);
+            }
+            
+            // ✅ ESTRATEGIA 2: Crear usuario manualmente desde token
+            console.log('🔧 Creando usuario manualmente desde token...');
+            const userFromToken = await this.createUserFromToken(tokenData.access_token);
+            if (userFromToken) {
+                console.log('✅ Usuario creado manualmente desde token:', userFromToken.email);
+                
+                // Limpiar URL
+                this.cleanupUrlAfterAuth();
+                
+                // Procesar autenticación exitosa
+                await this.handleSuccessfulAuth(userFromToken);
+                return true;
+            }
+            
+            // ✅ ESTRATEGIA 3: Fallback básico con datos mínimos
+            console.log('🆘 Intentando fallback básico...');
+            const basicUser = await this.createBasicUserFromToken(tokenData.access_token);
+            if (basicUser) {
+                console.log('✅ Usuario básico creado desde token:', basicUser.email);
+                
+                // Limpiar URL
+                this.cleanupUrlAfterAuth();
+                
+                // Procesar autenticación básica
+                await this.handleSuccessfulAuth(basicUser);
+                return true;
+            }
+            
+            console.warn('⚠️ No se pudo procesar el token de ninguna manera');
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Error procesando token de URL:', error);
+            
+            // ✅ FALLBACK SIMPLIFICADO: Procesar básico sin redirecciones complejas
+            try {
+                console.log('🆘 Fallback: Procesamiento básico de token...');
+                
+                const basicUser = await this.createBasicUserFromToken(tokenData.access_token);
+                if (basicUser) {
+                    console.log('✅ Usuario básico creado desde token:', basicUser.email);
+                    
+                    // Limpiar URL simple
+                    try {
+                        const cleanUrl = window.location.origin + window.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    } catch (urlError) {
+                        console.warn('⚠️ Error limpiando URL, continuando...', urlError);
+                    }
+                    
+                    // Procesar autenticación
+                    await this.handleSuccessfulAuth(basicUser);
+                    return true;
+                }
+            } catch (fallbackError) {
+                console.error('❌ Fallback también falló:', fallbackError);
+            }
+            
+            return false;
+        }
+    }
 }
 
 // ✅ NUEVO: Crear instancia global y exponerla
