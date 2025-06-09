@@ -1773,6 +1773,55 @@ class WelcomeAuthManager {
             window.location.href = '/index.html';
         }
     }
+
+    // ✅ NUEVO: Extraer token de la URL
+    extractTokenFromUrl() {
+        try {
+            console.log('🔍 Extrayendo token de URL...');
+            
+            // Obtener el hash fragment (la parte después del #)
+            const hashFragment = window.location.hash;
+            if (!hashFragment || !hashFragment.includes('access_token=')) {
+                console.log('⚠️ No se encontró token en la URL');
+                return null;
+            }
+            
+            console.log('🔑 Hash fragment encontrado, extrayendo token...');
+            
+            // Parseamos los parámetros del hash
+            const hashParams = {};
+            hashFragment.substring(1).split('&').forEach(param => {
+                const [key, value] = param.split('=');
+                hashParams[key] = decodeURIComponent(value);
+            });
+            
+            // Verificar si tenemos los tokens necesarios
+            if (!hashParams.access_token) {
+                console.warn('⚠️ access_token no encontrado en hash');
+                return null;
+            }
+            
+            // Extraer tokens
+            const tokenData = {
+                access_token: hashParams.access_token,
+                expires_in: hashParams.expires_in,
+                refresh_token: hashParams.refresh_token || null,
+                token_type: hashParams.token_type || 'bearer'
+            };
+            
+            console.log('✅ Token extraído exitosamente:', {
+                tokenPresente: !!tokenData.access_token,
+                tipoToken: tokenData.token_type,
+                tieneRefresh: !!tokenData.refresh_token
+            });
+            
+            return tokenData;
+            
+        } catch (error) {
+            console.error('❌ Error extrayendo token de URL:', error);
+            return null;
+        }
+    }
 }
 
 // ✅ NUEVO: Crear instancia global y exponerla
