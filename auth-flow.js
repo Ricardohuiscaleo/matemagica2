@@ -15,6 +15,10 @@ if (window.welcomeAuthManager) {
     console.log('🔧 Inicializando auth-flow como sistema principal');
 }
 
+// ✅ ANTI-BUCLE: Flag para controlar redirecciones automáticas
+let isRedirectInProgress = false;
+let offlineModeDetected = false;
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM cargado - Inicializando auth-flow');
@@ -24,6 +28,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('⏭️ WelcomeAuthManager ya inicializado - saltando auth-flow');
         return;
     }
+    
+    // ✅ VERIFICAR disponibilidad de Supabase
+    checkSupabaseAvailability();
     
     // Inicializar elementos DOM
     welcomeScreen = document.getElementById('welcome-screen');
@@ -49,6 +56,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeAuthFlow();
 });
+
+// ✅ NUEVO: Verificar disponibilidad de Supabase
+function checkSupabaseAvailability() {
+    // Verificar si Supabase está disponible
+    const isSupabaseAvailable = !!(window.supabaseClient && window.supabaseClient.auth);
+    
+    if (!isSupabaseAvailable) {
+        console.warn('⚠️ Librería de Supabase no disponible - Modo offline activado');
+        offlineModeDetected = true;
+        
+        // Actualizar UI para modo offline si existe tal elemento
+        const offlineIndicator = document.getElementById('offline-indicator');
+        if (offlineIndicator) {
+            offlineIndicator.style.display = 'block';
+        }
+        
+        // Agregar clase a body para estilos específicos de modo offline
+        document.body.classList.add('offline-mode');
+    } else {
+        console.log('✅ Supabase disponible - Modo normal');
+        offlineModeDetected = false;
+    }
+    
+    return isSupabaseAvailable;
+}
 
 function initializeAuthFlow() {
     try {
@@ -92,8 +124,14 @@ function initializeAuthFlow() {
             studentForm.addEventListener('submit', handleStudentForm);
         }
         
-        // ✅ CORREGIDO: NO verificar sesión automáticamente para evitar bucles
-        // ELIMINADO: checkExistingSession();
+        // ✅ CORREGIDO: SOLO verificar sesión si no estamos en modo offline
+        if (!offlineModeDetected) {
+            // Verificar sesión existente de forma segura
+            safelyCheckExistingSession();
+        } else {
+            // En modo offline, simplemente mostrar la pantalla de bienvenida
+            showWelcomeScreen();
+        }
         
         console.log('✅ Auth flow inicializado correctamente');
         
@@ -102,6 +140,63 @@ function initializeAuthFlow() {
     }
 }
 
+// ✅ NUEVO: Verificar sesión de forma segura (anti-bucle)
+function safelyCheckExistingSession() {
+    // Anti-bucle: no verificar si hay redirección en progreso
+    if (isRedirectInProgress) {
+        console.log('⚠️ Redirección en progreso, saltando verificación de sesión');
+        return;
+    }
+    
+    console.log('🔍 Verificando sesión existente (auth-flow)');
+    
+    // ✅ Preferir sistema principal si está disponible
+    if (window.welcomeAuthManager) {
+        console.log('🔄 Delegando verificación a WelcomeAuthManager');
+        // No hacer nada, el welcomeAuthManager se encargará
+        return;
+    }
+    
+    // Comprobar si hay una sesión existente en localStorage únicamente
+    // NO REDIRIGIR AUTOMÁTICAMENTE para evitar bucles
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    const userData = localStorage.getItem('currentUser');
+    
+    if (isAuthenticated === 'true' && userData) {
+        try {
+            const user = JSON.parse(userData);
+            console.log('🔍 Sesión encontrada en localStorage:', user.email);
+            
+            // ✅ NO REDIRIGIR AUTOMÁTICAMENTE
+            // Solo actualizar UI para reflejar usuario conectado
+            updateUIForLoggedInUser(user);
+            
+        } catch (error) {
+            console.warn('⚠️ Error al parsear datos de usuario, limpiando sesión');
+            clearSession();
+            showWelcomeScreen();
+        }
+    } else {
+        console.log('🔍 No se encontró sesión en localStorage');
+        showWelcomeScreen();
+    }
+}
+
+// ✅ NUEVO: Actualizar UI para usuario conectado sin redirección
+function updateUIForLoggedInUser(user) {
+    // Actualizar elementos que muestran info del usuario
+    const userNameElements = document.querySelectorAll('[data-user-name]');
+    userNameElements.forEach(el => {
+        if (el) el.textContent = user.name || user.email;
+    });
+    
+    // Mostrar elementos para usuario autenticado
+    document.body.classList.add('authenticated');
+    
+    console.log('✅ UI actualizada para usuario conectado');
+}
+
+// Funciones principales existentes
 function selectRole(role) {
     // Preferir usar el sistema principal si está disponible
     if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
@@ -245,25 +340,14 @@ async function handleGoogleAuth() {
     }
 }
 
-function redirectToTeacherDashboard() {
-    console.log('👨‍🏫 Redirigiendo a dashboard de profesor...');
-    window.location.href = 'profesor.html';
-}
-
-function redirectToParentFlow() {
-    console.log('👨‍👩‍👧‍👦 Redirigiendo a formulario de estudiante...');
-    showStudentFormScreen();
-}
-
+// Manejar el envío del formulario de estudiante
 async function handleStudentForm(event) {
     event.preventDefault();
     
     // Preferir usar el sistema principal si está disponible
     if (window.welcomeAuthManager && window.welcomeAuthManager.isInitialized) {
         console.log('🔄 Delegando manejo de formulario a WelcomeAuthManager');
-        // Un enfoque directo sería llamar al método equivalente en WelcomeAuthManager
-        // Sin embargo, no llamamos directamente porque esperamos que los eventos del DOM
-        // sean manejados por WelcomeAuthManager
+        window.welcomeAuthManager.handleStudentFormSubmit(event);
         return;
     }
     
@@ -297,80 +381,3 @@ async function handleStudentForm(event) {
         hideLoading();
     }
 }
-
-function redirectToParentDashboard() {
-    console.log('🔄 Redirigiendo a dashboard de apoderado...');
-    window.location.href = 'apoderado.html';
-}
-
-// MODIFICADO para evitar bucles infinitos - NO se ejecuta automáticamente
-function checkExistingSession() {
-    // ✅ MEJORADO: Verificar primero el sistema principal
-    if (window.welcomeAuthManager && window.welcomeAuthManager.isAuthenticated()) {
-        console.log('✅ Sesión activa encontrada en sistema principal');
-        return true;
-    }
-    
-    // Fallback: Verificar localStorage
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('currentUser');
-    
-    if (isAuthenticated === 'true' && userData) {
-        try {
-            const user = JSON.parse(userData);
-            console.log('🔄 Sesión existente encontrada en localStorage:', user);
-            return true;
-        } catch (error) {
-            console.warn('⚠️ Error al parsear datos de usuario, limpiando sesión');
-            clearSession();
-        }
-    }
-    
-    return false;
-}
-
-function clearSession() {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('studentData');
-    selectedUserRole = null;
-    
-    // ✅ NUEVO: También limpiar del sistema principal si existe
-    if (window.welcomeAuthManager && window.welcomeAuthManager.signOut) {
-        window.welcomeAuthManager.signOut();
-    }
-}
-
-// Función global para cerrar sesión (usada por otras páginas)
-window.logout = function() {
-    // Preferir usar el sistema principal si está disponible
-    if (window.welcomeAuthManager) {
-        console.log('🔄 Delegando cierre de sesión a WelcomeAuthManager');
-        return window.welcomeAuthManager.signOut();
-    }
-    
-    console.log('🚪 Cerrando sesión (auth-flow)...');
-    clearSession();
-    window.location.href = 'index.html';
-};
-
-// Sistema de notificaciones para el modo híbrido
-window.mostrarNotificacion = function(mensaje, tipo = 'info') {
-    // Crear elemento de notificación
-    const notification = document.createElement('div');
-    notification.className = `notification ${tipo}`;
-    notification.textContent = mensaje;
-    
-    // Agregar al DOM
-    document.body.appendChild(notification);
-    
-    // Eliminar después de 3 segundos
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-};

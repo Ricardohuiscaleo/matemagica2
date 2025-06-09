@@ -4,267 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Matemágica - Bienvenida</title>
-    <meta name="description" content="Generador de ejercicios de matemáticas con IA para niños">
-    
-    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <meta name="theme-color" content="#667eea">
-    
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
-    
-    <!-- External Libraries -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
-    <!-- Styles - Tailwind CSS compilado + Estilos personalizados -->
-    <link rel="stylesheet" href="./public/styles.css">
     <link rel="stylesheet" href="./styles.css">
-    
-    <!-- Config -->
-    <script src="config.js"></script>
-    <script src="supabase-config.js"></script>
 </head>
 <body>
-    <!-- Pantalla de Bienvenida -->
-    <div id="welcome-screen" class="pantalla-bienvenida">
+    <div id="error-display" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background-color:#ef4444; color:white; padding:10px 20px; border-radius:8px; z-index:1000;"></div>
+    <div id="welcome-screen" class="pantalla-bienvenida screen" style="display:none;">
         <div class="tarjeta-principal">
-            <div class="encabezado-bienvenida">
-                <h1 class="titulo-magico">🧮 Matemágica</h1>
-                <p class="subtitulo-bienvenida">¡Genera ejercicios personalizados con IA!</p>
-            </div>
+            <h1 class="titulo-magico">🧮 Matemágica</h1>
             <div class="botones-rol">
                 <h2 class="pregunta-rol">¿Quién eres?</h2>
-                <button id="teacher-role-btn" class="btn-rol btn-profesor">
-                    👩‍🏫 Soy Profesor/a
-                </button>
-                <button id="parent-role-btn" class="btn-rol btn-apoderado">
-                    👨‍👩‍👧‍👦 Soy Apoderado/a
-                </button>
+                <button id="teacher-role-btn" class="btn-rol btn-profesor">👩‍🏫 Soy Profesor/a</button>
+                <button id="parent-role-btn" class="btn-rol btn-apoderado">👨‍👩‍👧‍👦 Soy Apoderado/a</button>
             </div>
         </div>
     </div>
-
-    <!-- Pantalla de Autenticación -->
-    <div id="auth-screen" class="pantalla-auth hidden">
+    <div id="auth-screen" class="pantalla-auth screen" style="display:none;">
         <div class="tarjeta-auth">
-            <div class="icono-auth">🎓</div>
             <h1 class="titulo-auth">¡Bienvenido/a!</h1>
-            <div class="descripcion-rol">
-                <p id="role-description">
-                    Como <span id="user-role-text">profesor/a</span>, podrás gestionar estudiantes 
-                    y crear ejercicios personalizados con inteligencia artificial.
-                </p>
-            </div>
-            <div class="mensaje-aventura">
-                <span>✨</span>
-                <span>¡La aventura matemática está por comenzar!</span>
-                <span>✨</span>
-            </div>
-            
-            <div id="auth-options" class="opciones-auth">
-                <div id="google-auth-btn" class="btn-google">
-                    <div class="contenido-google">
-                        <div class="icono-google">
-                            <svg viewBox="0 0 24 24" class="logo-google">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                        </div>
-                        <span>Continuar con Google</span>
-                        <div class="flecha-google">→</div>
-                    </div>
-                    <p class="texto-seguro">🔒 Seguro y protegido</p>
-                </div>
-            </div>
-            
-            <div id="auth-loading" class="cargando-auth hidden">
-                <div class="spinner"></div>
-                <p>Iniciando sesión...</p>
-            </div>
-            
-            <button id="back-to-welcome-btn" class="btn-volver-bienvenida">
-                ← Volver al inicio
-            </button>
+            <p>Usa tu cuenta de Google para continuar.</p>
+            <div id="google-auth-btn" class="btn-google"><span>Continuar con Google</span></div>
         </div>
     </div>
-
-    <!-- Pantalla de Formulario del Estudiante (solo para apoderados) -->
-    <div id="student-form-screen" class="pantalla-auth hidden">
-        <div class="tarjeta-auth">
-            <div class="icono-auth">👨‍👩‍👧‍👦</div>
-            <h1 class="titulo-auth">Cuéntanos sobre tu hijo/a</h1>
-            <div class="descripcion-rol">
-                <p>Para generar ejercicios personalizados, necesitamos conocer a tu pequeño matemático.</p>
-            </div>
-            
-            <form id="student-form" class="formulario-estudiante">
-                <div class="campo-form">
-                    <label for="student-name" class="etiqueta-form">Nombre del estudiante:</label>
-                    <input 
-                        type="text" 
-                        id="student-name" 
-                        name="student-name" 
-                        class="input-form" 
-                        placeholder="Ej: María González"
-                        required
-                    >
-                </div>
-                
-                <div class="campo-form">
-                    <label for="student-age" class="etiqueta-form">Edad:</label>
-                    <select id="student-age" name="student-age" class="input-form" required>
-                        <option value="">Selecciona la edad</option>
-                        <option value="6">6 años</option>
-                        <option value="7">7 años</option>
-                        <option value="8">8 años</option>
-                        <option value="9">9 años</option>
-                    </select>
-                </div>
-                
-                <div class="campo-form">
-                    <label for="student-grade" class="etiqueta-form">Curso:</label>
-                    <select id="student-grade" name="student-grade" class="input-form" required>
-                        <option value="">Selecciona el curso</option>
-                        <option value="1° Básico">1° Básico</option>
-                        <option value="2° Básico">2° Básico</option>
-                        <option value="3° Básico">3° Básico</option>
-                    </select>
-                </div>
-                
-                <div class="campo-form">
-                    <label for="student-level" class="etiqueta-form">Nivel de matemáticas:</label>
-                    <select id="student-level" name="student-level" class="input-form" required>
-                        <option value="">¿Qué nivel maneja?</option>
-                        <option value="1">🟢 Fácil - Sumas y restas simples</option>
-                        <option value="2">🟡 Medio - Con llevar y pedir prestado</option>
-                        <option value="3">🔴 Difícil - Operaciones complejas</option>
-                    </select>
-                </div>
-                
-                <button type="submit" class="btn-continuar">
-                    ✨ Empezar Aventura Matemática
-                </button>
-            </form>
-            
-            <button id="back-to-auth" class="btn-volver-bienvenida">
-                ← Volver
-            </button>
-        </div>
-    </div>
-
-    <!-- Loading Global -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-content">
-            <div class="spinner-grande"></div>
-            <p id="loading-text">Preparando tu experiencia matemática...</p>
-        </div>
-    </div>
-
-    <!-- ✅ NUEVO: Pantalla de la aplicación principal -->
-    <div id="app-screen" class="hidden">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
-            <div class="container mx-auto flex justify-between items-center">
-                <h1 class="text-2xl font-bold">🧮 Matemágica</h1>
-                <div class="flex items-center gap-4">
-                    <span id="user-name" data-user-name>Usuario</span>
-                    <button id="btn-cerrar-sesion" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
-                        Cerrar Sesión
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contenido principal -->
-        <div class="container mx-auto p-4">
-            <!-- Estado de APIs -->
-            <div id="api-status" class="mb-4"></div>
-
-            <!-- Configuración de ejercicios -->
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h2 class="text-xl font-bold mb-4">⚙️ Configurar Ejercicios</h2>
-                <div class="grid md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="nivelSelect" class="block text-sm font-medium text-gray-700 mb-2">Nivel:</label>
-                        <select id="nivelSelect" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="1">🟢 Fácil</option>
-                            <option value="2">🟡 Medio</option>
-                            <option value="3">🔴 Difícil</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="cantidadSelect" class="block text-sm font-medium text-gray-700 mb-2">Cantidad:</label>
-                        <select id="cantidadSelect" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="5">5 ejercicios</option>
-                            <option value="10" selected>10 ejercicios</option>
-                            <option value="15">15 ejercicios</option>
-                            <option value="20">20 ejercicios</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="tipoSelect" class="block text-sm font-medium text-gray-700 mb-2">Tipo:</label>
-                        <select id="tipoSelect" class="w-full p-2 border border-gray-300 rounded-md">
-                            <option value="mixto" selected>Mixto (Sumas y Restas)</option>
-                            <option value="suma">Solo Sumas</option>
-                            <option value="resta">Solo Restas</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="flex gap-4 mt-6">
-                    <button id="btn-generar-ia" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg font-medium">
-                        🤖 Generar con IA
-                    </button>
-                    <button id="btn-generar-offline" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium">
-                        📚 Generar Offline
-                    </button>
-                </div>
-            </div>
-
-            <!-- Resultados -->
-            <div id="seccion-resultados" class="hidden">
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h2 class="text-xl font-bold mb-4">📝 Ejercicios Generados</h2>
-                    
-                    <div class="flex gap-4 mb-6">
-                        <button id="btn-descargar-pdf" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
-                            📄 Descargar PDF
-                        </button>
-                        <button id="btn-generar-cuento" class="bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded">
-                            📖 Generar Cuento
-                        </button>
-                    </div>
-                    
-                    <div id="ejercicios-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Los ejercicios se cargan aquí dinámicamente -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal para cuentos -->
-        <div id="modal-cuento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto m-4">
-                <div id="contenido-cuento"></div>
-                <button id="btn-cerrar-cuento" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded">
-                    Cerrar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="gemini-ai.js"></script>
-    <script src="auth-manager.js"></script>
-    <script src="math-mode-system.js"></script>
-    <script src="app.js"></script>
-    <script src="auth-flow.js"></script>
+    <div id="loading-overlay" class="loading-overlay" style="display:flex;"><div class="loading-content"><div class="spinner-grande"></div></div></div>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="js/auth.js"></script>
 </body>
 </html>
