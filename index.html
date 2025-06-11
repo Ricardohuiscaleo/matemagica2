@@ -824,12 +824,17 @@
             console.log('✅ Todos los event listeners configurados para flip card');
         });
 
-        // 👤 Función para seleccionar rol con flip de tarjeta
+        // 👤 Función para seleccionar rol con flip de tarjeta - INTEGRADA
         function seleccionarRol(rol) {
             console.log('👤 Rol seleccionado:', rol);
             
-            // Guardar el rol en localStorage
-            localStorage.setItem('matemagica_selected_role', rol);
+            // NUEVO: Notificar al sistema de auth.js
+            if (window.loginSystem) {
+                window.loginSystem.selectRole(rol);
+            } else {
+                // Fallback si auth.js no está listo
+                localStorage.setItem('matemagica_selected_role', rol);
+            }
             
             // Feedback visual en el botón seleccionado
             const botonId = rol === 'teacher' ? 'teacher-role-btn' : 'parent-role-btn';
@@ -852,7 +857,7 @@
             }
         }
 
-        // 🔐 Función para iniciar autenticación
+        // 🔐 Función para iniciar autenticación - INTEGRADA CON AUTH.JS
         function iniciarAutenticacion() {
             console.log('🔐 Iniciando autenticación...');
             
@@ -863,17 +868,13 @@
                 return;
             }
             
-            // Mostrar pantalla de carga
-            mostrarCargando(true);
-            
-            // Simular proceso de autenticación
-            setTimeout(() => {
-                mostrarCargando(false);
-                
-                // Redirigir al dashboard (aquí iría la lógica real de Supabase)
-                console.log('🚀 Redirigiendo al dashboard...');
-                window.location.href = 'dashboard.html';
-            }, 2000);
+            // Llamar al sistema real de auth.js
+            if (window.loginSystem) {
+                window.loginSystem.signInWithGoogle();
+            } else {
+                console.error('❌ Sistema de auth no disponible');
+                mostrarError('🔧 Sistema de autenticación no está listo. ¡Recarga la página!');
+            }
         }
     </script>
     <script src="js/auth.js"></script>

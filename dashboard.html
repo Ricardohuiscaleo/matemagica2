@@ -3,427 +3,924 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matemágica - Mi Panel</title>
-    
-    <!-- PWA Meta Tags -->
-    <meta name="description" content="Panel de control de Matemágica - Genera ejercicios de matemáticas personalizados para niños">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Matemágica">
-    
-    <!-- Favicon e Iconos -->
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-72.png">
-    <link rel="apple-touch-icon" sizes="96x96" href="icons/icon-96.png">
-    <link rel="apple-touch-icon" sizes="128x128" href="icons/icon-128.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
-    <link rel="apple-touch-icon" sizes="384x384" href="icons/icon-384.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
-    
-    <!-- Manifest -->
+    <title>Matemágica - Plataforma Educativa</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
-    
-    <link rel="stylesheet" href="./styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pacifico&display=swap" rel="stylesheet">
-    <!-- Agregar Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            -webkit-print-color-adjust: exact; 
-            background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 50%, #f8fafc 100%);
-            min-height: 100vh;
-        }
-        h1, h2, h3 { 
-            font-family: 'Pacifico', cursive; 
-        }
-        
-        /* Grid de ejercicios */
-        .exercise-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        /* Items de ejercicios */
-        .exercise-item {
-            text-align: right;
-            padding: 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            background-color: #fff;
-            position: relative;
-            font-size: 1.1rem;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .exercise-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .exercise-item .operator {
-            margin-right: 0.5rem;
-        }
-        
-        .exercise-item .line {
-            border-bottom: 2px solid #000;
-            margin-top: 0.25rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        /* Botón de cuento mágico */
-        .story-button {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            background-color: #f59e0b;
-            color: #fff;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #fff;
-            cursor: pointer;
-            transition: transform 0.2s;
-            font-size: 16px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        .story-button:hover {
-            transform: scale(1.1);
-            background-color: #d97706;
-        }
-        
-        /* Labels de nivel */
-        .level-label {
-            display: block;
-            padding: 0.75rem 1.5rem;
-            border: 2px solid #ddd;
-            border-radius: 9999px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background-color: #fff;
-            font-weight: 500;
-            user-select: none;
-        }
-        
-        .level-label:hover {
-            border-color: #4f46e5;
-            background-color: #f8fafc;
-        }
-        
-        .level-label:has(input:checked) {
-            background-color: #4f46e5;
-            color: #fff;
-            border-color: #4338ca;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        }
-        
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .modal-content {
-            background: #fff;
-            padding: 2rem;
-            border-radius: 1rem;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            transform: scale(0.9);
-            transition: transform 0.3s;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .modal-overlay.visible .modal-content {
-            transform: scale(1);
-        }
-        
-        /* Loader */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4f46e5;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 1rem auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Feedback */
-        .feedback-correct {
-            border-color: #10b981;
-            background-color: #d1fae5;
-        }
-        
-        .feedback-incorrect {
-            border-color: #f59e0b;
-            background-color: #fef3c7;
-        }
-        
-        /* Estilos de impresión */
-        .no-print { 
-            page-break-inside: avoid; 
-        }
-        
-        @media print { 
-            .no-print { 
-                display: none !important; 
-            }
-            body {
-                background-color: white !important;
-            }
-        }
-        
-        /* Responsive mejorado */
-        @media (max-width: 640px) {
-            .exercise-grid {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                gap: 1rem;
-            }
-            
-            .level-label {
-                padding: 0.5rem 1rem;
-                font-size: 0.875rem;
-            }
-        }
-    </style>
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <meta name="theme-color" content="#3B82F6">
+    <link href="styles.css" rel="stylesheet">
 </head>
-<body class="bg-violet-50" style="background: linear-gradient(135deg, #faf8ff 0%, #f3f0ff 50%, #f8fafc 100%) !important;">
-    <canvas id="confetti-canvas" class="fixed top-0 left-0 w-full h-full pointer-events-none z-50"></canvas>
-    <header class="bg-white shadow-sm no-print">
-        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-3xl text-indigo-600">Matemágica</h1>
-            <div class="flex items-center">
-                <span id="user-name" class="text-slate-700 mr-4 font-semibold"></span>
-                <button id="logout-btn" class="bg-slate-200 text-slate-700 py-2 px-4 rounded-lg hover:bg-slate-300 transition text-sm font-medium">Cerrar Sesión</button>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header Principal -->
+    <header class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
+        <div class="flex justify-between items-center h-16 px-4">
+            <div class="flex items-center space-x-4">
+                <!-- Toggle Sidebar (móvil) -->
+                <button id="toggle-sidebar" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        🧮 Matemágica
+                    </h1>
+                    <span class="hidden sm:inline-block text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                        v2.0
+                    </span>
+                </div>
+            </div>
+
+            <!-- User Controls -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex items-center space-x-2">
+                    <span class="text-sm text-gray-600" id="welcome-message">Cargando...</span>
+                </div>
+                
+                <!-- ✅ NUEVO: Indicador de IA -->
+                <button id="ai-indicator" class="relative p-2 text-gray-500 hover:text-green-600 transition-colors hover:bg-green-50 rounded-lg" title="Estado de la IA">
+                    <div class="flex items-center space-x-1">
+                        <div class="ai-status-dot w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <span class="ai-status-text text-xs font-medium">IA</span>
+                    </div>
+                </button>
+                
+                <!-- Notificaciones -->
+                <button class="relative p-2 text-gray-500 hover:text-blue-600 transition-colors hover:bg-blue-50 rounded-lg">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span class="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                        <span class="text-xs text-white font-bold">3</span>
+                    </span>
+                </button>
+                
+                <!-- Logout -->
+                <button id="logout-btn" class="p-2 text-gray-500 hover:text-red-600 transition-colors hover:bg-red-50 rounded-lg" title="Cerrar sesión">
+                    <i class="fas fa-sign-out-alt text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout Principal -->
+    <div class="flex pt-16">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-40 overflow-y-auto">
+            <div class="p-4">
+                <!-- Selector de Estudiante -->
+                <div class="mb-6 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-medium text-blue-600 uppercase tracking-wide">Estudiante Activo</span>
+                        <button id="change-student-btn" class="text-blue-600 hover:text-blue-800 text-xs">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            E
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800 text-sm" id="current-student-name">Estudiante Demo</div>
+                            <div class="text-xs text-gray-500">2° Básico</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navegación Principal -->
+                <div class="space-y-1">
+                    <!-- Dashboard -->
+                    <a href="#dashboard" class="nav-item active flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+                        <i class="fas fa-chart-pie w-5 text-center mr-3"></i>
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+
+                    <!-- Separador -->
+                    <div class="py-2">
+                        <div class="border-t border-gray-200"></div>
+                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide mt-2 block">Módulos Educativos</span>
+                    </div>
+
+                    <!-- Matemáticas -->
+                    <div class="module-group">
+                        <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors" data-module="matematicas">
+                            <div class="flex items-center">
+                                <i class="fas fa-calculator w-5 text-center mr-3 text-blue-600"></i>
+                                <span class="font-medium">Matemáticas</span>
+                            </div>
+                            <i class="fas fa-chevron-right text-xs transition-transform module-chevron"></i>
+                        </button>
+                        <div class="module-submenu hidden ml-8 mt-1 space-y-1">
+                            <a href="#" class="submenu-item block px-3 py-1 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-level="prekinder">🎨 Pre-Kinder</a>
+                            <a href="#" class="submenu-item block px-3 py-1 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-level="kinder">🌟 Kinder</a>
+                            <a href="#" class="submenu-item block px-3 py-1 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded" data-level="primero">📚 1° Básico</a>
+                            <a href="#" class="submenu-item active-level block px-3 py-1 text-sm text-blue-600 bg-blue-50 rounded font-medium" data-level="segundo">🎯 2° Básico ⭐</a>
+                            <a href="#" class="submenu-item coming-soon block px-3 py-1 text-sm text-gray-400 rounded cursor-not-allowed" data-level="tercero">🚀 3° Básico <span class="text-xs">(Próximamente)</span></a>
+                            <a href="#" class="submenu-item coming-soon block px-3 py-1 text-sm text-gray-400 rounded cursor-not-allowed" data-level="cuarto">⭐ 4° Básico <span class="text-xs">(Próximamente)</span></a>
+                            <a href="#" class="submenu-item coming-soon block px-3 py-1 text-sm text-gray-400 rounded cursor-not-allowed" data-level="quinto">🎓 5° Básico <span class="text-xs">(Próximamente)</span></a>
+                            <a href="#" class="submenu-item coming-soon block px-3 py-1 text-sm text-gray-400 rounded cursor-not-allowed" data-level="sexto">🏆 6° Básico <span class="text-xs">(Próximamente)</span></a>
+                        </div>
+                    </div>
+
+                    <!-- Lenguaje -->
+                    <div class="module-group">
+                        <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
+                            <div class="flex items-center">
+                                <i class="fas fa-book w-5 text-center mr-3 text-green-600"></i>
+                                <span class="font-medium">Lenguaje</span>
+                            </div>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
+                        </button>
+                    </div>
+
+                    <!-- Ciencias -->
+                    <div class="module-group">
+                        <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
+                            <div class="flex items-center">
+                                <i class="fas fa-flask w-5 text-center mr-3 text-purple-600"></i>
+                                <span class="font-medium">Ciencias</span>
+                            </div>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
+                        </button>
+                    </div>
+
+                    <!-- Historia -->
+                    <div class="module-group">
+                        <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
+                            <div class="flex items-center">
+                                <i class="fas fa-landmark w-5 text-center mr-3 text-orange-600"></i>
+                                <span class="font-medium">Historia</span>
+                            </div>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
+                        </button>
+                    </div>
+
+                    <!-- Idiomas -->
+                    <div class="module-group">
+                        <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
+                            <div class="flex items-center">
+                                <i class="fas fa-globe w-5 text-center mr-3 text-indigo-600"></i>
+                                <span class="font-medium">Idiomas</span>
+                            </div>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Soporte -->
+                <div class="mt-8 pt-4 border-t border-gray-200">
+                    <a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <i class="fas fa-question-circle w-5 text-center mr-3"></i>
+                        <span>Ayuda y Soporte</span>
+                    </a>
+                </div>
             </div>
         </nav>
-    </header>
-    <main class="container mx-auto p-4 sm:p-6">
-        <section id="student-selection-section" class="bg-white p-6 rounded-xl shadow-lg mb-8 no-print">
-            <h2 id="student-list-title" class="text-2xl font-bold text-slate-800 mb-4"></h2>
-            <div id="student-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4"></div>
-            <button id="add-student-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition font-semibold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>Añadir Perfil</button>
-        </section>
-        <div id="exercise-generator-section" class="hidden">
-            <div id="main-content">
-                 <header class="text-center mb-8 pt-4 sm:pt-8">
-                    <h1 class="text-4xl md:text-5xl font-bold text-indigo-600 mb-2">Guía de Ejercicios Mágica</h1>
-                    <div class="mt-6 text-left max-w-md mx-auto bg-white p-4 rounded-xl shadow-lg" id="user-info-header">
-                        <p><strong>Para:</strong> <span id="student-name-header" class="font-bold text-indigo-700"></span></p>
-                        <p><strong>Fecha:</strong> <span id="current-date" class="text-slate-600"></span></p>
+
+        <!-- Overlay para móvil -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+
+        <!-- Contenido Principal -->
+        <main class="flex-1 md:ml-64">
+            <!-- Dashboard Principal -->
+            <div id="dashboard-content" class="p-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Ejercicios Completados</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-exercises">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-green-600 text-sm font-medium">+12%</span>
+                            <span class="text-gray-600 text-sm">vs semana anterior</span>
+                        </div>
                     </div>
-                </header>
-                <div id="exercises-container" class="px-4">
-                     <div id="loader" class="text-center py-10"><div class="loader"></div><p class="text-lg text-slate-600">Creando ejercicios mágicos...</p></div>
-                     <p id="error-message" class="text-center text-red-600 bg-red-100 border border-red-400 p-4 rounded-lg hidden mt-8"></p>
-                     <div id="content" class="hidden">
-                        <section id="additions-section" class="mb-12"><h2 class="text-3xl font-bold text-blue-500 pb-2 mb-6">Tabla de Sumas</h2><div id="additions-grid" class="exercise-grid"></div></section>
-                        <section id="subtractions-section"><h2 class="text-3xl font-bold text-red-500 pb-2 mb-6">Tabla de Restas</h2><div id="subtractions-grid" class="exercise-grid"></div></section>
-                     </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Precisión</p>
+                                <p class="text-2xl font-bold text-gray-900">85%</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-bullseye text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-green-600 text-sm font-medium">+5%</span>
+                            <span class="text-gray-600 text-sm">mejora continua</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Tiempo de Estudio</p>
+                                <p class="text-2xl font-bold text-gray-900">2.5h</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-purple-600 text-sm font-medium">Esta semana</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Puntos Totales</p>
+                                <p class="text-2xl font-bold text-gray-900" id="stat-points">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-star text-yellow-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-yellow-600 text-sm font-medium">🏆 Nivel Bronce</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <section class="my-12 p-6 bg-white rounded-xl shadow-lg no-print">
-                <h2 class="text-3xl font-bold text-amber-500 pb-2 mb-4 text-center">Crea tu Propio Cuento Matemático</h2>
-                
-                <!-- Formulario de entrada -->
-                <div class="flex flex-wrap items-center justify-center gap-4 mb-6">
-                    <input type="number" id="num1-input" class="p-2 border border-gray-300 rounded-lg w-24 text-center" placeholder="Nº 1">
-                    <select id="operator-select" class="p-2 border border-gray-300 rounded-lg">
-                        <option value="+">+</option>
-                        <option value="-">-</option>
-                    </select>
-                    <input type="number" id="num2-input" class="p-2 border border-gray-300 rounded-lg w-24 text-center" placeholder="Nº 2">
-                    <button id="create-story-btn" class="bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition">
-                        ¡Crear Cuento!
-                    </button>
+
+                <!-- Progreso Actual -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Módulo Activo -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">📚 Módulo Actual</h3>
+                        <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-blue-600">🧮 MATEMÁTICAS</span>
+                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Activo</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 mb-1">2° Básico - Números y Operaciones</h4>
+                            <p class="text-sm text-gray-600 mb-3">Suma y resta con reserva</p>
+                            
+                            <div class="mb-3">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>Progreso</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            
+                            <button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                                Continuar Aprendiendo
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Actividad Reciente -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Actividad Reciente</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-white text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Ejercicios de suma completados</p>
+                                    <p class="text-xs text-gray-500">Hace 2 horas</p>
+                                </div>
+                                <span class="text-green-600 font-bold">+50 pts</span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-brain text-white text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Sesión con IA completada</p>
+                                    <p class="text-xs text-gray-500">Ayer</p>
+                                </div>
+                                <span class="text-blue-600 font-bold">+100 pts</span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
+                                <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-trophy text-white text-sm"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900">Badge "Suma Maestro" desbloqueado</p>
+                                    <p class="text-xs text-gray-500">Hace 3 días</p>
+                                </div>
+                                <span class="text-yellow-600 font-bold">🏆</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Loader del cuento -->
-                <div id="custom-story-loader" class="hidden text-center py-4">
-                    <div class="loader"></div>
-                </div>
-                
-                <!-- Resultado del cuento -->
-                <div id="custom-story-output" class="mt-4 text-center hidden">
-                    <p class="p-4 border-l-4 border-amber-400 bg-amber-50 rounded-r-lg text-left" id="custom-story-text"></p>
-                    
-                    <!-- Sección de respuesta -->
-                    <div class="mt-4">
-                        <input type="number" id="custom-story-answer" class="p-2 border border-gray-300 rounded-lg w-32 text-center" placeholder="Tu respuesta">
-                        <button id="custom-story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 ml-2">
-                            Revisar
+
+                <!-- Accesos Rápidos -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">🚀 Accesos Rápidos</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button class="quick-action p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border-2 border-transparent hover:border-blue-200">
+                            <div class="text-center">
+                                <i class="fas fa-plus-circle text-blue-600 text-2xl mb-2"></i>
+                                <p class="text-sm font-medium text-gray-900">Nuevos Ejercicios</p>
+                                <p class="text-xs text-gray-500">Con IA personalizada</p>
+                            </div>
                         </button>
                         
-                        <!-- Loader del feedback -->
-                        <div id="custom-feedback-loader" class="hidden text-center py-4">
-                            <div class="loader"></div>
-                        </div>
+                        <button class="quick-action p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border-2 border-transparent hover:border-green-200">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line text-green-600 text-2xl mb-2"></i>
+                                <p class="text-sm font-medium text-gray-900">Mi Progreso</p>
+                                <p class="text-xs text-gray-500">Estadísticas detalladas</p>
+                            </div>
+                        </button>
                         
-                        <!-- Feedback -->
-                        <div id="custom-feedback" class="mt-4 p-3 rounded-lg hidden"></div>
+                        <button class="quick-action p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border-2 border-transparent hover:border-purple-200">
+                            <div class="text-center">
+                                <i class="fas fa-book-open text-purple-600 text-2xl mb-2"></i>
+                                <p class="text-sm font-medium text-gray-900">Teoría</p>
+                                <p class="text-xs text-gray-500">Conceptos matemáticos</p>
+                            </div>
+                        </button>
+                        
+                        <button class="quick-action p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors border-2 border-transparent hover:border-yellow-200">
+                            <div class="text-center">
+                                <i class="fas fa-gamepad text-yellow-600 text-2xl mb-2"></i>
+                                <p class="text-sm font-medium text-gray-900">Juegos</p>
+                                <p class="text-xs text-gray-500">Aprender jugando</p>
+                            </div>
+                        </button>
                     </div>
                 </div>
-            </section>
-            <div class="text-center my-10 no-print">
-                <!-- Selector de Nivel -->
-                <div id="level-selector" class="flex justify-center flex-wrap gap-2 sm:gap-4 mb-6">
-                    <label class="level-label">
-                        <input type="radio" name="level" value="1" class="hidden" checked> 
-                        Nivel 1 (Fácil)
-                    </label>
-                    <label class="level-label">
-                        <input type="radio" name="level" value="2" class="hidden"> 
-                        Nivel 2 (Medio)
-                    </label>
-                    <label class="level-label">
-                        <input type="radio" name="level" value="3" class="hidden"> 
-                        Nivel 3 (Difícil)
-                    </label>
+            </div>
+
+            <!-- Contenido de Matemáticas 2° Básico (se carga dinámicamente) -->
+            <div id="matematicas-segundo-content" class="hidden">
+                <!-- Este contenido será el dashboard curricular existente -->
+                <!-- ...existing code... -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Selección de Estudiante -->
+    <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">👥 Seleccionar Estudiante</h3>
+                    <button id="close-student-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 
-                <!-- Botones de Acción -->
-                <div class="flex justify-center items-center space-x-4">
-                    <button id="generate-btn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16">
-                            <path d="M8 3a.5.5 0 0 1 .5.5v3.5a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>
-                            <path d="M6.354 1.146a.5.5 0 0 1 0 .708L5.707 2.5l.647.646a.5.5 0 1 1-.708.708l-.646-.647-.647.647a.5.5 0 1 1-.708-.708l.647-.646L4.95 1.854a.5.5 0 1 1 .708-.708l.646.647.647-.647a.5.5 0 0 1 .708 0z"/>
-                        </svg>
-                        Generar de Nuevo
-                    </button>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Buscar estudiante</label>
+                        <input type="text" id="student-search" placeholder="Escribir nombre..." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                     
-                    <button id="print-pdf-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors shadow-md flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-2" viewBox="0 0 16 16">
-                            <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
-                            <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1h10v-1a2 2 0 0 0-2-2H5zm-1 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1H4v-1z"/>
-                        </svg>
-                        Guardar como PDF
-                    </button>
+                    <div class="max-h-48 overflow-y-auto" id="students-list">
+                        <!-- Lista de estudiantes se carga dinámicamente -->
+                    </div>
+                    
+                    <div class="pt-3 border-t border-gray-200">
+                        <button id="new-student-btn" class="w-full text-blue-600 hover:text-blue-800 text-sm font-medium py-2">
+                            <i class="fas fa-plus mr-1"></i>Agregar Nuevo Estudiante
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </main>
-    <div id="story-modal" class="modal-overlay no-print"><div class="modal-content"><h3 id="story-title" class="text-2xl font-bold text-amber-500 mb-4">Un Cuento Matemático ✨</h3><div id="story-loader" class="hidden"><div class="loader"></div></div><p id="story-text" class="text-gray-700 text-lg mb-4 text-left"></p><div class="answer-section"><input type="number" id="story-answer-input" class="p-2 border border-gray-300 rounded-lg w-32 text-center" placeholder="Tu respuesta"><button id="story-check-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Revisar</button></div><div id="modal-feedback-loader" class="hidden"><div class="loader"></div></div><div id="modal-feedback" class="mt-4 p-3 rounded-lg hidden"></div><button id="close-modal-btn" class="mt-6 bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-400">Cerrar</button></div></div>
+    </div>
+
+    <!-- Modal de Nuevo Estudiante -->
+    <div id="new-student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">👤 Nuevo Estudiante</h3>
+                    <button id="close-new-student-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form id="new-student-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                        <input type="text" id="student-name-input" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">RUT (opcional)</label>
+                        <input type="text" id="student-rut-input" placeholder="12.345.678-9"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Curso</label>
+                        <select id="student-course-input" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="2A">2° Básico A</option>
+                            <option value="2B">2° Básico B</option>
+                            <option value="2C">2° Básico C</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" id="cancel-new-student" 
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" 
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Crear Estudiante
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración -->
+    <div id="config-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">⚙️ Configuración</h3>
+                    <button id="close-config-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- Configuración de API -->
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="font-medium text-gray-800 mb-3">🤖 Configuración de IA</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">API Key de Gemini</label>
+                                <input type="password" id="gemini-api-key" placeholder="Ingresa tu API Key..."
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">Obtén tu clave en <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-blue-600">Google AI Studio</a></p>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="save-api-key" class="mr-2">
+                                <label class="text-sm text-gray-700">Guardar API Key en este dispositivo</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuración de Ejercicios -->
+                    <div class="border-b border-gray-200 pb-4">
+                        <h4 class="font-medium text-gray-800 mb-3">📝 Configuración de Ejercicios</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Modo offline predeterminado</label>
+                                <select id="default-offline-mode" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="false">Usar IA cuando esté disponible</option>
+                                    <option value="true">Siempre usar plantillas offline</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Formato de números</label>
+                                <select id="number-format" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="standard">Estándar (123)</option>
+                                    <option value="written">Palabras (ciento veintitrés)</option>
+                                    <option value="mixed">Mixto</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Información del Sistema -->
+                    <div>
+                        <h4 class="font-medium text-gray-800 mb-3">ℹ️ Información del Sistema</h4>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <div>Versión: <span class="font-mono">1.0.0</span></div>
+                            <div>Estado de conexión: <span id="connection-status" class="font-medium">Verificando...</span></div>
+                            <div>Datos guardados: <span id="storage-info">Calculando...</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" id="clear-data-btn" 
+                            class="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            🗑️ Limpiar Datos
+                        </button>
+                        <button type="button" id="save-config-btn" 
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            💾 Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast de Notificaciones -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- Scripts necesarios - Con mejor manejo de carga -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <script src="gemini-ai.js"></script>
+    <!-- ✅ NUEVO MÓDULO DE PDF DEDICADO -->
+    <script src="js/pdf-generator.js"></script>
     
-    <!-- Librerías PDF con mejor manejo de errores -->
+    <!-- ✅ CARGAR MÓDULOS DE MATEMÁTICAS -->
+    <script src="js/math-modules/adicion-sustraccion.js"></script>
+    <script src="js/math-modules/mathematics-navigation.js"></script>
+    
+    <!-- ✅ SCRIPTS PRINCIPALES - Verificar si ya están cargados -->
     <script>
-        // Flag para verificar que las librerías estén cargadas
-        window.pdfLibrariesLoaded = false;
-        window.pdfLoadingPromise = new Promise((resolve) => {
-            let jsPdfLoaded = false;
-            let html2canvasLoaded = false;
+        if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+            const curriculumScript = document.createElement('script');
+            curriculumScript.src = 'curriculum-segundo-basico.js';
+            document.head.appendChild(curriculumScript);
+        }
+        
+        if (typeof GeminiAIService === 'undefined') {
+            const geminiScript = document.createElement('script');
+            geminiScript.src = 'gemini-ai.js';
+            document.head.appendChild(geminiScript);
+        }
+        
+        if (typeof MathModeSystem === 'undefined') {
+            const mathScript = document.createElement('script');
+            mathScript.src = 'math-mode-system.js';
+            document.head.appendChild(mathScript);
+        }
+    </script>
+    <script src="js/dashboard-auth.js"></script>
+    
+    <!-- ✅ NUEVO SISTEMA MODULAR - MUCHO MÁS LIVIANO -->
+    <script>
+        // ✅ Variables globales simplificadas
+        let matemáticaDashboardConfig = {
+            currentView: 'dashboard',
+            currentStudentData: null
+        };
+
+        // ✅ FUNCIONES GLOBALES ESENCIALES ÚNICAMENTE
+
+        // Función para volver a matemáticas (usada por módulos)
+        window.volverAMatematicas = function() {
+            try {
+                if (window.mathematicsNavigation) {
+                    window.mathematicsNavigation.goBackToDashboard();
+                } else {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error volviendo a matemáticas:', error);
+                location.reload();
+            }
+        };
+
+        // ✅ Sistema de notificaciones global simple
+        function showErrorToast(message) {
+            showToast(message, 'error');
+        }
+
+        function showInfoToast(message) {
+            showToast(message, 'info');
+        }
+
+        function showSuccessToast(message) {
+            showToast(message, 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container') || createToastContainer();
+            const toast = document.createElement('div');
             
-            function checkBothLoaded() {
-                if (jsPdfLoaded && html2canvasLoaded) {
-                    console.log('✅ Todas las librerías PDF cargadas correctamente');
-                    window.pdfLibrariesLoaded = true;
-                    resolve(true);
+            const colors = {
+                error: 'bg-red-500 text-white',
+                success: 'bg-green-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            toast.className = `${colors[type]} px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300`;
+            toast.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-3 text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // ✅ Inicialización del sistema
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboardSystem();
+            setupSidebarNavigation();
+            setupModalEventListeners();
+        });
+
+        // ✅ Inicializar sistema del dashboard
+        async function initializeDashboardSystem() {
+            try {
+                await loadCurrentStudentData();
+                updateDashboardStats();
+                initializeGlobalAIIndicator();
+                updateWelcomeMessage(); // ✅ NUEVO: Mensaje de bienvenida personalizado
+                
+                if (window.geminiAI) {
+                    console.log('🤖 Sistema de IA disponible');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error inicializando dashboard:', error);
+            }
+        }
+
+        // ✅ NUEVO: Función para crear mensaje de bienvenida personalizado
+        function updateWelcomeMessage() {
+            try {
+                const welcomeElement = document.getElementById('welcome-message');
+                if (!welcomeElement) return;
+
+                const now = new Date();
+                const hora = now.getHours().toString().padStart(2, '0');
+                const minutos = now.getMinutes().toString().padStart(2, '0');
+                
+                const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+                const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                
+                const diaSemana = diasSemana[now.getDay()];
+                const dia = now.getDate();
+                const mes = meses[now.getMonth()];
+                const año = now.getFullYear();
+                
+                // Obtener nombre del usuario desde localStorage o perfil
+                let nombreUsuario = 'Usuario';
+                try {
+                    const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+                    if (userProfile.full_name) {
+                        nombreUsuario = userProfile.full_name.split(' ')[0]; // Solo primer nombre
+                    }
+                } catch (e) {
+                    console.log('No se pudo obtener nombre de usuario');
+                }
+
+                // Determinar saludo según la hora
+                let saludoHora = '';
+                if (hora >= 6 && hora < 12) {
+                    saludoHora = '¡Buenos días';
+                } else if (hora >= 12 && hora < 18) {
+                    saludoHora = '¡Buenas tardes';
+                } else {
+                    saludoHora = '¡Buenas noches';
+                }
+
+                const mensajeCompleto = `${saludoHora}, <span class="text-blue-600 font-bold">${nombreUsuario}</span>! Son las ${hora}:${minutos} del ${diaSemana} ${dia} de ${mes} de ${año}.`;
+                
+                welcomeElement.innerHTML = `<span class="font-semibold text-gray-800">${mensajeCompleto}</span>`;
+                
+                console.log('✅ Mensaje de bienvenida actualizado');
+                
+            } catch (error) {
+                console.error('❌ Error actualizando mensaje de bienvenida:', error);
+                // Fallback simple
+                const welcomeElement = document.getElementById('welcome-message');
+                if (welcomeElement) {
+                    welcomeElement.innerHTML = '<span class="font-medium text-gray-800">¡Bienvenido a Matemágica!</span>';
                 }
             }
+        }
+
+        // ✅ NUEVO: Inicializar indicador de IA global
+        function initializeGlobalAIIndicator() {
+            if (!window.AIIndicator) {
+                window.AIIndicator = {
+                    setStatus: (status) => {
+                        const indicator = document.getElementById('ai-indicator');
+                        if (!indicator) return;
+                        
+                        const dot = indicator.querySelector('.ai-status-dot');
+                        const text = indicator.querySelector('.ai-status-text');
+                        const button = indicator;
+                        
+                        switch (status) {
+                            case 'active':
+                                dot.className = 'ai-status-dot w-3 h-3 bg-green-500 rounded-full transition-all';
+                                text.textContent = 'IA';
+                                button.title = 'IA Activa - Ejercicios únicos disponibles';
+                                button.className = 'relative p-2 text-green-600 hover:text-green-700 transition-colors hover:bg-green-50 rounded-lg';
+                                break;
+                            case 'working':
+                                dot.className = 'ai-status-dot w-3 h-3 bg-green-500 rounded-full animate-pulse transition-all';
+                                text.textContent = 'IA';
+                                button.title = 'IA Trabajando - Generando contenido...';
+                                button.className = 'relative p-2 text-green-600 hover:text-green-700 transition-colors hover:bg-green-50 rounded-lg';
+                                break;
+                            case 'inactive':
+                                dot.className = 'ai-status-dot w-3 h-3 bg-gray-400 rounded-full transition-all';
+                                text.textContent = 'IA';
+                                button.title = 'IA Inactiva - Usando ejercicios offline';
+                                button.className = 'relative p-2 text-gray-500 hover:text-gray-600 transition-colors hover:bg-gray-50 rounded-lg';
+                                break;
+                        }
+                    }
+                };
+            }
             
-            // Cargar jsPDF
-            const jsPdfScript = document.createElement('script');
-            jsPdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            jsPdfScript.onload = () => {
-                console.log('✅ jsPDF cargado');
-                jsPdfLoaded = true;
-                checkBothLoaded();
-            };
-            jsPdfScript.onerror = () => {
-                console.error('❌ Error cargando jsPDF');
-                // Intentar URL alternativa
-                const fallbackScript = document.createElement('script');
-                fallbackScript.src = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
-                fallbackScript.onload = () => {
-                    console.log('✅ jsPDF cargado (fallback)');
-                    jsPdfLoaded = true;
-                    checkBothLoaded();
-                };
-                fallbackScript.onerror = () => {
-                    console.error('❌ Error cargando jsPDF fallback');
-                    resolve(false);
-                };
-                document.head.appendChild(fallbackScript);
-            };
-            document.head.appendChild(jsPdfScript);
-            
-            // Cargar html2canvas
-            const html2canvasScript = document.createElement('script');
-            html2canvasScript.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-            html2canvasScript.onload = () => {
-                console.log('✅ html2canvas cargado');
-                html2canvasLoaded = true;
-                checkBothLoaded();
-            };
-            html2canvasScript.onerror = () => {
-                console.error('❌ Error cargando html2canvas');
-                // Intentar URL alternativa
-                const fallbackScript = document.createElement('script');
-                fallbackScript.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-                fallbackScript.onload = () => {
-                    console.log('✅ html2canvas cargado (fallback)');
-                    html2canvasLoaded = true;
-                    checkBothLoaded();
-                };
-                fallbackScript.onerror = () => {
-                    console.error('❌ Error cargando html2canvas fallback');
-                    resolve(false);
-                };
-                document.head.appendChild(fallbackScript);
-            };
-            document.head.appendChild(html2canvasScript);
-            
-            // Timeout de seguridad
+            // Establecer estado inicial basado en la configuración de Gemini
             setTimeout(() => {
-                if (!window.pdfLibrariesLoaded) {
-                    console.warn('⚠️ Timeout cargando librerías PDF');
-                    resolve(false);
+                const isConfigured = window.geminiAI && window.geminiAI.configured;
+                window.AIIndicator.setStatus(isConfigured ? 'active' : 'inactive');
+                console.log(`🤖 Indicador de IA inicializado: ${isConfigured ? 'ACTIVO' : 'INACTIVO'}`);
+            }, 1000); // Esperar a que se cargue Gemini AI
+            
+            // Añadir click listener para mostrar información de IA
+            const aiIndicator = document.getElementById('ai-indicator');
+            if (aiIndicator) {
+                aiIndicator.addEventListener('click', () => {
+                    const isConfigured = window.geminiAI && window.geminiAI.configured;
+                    if (isConfigured) {
+                        showSuccessToast('🤖 IA Activa: Generando ejercicios únicos y ayuda personalizada');
+                    } else {
+                        showInfoToast('📚 Modo Offline: Usando ejercicios predefinidos y ayuda básica');
+                    }
+                });
+            }
+        }
+
+        // ✅ Configurar navegación del sidebar
+        function setupSidebarNavigation() {
+            const toggleSidebar = document.getElementById('toggle-sidebar');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            toggleSidebar?.addEventListener('click', function() {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            });
+
+            overlay?.addEventListener('click', function() {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            });
+
+            // Navegación de módulos
+            document.querySelectorAll('[data-module="matematicas"]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const submenu = this.parentNode.querySelector('.module-submenu');
+                    const chevron = this.querySelector('.module-chevron');
+                    
+                    submenu.classList.toggle('hidden');
+                    chevron.classList.toggle('rotate-90');
+                });
+            });
+
+            // Navegación al dashboard principal
+            document.querySelector('[href="#dashboard"]')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                showDashboard();
+            });
+
+            // Navegación de niveles de matemáticas usando el nuevo módulo
+            document.querySelectorAll('[data-level="segundo"]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loadMatemáticasSegundo();
+                });
+            });
+        }
+
+        // ✅ Cargar datos del estudiante
+        async function loadCurrentStudentData() {
+            try {
+                const localStudents = JSON.parse(localStorage.getItem('student_profiles') || '[]');
+                if (localStudents.length > 0) {
+                    matemáticaDashboardConfig.currentStudentData = localStudents[0];
+                    document.getElementById('current-student-name').textContent = matemáticaDashboardConfig.currentStudentData.name;
                 }
-            }, 10000);
-        });
+            } catch (error) {
+                console.error('Error cargando estudiante:', error);
+            }
+        }
+
+        // ✅ Actualizar estadísticas del dashboard
+        function updateDashboardStats() {
+            try {
+                const progress = JSON.parse(localStorage.getItem('exercise_progress') || '[]');
+                const studentProgress = matemáticaDashboardConfig.currentStudentData ? 
+                    progress.filter(p => p.student_id === matemáticaDashboardConfig.currentStudentData.id) : progress;
+                
+                const totalExercises = studentProgress.length;
+                const correctExercises = studentProgress.filter(p => p.is_correct).length;
+                const totalPoints = correctExercises * 10;
+                
+                const statExercises = document.getElementById('stat-exercises');
+                const statPoints = document.getElementById('stat-points');
+                
+                if (statExercises) statExercises.textContent = totalExercises;
+                if (statPoints) statPoints.textContent = totalPoints;
+                
+                const accuracy = totalExercises > 0 ? Math.round((correctExercises / totalExercises) * 100) : 85;
+                const precisionElements = document.querySelectorAll('.text-2xl.font-bold.text-gray-900');
+                if (precisionElements.length >= 2) {
+                    precisionElements[1].textContent = accuracy + '%';
+                }
+                
+            } catch (error) {
+                console.error('Error actualizando estadísticas:', error);
+            }
+        }
+
+        // ✅ Mostrar dashboard principal
+        function showDashboard() {
+            matemáticaDashboardConfig.currentView = 'dashboard';
+            document.getElementById('matematicas-segundo-content').classList.add('hidden');
+            document.getElementById('dashboard-content').classList.remove('hidden');
+        }
+
+        // ✅ Cargar matemáticas 2° básico usando el nuevo módulo
+        async function loadMatemáticasSegundo() {
+            try {
+                if (window.mathematicsNavigation) {
+                    await window.mathematicsNavigation.showMathematicsFromDashboard(matemáticaDashboardConfig.currentStudentData);
+                } else {
+                    showErrorToast('Módulo de matemáticas no disponible');
+                }
+            } catch (error) {
+                console.error('Error cargando matemáticas:', error);
+                showErrorToast('Error al cargar el módulo de matemáticas');
+            }
+        }
+
+        // ✅ Setup modal event listeners
+        function setupModalEventListeners() {
+            document.getElementById('change-student-btn')?.addEventListener('click', openStudentModal);
+            document.getElementById('close-student-modal')?.addEventListener('click', closeStudentModal);
+            document.getElementById('close-config-modal')?.addEventListener('click', closeConfigModal);
+            document.getElementById('logout-btn')?.addEventListener('click', logout);
+        }
+
+        function openStudentModal() {
+            const modal = document.getElementById('student-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeStudentModal() {
+            const modal = document.getElementById('student-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+        }
+
+        function closeConfigModal() {
+            const modal = document.getElementById('config-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
+        }
+
+        // ✅ LOGOUT
+        async function logout() {
+            try {
+                if (window.supabase) {
+                    await window.supabase.auth.signOut();
+                }
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Error en logout:', error);
+                window.location.href = 'index.html';
+            }
+        }
     </script>
     
-    <script src="js/dashboard.js"></script> 
+    <!-- ✅ MANTENER DASHBOARD.JS PARA COMPATIBILIDAD -->
+    <script src="js/dashboard.js"></script>
 </body>
 </html>

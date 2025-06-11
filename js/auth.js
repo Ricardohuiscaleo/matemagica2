@@ -1,5 +1,5 @@
-// js/auth.js - Sistema de Autenticación v18.0 - Child-Friendly
-console.log("🚀 Auth System v18.0 - Child-Friendly");
+// js/auth.js - Sistema de Autenticación v18.0 - Funcional como producción
+console.log("🚀 Auth System v18.0 - Versión de producción");
 
 class LoginSystem {
     constructor() {
@@ -34,6 +34,7 @@ class LoginSystem {
             }
         };
         
+        // Bind métodos al contexto
         Object.getOwnPropertyNames(Object.getPrototypeOf(this))
             .filter(prop => typeof this[prop] === 'function' && prop !== 'constructor')
             .forEach(prop => { this[prop] = this[prop].bind(this); });
@@ -52,28 +53,30 @@ class LoginSystem {
             this.setupEventListeners();
             await this.handleInitialLoad();
         } catch (error) {
+            console.error("❌ Error en init auth:", error);
             this.handleAuthError("general");
         }
     }
 
     setupDOMElements() {
         this.elements = {
-            welcomeScreen: document.getElementById('welcome-screen'),
-            authScreen: document.getElementById('auth-screen'),
+            cardFlipper: document.getElementById('card-flipper'),
             loadingOverlay: document.getElementById('loading-overlay'),
             errorDisplay: document.getElementById('error-display'),
             teacherRoleBtn: document.getElementById('teacher-role-btn'),
             parentRoleBtn: document.getElementById('parent-role-btn'),
             googleAuthBtn: document.getElementById('google-auth-btn'),
+            backBtn: document.getElementById('back-to-welcome-btn')
         };
+        
+        console.log("🔧 Elementos de auth configurados");
     }
 
     setupEventListeners() {
-        this.elements.teacherRoleBtn?.addEventListener('click', () => this.selectRole('teacher'));
-        this.elements.parentRoleBtn?.addEventListener('click', () => this.selectRole('parent'));
-        this.elements.googleAuthBtn?.addEventListener('click', this.signInWithGoogle);
+        // Integrar con las funciones del HTML - NO duplicar eventos
+        console.log("✅ Auth.js integrado con funciones HTML existentes");
         
-        // Añadir efectos de sonido visual en hover (solo visual)
+        // Solo agregar efectos hover visuales adicionales
         [this.elements.teacherRoleBtn, this.elements.parentRoleBtn].forEach(btn => {
             if (btn) {
                 btn.addEventListener('mouseenter', () => {
@@ -88,55 +91,78 @@ class LoginSystem {
 
     async handleInitialLoad() {
         this.showLoader(true, "loading");
-        const urlParams = this.parseUrlFragment();
-        if (urlParams) {
-            this.cleanupUrl();
-            const { error } = await this.supabase.auth.setSession(urlParams);
-            if (error) return this.handleAuthError("session");
-            const { data: { user } } = await this.supabase.auth.getUser();
-            if (user) await this.onLoginSuccess(user);
-            else return this.handleAuthError("auth");
-        } else {
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session) await this.onLoginSuccess(session.user);
-            else {
-                this.showScreen('welcomeScreen');
-                this.showLoader(false);
-            }
-        }
-    }
-
-    selectRole(role) {
-        this.selectedRole = role;
-        localStorage.setItem('matemagica_selected_role', role);
-        
-        // Feedback visual inmediato
-        const selectedBtn = role === 'teacher' ? this.elements.teacherRoleBtn : this.elements.parentRoleBtn;
-        if (selectedBtn) {
-            selectedBtn.style.transform = 'scale(1.1)';
-            selectedBtn.style.boxShadow = '0 0 25px rgba(102, 126, 234, 0.5)';
-            setTimeout(() => {
-                selectedBtn.style.transform = '';
-                selectedBtn.style.boxShadow = '';
-            }, 300);
-        }
-        
-        setTimeout(() => {
-            this.showScreen('authScreen');
-        }, 400);
-    }
-
-    async signInWithGoogle() {
-        if (!this.selectedRole) return this.showError("role");
-        this.showLoader(true, "auth");
         
         try {
-            await this.supabase.auth.signInWithOAuth({ 
+            // Verificar parámetros OAuth en URL primero
+            const urlParams = this.parseUrlFragment();
+            if (urlParams) {
+                console.log("🔐 Procesando callback OAuth...");
+                this.cleanupUrl();
+                const { error } = await this.supabase.auth.setSession(urlParams);
+                if (error) throw error;
+                
+                const { data: { user } } = await this.supabase.auth.getUser();
+                if (user) {
+                    await this.onLoginSuccess(user);
+                    return;
+                }
+            }
+            
+            // Verificar sesión existente
+            const { data: { session } } = await this.supabase.auth.getSession();
+            if (session && session.user) {
+                console.log("✅ Sesión existente encontrada, redirigiendo...");
+                await this.onLoginSuccess(session.user);
+                return;
+            }
+            
+            // No hay sesión, mostrar interfaz de login
+            this.showLoader(false);
+            console.log("ℹ️ No hay sesión activa, mostrando login");
+            
+        } catch (error) {
+            console.warn("⚠️ Error en verificación de sesión:", error.message);
+            this.showLoader(false);
+            console.log("ℹ️ Mostrando login después de error en verificación");
+        }
+    }
+
+    // Método llamado desde el HTML
+    selectRole(role) {
+        console.log('👤 Rol seleccionado desde auth.js:', role);
+        this.selectedRole = role;
+        localStorage.setItem('matemagica_selected_role', role);
+        return true;
+    }
+
+    // Método principal de autenticación llamado desde HTML
+    async signInWithGoogle() {
+        if (!this.selectedRole) {
+            this.showError("role");
+            return false;
+        }
+        
+        this.showLoader(true, "loading");
+        
+        try {
+            console.log("🔐 Iniciando OAuth con Google...");
+            const { error } = await this.supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
                 options: { redirectTo: window.location.origin } 
             });
+            
+            if (error) {
+                console.error("❌ Error en OAuth:", error);
+                this.handleAuthError("network");
+                return false;
+            }
+            
+            console.log("✅ OAuth iniciado correctamente");
+            return true;
         } catch (error) {
+            console.error("❌ Error en signInWithGoogle:", error);
             this.handleAuthError("network");
+            return false;
         }
     }
 
@@ -151,49 +177,46 @@ class LoginSystem {
         };
         
         try {
+            console.log("💾 Guardando perfil en Supabase...", userProfile);
             await this.supabase.from('math_profiles').upsert(userProfile);
             localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
             localStorage.removeItem('matemagica_selected_role');
             
-            // CAMBIO: Usar pantalla de carga completa en lugar del mensaje verde
+            // Mostrar mensaje de éxito y redirigir
             this.showLoader(true, "success");
             setTimeout(() => {
                 this.redirectUser();
             }, 2000);
+            
         } catch (error) {
+            console.error("❌ Error guardando perfil:", error);
             this.handleAuthError("general");
         }
     }
 
     redirectUser() {
+        console.log("🔄 Redirigiendo al dashboard...");
         window.location.assign('dashboard.html');
-    }
-    
-    showScreen(screenName) {
-        ['welcomeScreen', 'authScreen'].forEach(id => {
-            if (this.elements[id]) {
-                this.elements[id].style.display = 'none';
-            }
-        });
-        if (this.elements[screenName]) {
-            this.elements[screenName].style.display = 'flex';
-        }
     }
 
     showLoader(show, type = "loading") {
         if (this.elements.loadingOverlay) {
-            this.elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-            
             if (show) {
-                const loadingText = this.elements.loadingOverlay.querySelector('p');
+                this.elements.loadingOverlay.classList.remove('hidden-screen');
+                this.elements.loadingOverlay.style.display = 'flex';
+                
+                const loadingText = this.elements.loadingOverlay.querySelector('.loading-text');
                 if (loadingText && this.friendlyMessages[type]) {
-                    // Rotar mensajes de carga
                     const messages = Array.isArray(this.friendlyMessages[type]) 
                         ? this.friendlyMessages[type] 
                         : [this.friendlyMessages[type]];
                     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
                     loadingText.textContent = randomMessage;
                 }
+            } else {
+                this.elements.loadingOverlay.classList.add('hidden-screen');
+                this.elements.loadingOverlay.style.display = 'none';
+                console.log("✅ Loading overlay ocultado, interfaz de login visible");
             }
         }
     }
@@ -216,29 +239,15 @@ class LoginSystem {
         }
     }
 
-    showSuccessMessage(message) {
-        if (this.elements.errorDisplay) {
-            this.elements.errorDisplay.style.background = 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)';
-            this.elements.errorDisplay.style.color = 'white';
-            this.elements.errorDisplay.style.border = '2px solid #22c55e';
-            this.elements.errorDisplay.textContent = message;
-            this.elements.errorDisplay.style.display = 'block';
-            
-            setTimeout(() => { 
-                this.elements.errorDisplay.style.display = 'none';
-                // Resetear estilos para futuros errores
-                this.elements.errorDisplay.style.background = '';
-                this.elements.errorDisplay.style.color = '';
-                this.elements.errorDisplay.style.border = '';
-            }, 3000);
-        }
-    }
-
     handleAuthError(errorType) {
-        console.error("❌ ERROR:", errorType);
+        console.error("❌ ERROR AUTH:", errorType);
         this.showError(errorType);
         this.showLoader(false);
-        this.showScreen('welcomeScreen');
+        
+        // Volver a la cara frontal si hay error
+        if (this.elements.cardFlipper) {
+            this.elements.cardFlipper.classList.remove('flipped');
+        }
     }
 
     parseUrlFragment() {
@@ -249,7 +258,9 @@ class LoginSystem {
                 access_token: accessToken, 
                 refresh_token: params.get('refresh_token') 
             };
-        } catch (e) { /* ignore */ }
+        } catch (e) { 
+            console.log("No hay parámetros OAuth en URL");
+        }
         return null;
     }
 
@@ -260,4 +271,5 @@ class LoginSystem {
     }
 }
 
+// Inicialización simple
 new LoginSystem();

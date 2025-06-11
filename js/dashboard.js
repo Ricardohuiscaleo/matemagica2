@@ -1,790 +1,1315 @@
-// js/dashboard.js - Lógica completa y funcional
-console.log("🚀 Lógica del Dashboard v16.0 iniciada.");
+/**
+ * 🧮 MATEMÁGICA - DASHBOARD CURRICULAR 2° BÁSICO
+ * Sistema completo integrado con currículum oficial chileno
+ * Versión: 4.0 - Compatible con nueva estructura SaaS - Diciembre 2024
+ */
 
-const SUPABASE_URL = "https://uznvakpuuxnpdhoejrog.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg";
+// 🎯 CONFIGURACIÓN GLOBAL - Actualizada para nueva estructura
+const DASHBOARD_CONFIG = {
+    currentStudent: null,
+    currentUnit: 1,
+    currentTopic: null,
+    exerciseSession: {
+        active: false,
+        exercises: [],
+        currentIndex: 0,
+        startTime: null,
+        stats: {
+            completed: 0,
+            correct: 0,
+            totalTime: 0
+        }
+    },
+    supabase: null,
+    isNewStructure: true // Flag para identificar nueva estructura
+};
 
-class DashboardApp {
-    constructor() {
-        // Inicializar Supabase de forma segura
-        this.supabase = null;
-        this.userProfile = null;
-        this.students = [];
-        this.selectedStudent = null;
-        this.elements = {};
-        this.isGeneratorInitialized = false;
+// 🎯 INICIALIZACIÓN DEL DASHBOARD - Adaptada para SaaS
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Iniciando Matemágica Dashboard v4.0 (SaaS Compatible)...');
+    
+    try {
+        // Verificar si estamos en la nueva estructura
+        const isNewDashboard = document.getElementById('matematicas-segundo-content') !== null;
         
-        this.API_KEY = "AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI";
-        this.API_URL_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.API_KEY}`;
+        if (isNewDashboard) {
+            console.log('✅ Nueva estructura SaaS detectada - Modo híbrido activado');
+            return; // La nueva estructura maneja su propia inicialización
+        }
         
-        document.addEventListener('DOMContentLoaded', () => this.init());
-    }
-
-    init() {
-        try {
-            // Verificar que Supabase esté disponible antes de inicializar
-            if (!window.supabase) {
-                console.error("❌ Supabase no está disponible");
-                setTimeout(() => this.init(), 100); // Reintentar en 100ms
-                return;
-            }
-            
-            // Inicializar cliente Supabase de forma segura
-            this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log("✅ Cliente Supabase inicializado correctamente");
-            
-            // Continuar con la inicialización normal
-            this.userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile'));
-            if (!this.userProfile) {
-                console.log("❌ No hay perfil de usuario, redirigiendo al login");
-                window.location.assign('index.html');
-                return;
-            }
-            
-            console.log("✅ Dashboard inicializado correctamente para:", this.userProfile.full_name);
-            this.setupDashboardDOMElements();
-            this.setupDashboardEventListeners();
-            this.renderHeader();
-            this.loadStudents();
-            
-        } catch (error) {
-            console.error("❌ Error en la inicialización del dashboard:", error);
-            // Reintentar la inicialización después de un breve delay
-            setTimeout(() => this.init(), 500);
+        // Código legacy para estructura antigua
+        await initializeSupabase();
+        await checkAuthentication();
+        await initializeCurriculum();
+        await loadStudentProfiles();
+        await setupEventListeners();
+        await loadDefaultStudent();
+        
+        console.log('✅ Dashboard inicializado correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error inicializando dashboard:', error);
+        // Solo mostrar error si no estamos en la nueva estructura
+        if (!document.getElementById('matematicas-segundo-content')) {
+            showErrorMessage('Error al cargar la aplicación. Por favor, recarga la página.');
         }
     }
+});
 
-    // --- SETUP ---
-    setupDashboardDOMElements() {
-        this.elements = {
-            userName: document.getElementById('user-name'),
-            logoutBtn: document.getElementById('logout-btn'),
-            studentListTitle: document.getElementById('student-list-title'),
-            studentList: document.getElementById('student-list'),
-            addStudentBtn: document.getElementById('add-student-btn'),
-            exerciseGeneratorSection: document.getElementById('exercise-generator-section'),
-            confettiCanvas: document.getElementById('confetti-canvas')
+// 🔐 AUTENTICACIÓN Y SUPABASE
+async function initializeSupabase() {
+    if (typeof window.supabase === 'undefined') {
+        console.log('🔄 Supabase no disponible, modo offline activado');
+        return;
+    }
+    
+    DASHBOARD_CONFIG.supabase = window.supabase;
+    console.log('✅ Supabase conectado');
+}
+
+async function checkAuthentication() {
+    // Si no hay Supabase, usar modo local
+    if (!DASHBOARD_CONFIG.supabase) {
+        const localUser = localStorage.getItem('matematica_user');
+        if (!localUser) {
+            // Crear usuario por defecto
+            const defaultUser = {
+                id: 'local-user',
+                email: 'usuario@local.com',
+                full_name: 'Usuario Local',
+                user_type: 'apoderado'
+            };
+            localStorage.setItem('matematica_user', JSON.stringify(defaultUser));
+        }
+        return;
+    }
+    
+    // Verificar autenticación con Supabase
+    const { data: { user } } = await DASHBOARD_CONFIG.supabase.auth.getUser();
+    if (!user) {
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Actualizar UI con nombre del usuario solo si el elemento existe
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) {
+        userNameElement.textContent = user.user_metadata?.full_name || user.email;
+    }
+}
+
+// 📚 INICIALIZACIÓN DEL CURRÍCULUM - Adaptada para compatibilidad
+async function initializeCurriculum() {
+    try {
+        console.log('📚 Cargando currículum de 2° Básico...');
+        
+        // Generar navegación de unidades solo si elementos existen
+        generateUnitNavigation();
+        
+        // Cargar unidad por defecto solo en estructura antigua
+        if (!DASHBOARD_CONFIG.isNewStructure) {
+            await loadUnit(1);
+        }
+        
+        console.log('✅ Currículum cargado correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error cargando currículum:', error);
+        throw error;
+    }
+}
+
+// 🧭 NAVEGACIÓN DE UNIDADES - COMPATIBLE con ambas estructuras
+function generateUnitNavigation() {
+    console.log('📚 Navegación de unidades iniciada para currículum 2° Básico');
+    
+    // Verificar que el currículum esté disponible
+    if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+        console.warn('⚠️ Currículum no disponible');
+        return;
+    }
+    
+    // Mostrar unidades disponibles en consola para debug
+    Object.entries(CURRICULUM_SEGUNDO_BASICO.unidades).forEach(([key, unidad]) => {
+        console.log(`📖 ${unidad.icono} Unidad ${unidad.numero}: ${unidad.titulo}`);
+    });
+    
+    console.log('✅ Sistema de navegación curricular listo');
+}
+
+// 📖 CARGA DE UNIDADES - Con verificación de elementos DOM
+async function loadUnit(unitNumber) {
+    try {
+        console.log(`📖 Cargando Unidad ${unitNumber}...`);
+        
+        const unidad = obtenerUnidad(unitNumber);
+        if (!unidad) {
+            showErrorMessage('Unidad no encontrada');
+            return;
+        }
+        
+        // Actualizar estado
+        DASHBOARD_CONFIG.currentUnit = unitNumber;
+        DASHBOARD_CONFIG.currentTopic = null;
+        
+        // Actualizar UI solo si los elementos existen
+        updateUnitNavigation();
+        updateUnitHeader(unidad);
+        generateTopicsGrid(unidad);
+        
+        // Ocultar/mostrar secciones solo si existen
+        const exercisesSection = document.getElementById('exercises-section');
+        const unitContent = document.getElementById('unit-content');
+        
+        if (exercisesSection) exercisesSection.classList.add('hidden');
+        if (unitContent) unitContent.classList.remove('hidden');
+        
+        console.log(`✅ Unidad ${unitNumber} cargada correctamente`);
+        
+    } catch (error) {
+        console.error('❌ Error cargando unidad:', error);
+        showErrorMessage('Error al cargar la unidad');
+    }
+}
+
+function updateUnitNavigation() {
+    document.querySelectorAll('.unit-nav-item').forEach((item, index) => {
+        if (index + 1 === DASHBOARD_CONFIG.currentUnit) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// FUNCIÓN CORREGIDA: Verificar elementos antes de actualizar
+function updateUnitHeader(unidad) {
+    // Solo actualizar si los elementos existen
+    const currentUnitName = document.getElementById('current-unit-name');
+    if (currentUnitName) {
+        currentUnitName.textContent = `Unidad ${unidad.numero}`;
+    }
+    
+    const unitTitle = document.getElementById('unit-title');
+    if (unitTitle) {
+        unitTitle.textContent = `${unidad.icono} ${unidad.titulo}`;
+    }
+    
+    const unitDescription = document.getElementById('unit-description');
+    if (unitDescription) {
+        unitDescription.textContent = unidad.descripcion;
+    }
+    
+    // Calcular progreso de la unidad
+    const totalTemas = Object.keys(unidad.temas).length;
+    const completedTemas = getCompletedTopics(unidad.numero);
+    const progressPercent = (completedTemas / totalTemas) * 100;
+    
+    const unitProgressBar = document.getElementById('unit-progress-bar');
+    if (unitProgressBar) {
+        unitProgressBar.style.width = `${progressPercent}%`;
+    }
+    
+    const unitProgressText = document.getElementById('unit-progress-text');
+    if (unitProgressText) {
+        unitProgressText.textContent = `${completedTemas} de ${totalTemas} temas completados`;
+    }
+}
+
+// 🎯 GENERACIÓN DE TEMAS - Con verificación DOM
+function generateTopicsGrid(unidad) {
+    const grid = document.getElementById('topics-grid');
+    if (!grid) {
+        console.warn('⚠️ Grid de temas no encontrado en DOM');
+        return;
+    }
+    
+    grid.innerHTML = '';
+    
+    Object.entries(unidad.temas).forEach(([temaKey, tema]) => {
+        const topicCard = createTopicCard(tema, temaKey, unidad.numero);
+        grid.appendChild(topicCard);
+    });
+}
+
+function createTopicCard(tema, temaKey, unitNumber) {
+    const card = document.createElement('div');
+    const isCompleted = isTopicCompleted(unitNumber, temaKey);
+    const isInProgress = isTopicInProgress(unitNumber, temaKey);
+    
+    let statusClass = '';
+    let statusIcon = '';
+    let statusText = '';
+    
+    if (isCompleted) {
+        statusClass = 'completed';
+        statusIcon = '✅';
+        statusText = 'Completado';
+    } else if (isInProgress) {
+        statusClass = 'in-progress';
+        statusIcon = '⏳';
+        statusText = 'En Progreso';
+    } else {
+        statusIcon = '🎯';
+        statusText = 'Disponible';
+    }
+    
+    card.className = `topic-card ${statusClass}`;
+    card.innerHTML = `
+        <div class="flex justify-between items-start mb-3">
+            <h3 class="font-bold text-gray-800 text-lg">${tema.titulo}</h3>
+            <div class="flex items-center space-x-2">
+                <span class="text-lg">${statusIcon}</span>
+                <span class="text-xs px-2 py-1 rounded-full ${getStatusBadgeClass(statusClass)}">${statusText}</span>
+            </div>
+        </div>
+        
+        <p class="text-gray-600 text-sm mb-4">${tema.descripcion}</p>
+        
+        <div class="mb-4">
+            <div class="flex flex-wrap gap-1">
+                ${tema.subtemas.map(subtema => 
+                    `<span class="subtopic-pill">${subtema}</span>`
+                ).join('')}
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center text-sm text-gray-500 mb-4">
+            <span>⏱️ ${tema.tiempo_sugerido}</span>
+            <span class="px-2 py-1 rounded-full ${getDifficultyBadgeClass(tema.dificultad_base)}">
+                ${getDifficultyLabel(tema.dificultad_base)}
+            </span>
+        </div>
+        
+        <button class="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors">
+            ${isCompleted ? '📝 Revisar Tema' : '🚀 Comenzar Tema'}
+        </button>
+    `;
+    
+    // Event listener para abrir el tema
+    card.addEventListener('click', () => openTopic(unitNumber, temaKey, tema));
+    
+    return card;
+}
+
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'in-progress': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-blue-100 text-blue-800';
+    }
+}
+
+function getDifficultyBadgeClass(difficulty) {
+    switch (difficulty) {
+        case 'facil': return 'bg-green-100 text-green-800';
+        case 'medio': return 'bg-yellow-100 text-yellow-800';
+        case 'dificil': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getDifficultyLabel(difficulty) {
+    switch (difficulty) {
+        case 'facil': return '🟢 Fácil';
+        case 'medio': return '🟡 Medio';
+        case 'dificil': return '🔴 Difícil';
+        default: return 'Normal';
+    }
+}
+
+// 🎯 APERTURA DE TEMAS - Con verificación DOM
+async function openTopic(unitNumber, topicKey, topicData) {
+    try {
+        console.log(`🎯 Abriendo tema: ${topicData.titulo}`);
+        
+        // Actualizar estado
+        DASHBOARD_CONFIG.currentTopic = {
+            unit: unitNumber,
+            key: topicKey,
+            data: topicData
         };
-    }
-
-    setupDashboardEventListeners() {
-        this.elements.logoutBtn?.addEventListener('click', () => this.logout());
-        this.elements.addStudentBtn?.addEventListener('click', () => this.addNewStudent());
-    }
-    
-    setupGenerator() {
-        if (this.isGeneratorInitialized) return;
-        Object.assign(this.elements, {
-            studentNameHeader: document.getElementById('student-name-header'),
-            currentDate: document.getElementById('current-date'),
-            mainLoader: document.getElementById('loader'),
-            content: document.getElementById('content'),
-            errorMessage: document.getElementById('error-message'),
-            additionsGrid: document.getElementById('additions-grid'),
-            subtractionsGrid: document.getElementById('subtractions-grid'),
-            printPdfBtn: document.getElementById('print-pdf-btn'),
-            levelRadios: document.querySelectorAll('input[name="level"]'),
-            generateBtn: document.getElementById('generate-btn'),
-            createStoryBtn: document.getElementById('create-story-btn'),
-            customStoryLoader: document.getElementById('custom-story-loader'),
-            customStoryOutput: document.getElementById('custom-story-output'),
-            customStoryText: document.getElementById('custom-story-text'),
-            customStoryAnswerInput: document.getElementById('custom-story-answer'),
-            customCheckBtn: document.getElementById('custom-story-check-btn'),
-            customFeedbackLoader: document.getElementById('custom-feedback-loader'),
-            customFeedbackDiv: document.getElementById('custom-feedback'),
-            num1Input: document.getElementById('num1-input'),
-            num2Input: document.getElementById('num2-input'),
-            operatorSelect: document.getElementById('operator-select'),
-            storyModal: document.getElementById('story-modal'),
-            storyTitle: document.getElementById('story-title'),
-            storyTextEl: document.getElementById('story-text'),
-            storyLoader: document.getElementById('story-loader'),
-            closeModalBtn: document.getElementById('close-modal-btn'),
-            storyAnswerInput: document.getElementById('story-answer-input'),
-            storyCheckBtn: document.getElementById('story-check-btn'),
-            modalFeedbackLoader: document.getElementById('modal-feedback-loader'),
-            modalFeedbackDiv: document.getElementById('modal-feedback'),
-        });
-        this.elements.printPdfBtn?.addEventListener('click', () => this.printToPDF());
-        this.elements.generateBtn?.addEventListener('click', () => this.generateAndRenderExercises());
-        this.elements.levelRadios.forEach(radio => radio.addEventListener('change', () => this.generateAndRenderExercises()));
-        this.elements.createStoryBtn?.addEventListener('click', () => this.handleCustomProblemSubmit());
-        this.elements.closeModalBtn?.addEventListener('click', () => this.elements.storyModal.classList.remove('visible'));
-        this.elements.storyModal?.addEventListener('click', (e) => {
-            if (e.target === this.elements.storyModal) this.elements.storyModal.classList.remove('visible');
-        });
-        this.isGeneratorInitialized = true;
-    }
-
-    // --- LÓGICA DEL DASHBOARD ---
-    renderHeader() {
-        this.elements.userName.textContent = this.userProfile.full_name || 'Usuario';
-        this.elements.studentListTitle.textContent = this.userProfile.user_role === 'teacher' ? 'Mis Alumnos' : 'Mis Hijos';
-    }
-
-    async loadStudents() {
-        const relationColumn = this.userProfile.user_role === 'teacher' ? 'teacher_id' : 'parent_id';
-        const { data, error } = await this.supabase.from('math_profiles').select('*').eq(relationColumn, this.userProfile.user_id);
-        if (error) console.error("Error cargando estudiantes:", error);
-        this.students = data || [];
-        this.renderStudentList();
-    }
-
-    renderStudentList() {
-        this.elements.studentList.innerHTML = '';
-        const selfCard = document.createElement('div');
-        selfCard.className = 'p-4 border-2 border-blue-500 rounded-lg text-center cursor-pointer hover:bg-blue-100 transition';
-        selfCard.innerHTML = `<strong>${this.userProfile.full_name} (Yo)</strong>`;
-        selfCard.onclick = () => this.selectStudent(this.userProfile);
-        this.elements.studentList.appendChild(selfCard);
-        this.students.forEach(student => {
-            const studentCard = document.createElement('div');
-            studentCard.className = 'p-4 border rounded-lg text-center cursor-pointer hover:bg-blue-100 transition';
-            studentCard.textContent = student.full_name;
-            studentCard.onclick = () => this.selectStudent(student);
-            this.elements.studentList.appendChild(studentCard);
-        });
-    }
-
-    selectStudent(student) {
-        this.selectedStudent = student;
-        this.elements.exerciseGeneratorSection.classList.remove('hidden');
-        if (!this.isGeneratorInitialized) this.setupGenerator();
-        this.renderGeneratorHeader();
-        this.generateAndRenderExercises();
-    }
-
-    renderGeneratorHeader() {
-        this.elements.studentNameHeader.textContent = this.selectedStudent.full_name;
-        this.elements.currentDate.textContent = new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' });
-    }
-
-    async addNewStudent() {
-        const studentName = prompt("Nombre del nuevo perfil:");
-        if (!studentName || !studentName.trim()) return;
-        const relationColumn = this.userProfile.user_role === 'teacher' ? 'teacher_id' : 'parent_id';
-        let newProfile = { full_name: studentName.trim(), user_role: 'student' };
-        newProfile[relationColumn] = this.userProfile.user_id;
-        const { error } = await this.supabase.from('math_profiles').insert([newProfile]);
-        if (error) console.error("Error añadiendo perfil:", error);
-        else this.loadStudents();
-    }
-
-    logout() {
-        localStorage.clear();
-        this.supabase.auth.signOut();
-        window.location.assign('index.html');
-    }
-
-    // --- LÓGICA DEL GENERADOR ---
-    triggerConfetti() {
-        if (!this.elements.confettiCanvas || !window.confetti) return;
-        const myConfetti = confetti.create(this.elements.confettiCanvas, { resize: true, useWorker: true });
-        myConfetti({ particleCount: 150, spread: 160, origin: { y: 0.6 } });
-    }
-    
-    generateLocalExercises(level) {
-        let count;
-        switch(level) {
-            case '2': count = 30; break;
-            case '3': count = 50; break;
-            default: count = 20;
-        }
-        const problems = { additions: [], subtractions: [] };
-        const checkNoCarryAdd = (n1, n2) => (n1 % 10) + (n2 % 10) < 10;
-        const checkNoCarrySub = (n1, n2) => (n1 % 10) >= (n2 % 10);
-        for (let i = 0; i < count; i++) {
-            let n1, n2, s1, s2;
-            do {
-                n1 = Math.floor(Math.random() * 90) + 10;
-                n2 = Math.floor(Math.random() * 90) + 10;
-            } while (level === '1' && !checkNoCarryAdd(n1, n2) || level === '2' && checkNoCarryAdd(n1, n2));
-            problems.additions.push({ num1: n1, num2: n2 });
-            do {
-                s1 = Math.floor(Math.random() * 90) + 10;
-                s2 = Math.floor(Math.random() * (s1 - 9)) + 1;
-            } while (level === '1' && !checkNoCarrySub(s1, s2) || level === '2' && checkNoCarrySub(s1, s2));
-            problems.subtractions.push({ num1: s1, num2: s2 });
-        }
-        return problems;
-    }
-
-    async generateAndRenderExercises() {
-        if (!this.selectedStudent) return;
-        this.elements.mainLoader.style.display = 'block';
-        this.elements.content.classList.add('hidden');
-        const level = document.querySelector('input[name="level"]:checked').value;
-        const data = this.generateLocalExercises(level);
-        this.renderGrid(data.additions, this.elements.additionsGrid, '+');
-        this.renderGrid(data.subtractions, this.elements.subtractionsGrid, '-');
-        this.elements.content.classList.remove('hidden');
-        this.elements.mainLoader.style.display = 'none';
-    }
-
-    renderGrid(problems, gridElement, operator) {
-        const fragment = document.createDocumentFragment();
-        problems.forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'exercise-item';
-            const storyButton = document.createElement('button');
-            storyButton.className = 'story-button';
-            storyButton.innerHTML = '✨';
-            storyButton.title = 'Crear un cuento con IA';
-            storyButton.onclick = () => this.generateAndShowWordProblemInModal(p.num1, p.num2, operator);
-            item.innerHTML = `<div>${p.num1}</div><div><span class="operator">${operator}</span>${p.num2}</div><div class="line"></div>`;
-            item.prepend(storyButton);
-            fragment.appendChild(item);
-        });
-        gridElement.innerHTML = '';
-        gridElement.appendChild(fragment);
-    }
-    
-    // --- LÓGICA DE LA IA (CUENTOS Y FEEDBACK) ---
-    async callGemini(prompt) {
-        try {
-            // Usar la misma API key que funciona en gemini-ai.js
-            const apiKey = 'AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI';
-            const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-            
-            const response = await fetch(`${baseUrl}?key=${apiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        role: 'user',
-                        parts: [{ text: prompt }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.8,
-                        maxOutputTokens: 1024
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API Error: ${response.status} - ${response.statusText}: ${errorText}`);
-            }
-
-            const data = await response.json();
-            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            if (!content) {
-                throw new Error('No content in API response');
-            }
-            
-            return content;
-        } catch (error) {
-            console.error('Error en callGemini:', error);
-            throw error;
-        }
-    }
-
-    async generateAndShowWordProblemInModal(num1, num2, operator) {
-        console.log(`🎭 Generando cuento para: ${num1} ${operator} ${num2}`);
         
-        // Mostrar modal y loader
-        this.elements.storyModal.classList.add('visible');
-        this.elements.storyLoader.style.display = 'block';
-        this.elements.storyTextEl.style.display = 'none';
-        this.elements.storyAnswerInput.value = '';
-        this.elements.modalFeedbackDiv.innerHTML = '';
+        // Mostrar sección de ejercicios solo si existe
+        const unitContent = document.getElementById('unit-content');
+        const exercisesSection = document.getElementById('exercises-section');
         
-        // Configurar título
-        this.elements.storyTitle.textContent = `Cuento Mágico: ${num1} ${operator} ${num2}`;
+        if (unitContent) unitContent.classList.add('hidden');
+        if (exercisesSection) exercisesSection.classList.remove('hidden');
         
-        // Generar cuento con IA
-        const storyText = await this.getWordProblemText(num1, num2, operator);
+        // Actualizar header del tema
+        updateTopicHeader(topicData);
         
-        // Mostrar resultado
-        this.elements.storyLoader.style.display = 'none';
-        this.elements.storyTextEl.style.display = 'block';
-        this.elements.storyTextEl.textContent = storyText;
+        // Mostrar recomendaciones pedagógicas
+        showPedagogicalRecommendations(topicData);
         
-        // Configurar botón de verificación
-        this.elements.storyCheckBtn.onclick = () => this.checkAnswer(num1, num2, operator, this.elements.storyAnswerInput, this.elements.modalFeedbackDiv);
+        // Limpiar ejercicios anteriores
+        clearExercisesContent();
+        
+        console.log(`✅ Tema ${topicData.titulo} abierto correctamente`);
+        
+    } catch (error) {
+        console.error('❌ Error abriendo tema:', error);
+        showErrorMessage('Error al abrir el tema');
     }
-
-    async getWordProblemText(num1, num2, operator) {
-        const operatorText = operator === '+' ? 'suma' : 'resta';
-        const operatorSymbol = operator === '+' ? 'sumando' : 'quitando';
-        
-        const prompt = `Crea un cuento corto y divertido para niños de 7-8 años que incluya una ${operatorText} de ${num1} ${operator} ${num2}.
-
-Requisitos:
-- Máximo 3 oraciones
-- Personajes divertidos (animales, juguetes, etc.)
-- Situación clara donde se necesite ${operatorSymbol} ${num1} y ${num2}
-- Terminar preguntando: "¿Cuántos quedan?" o "¿Cuántos hay en total?"
-- Lenguaje simple y amigable para niños
-
-Ejemplo: "🐰 El conejito Pepe tenía ${num1} zanahorias en su jardín. Su amiga la ardilla Lila le ${operator === '+' ? 'regaló' : 'pidió prestadas'} ${num2} zanahorias más. ¿Cuántas zanahorias ${operator === '+' ? 'tiene ahora' : 'le quedan'} a Pepe?"`;
-
-        try {
-            console.log('📡 Llamando a Gemini API para generar cuento...');
-            // Pasar solo el prompt string, no el objeto payload
-            const response = await this.callGemini(prompt);
-            console.log('✅ Cuento generado exitosamente');
-            return response;
-        } catch (error) {
-            console.error('❌ Error generando cuento:', error);
-            // Fallback local
-            const themes = [
-                `🐻 El osito ${operator === '+' ? 'encontró' : 'perdió'} ${num2} ${operator === '+' ? 'manzanas más' : 'manzanas'} de las ${num1} que tenía.`,
-                `🚗 En el garaje había ${num1} carritos. ${operator === '+' ? 'Llegaron' : 'Se fueron'} ${num2} carritos más.`,
-                `🌟 La princesa tenía ${num1} estrellas mágicas y ${operator === '+' ? 'encontró' : 'usó'} ${num2} más.`
-            ];
-            const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-            return `${randomTheme} ¿Cuántas ${operator === '+' ? 'tiene en total' : 'le quedan'}?`;
-        }
-    }
-
-    async checkAnswer(num1, num2, operator, answerInput, feedbackDiv) {
-        const userAnswer = parseInt(answerInput.value);
-        if (!userAnswer && userAnswer !== 0) {
-            feedbackDiv.innerHTML = '<p class="text-yellow-600">🤔 Por favor, escribe tu respuesta primero.</p>';
-            feedbackDiv.classList.remove('hidden'); // Asegurar que sea visible
-            return;
-        }
-
-        const correctAnswer = (operator === '+') ? (num1 + num2) : (num1 - num2);
-        const isCorrect = userAnswer === correctAnswer;
-        
-        // Limpiar feedback anterior y mostrar el div
-        feedbackDiv.innerHTML = '';
-        feedbackDiv.classList.remove('hidden');
-        
-        if (isCorrect) {
-            this.triggerConfetti();
-            feedbackDiv.innerHTML = '<p class="text-green-600 font-bold">🎉 ¡Excelente! ¡Respuesta correcta!</p>';
-        } else {
-            feedbackDiv.innerHTML = `<p class="text-red-600">💭 Mmm, revisa tu cálculo. ¡Tú puedes!</p>`;
-        }
-        
-        // Generar feedback personalizado con IA usando el nombre del estudiante
-        this.generatePersonalizedFeedback(userAnswer, correctAnswer, isCorrect, feedbackDiv);
-    }
-
-    async generatePersonalizedFeedback(userAnswer, correctAnswer, isCorrect, feedbackDiv) {
-        try {
-            console.log('🤖 Generando feedback personalizado con IA...');
-            
-            const studentName = this.selectedStudent.full_name.split(' ')[0]; // Obtener primer nombre
-            
-            const prompt = `Eres un profesor amigable y motivador para un niño de 7-8 años llamado ${studentName}.
-
-SITUACIÓN:
-- Respuesta correcta: ${correctAnswer}
-- Respuesta del estudiante: ${userAnswer}
-- ¿Es correcta? ${isCorrect ? 'SÍ' : 'NO'}
-
-INSTRUCCIONES:
-${isCorrect ? 
-    `- Felicita calurosamente a ${studentName} usando su nombre
-    - Usa emojis positivos y divertidos
-    - Menciona específicamente lo bien que lo hizo
-    - Anímale a seguir practicando
-    - Sé muy entusiasta y cálido` 
-    : 
-    `- Anima a ${studentName} de forma muy positiva usando su nombre
-    - NO reveles la respuesta correcta directamente
-    - Da una pista útil y constructiva sin dar la solución
-    - Motívale a intentar de nuevo con confianza
-    - Usa emojis de apoyo y sé muy alentador
-    - Enfócate en el proceso de aprendizaje`
 }
 
-Responde en 1-2 oraciones máximo, de forma muy cálida, motivadora y apropiada para un niño de 7-8 años.`;
-
-            // Llamar a la API de Gemini
-            const response = await this.callGemini(prompt);
-            
-            if (response && response.trim()) {
-                const feedback = response.trim();
-                const colorClass = isCorrect ? 'text-blue-600' : 'text-purple-600';
-                
-                // Crear elemento para el feedback de IA y agregarlo correctamente
-                const feedbackElement = document.createElement('div');
-                feedbackElement.className = `${colorClass} mt-3 p-3 bg-gray-50 rounded-lg border-l-4 ${isCorrect ? 'border-blue-500' : 'border-purple-500'}`;
-                feedbackElement.innerHTML = `<p class="font-medium">🤖 <strong>Profesora IA:</strong></p><p class="mt-1">${feedback}</p>`;
-                
-                // Asegurar que el contenedor sea visible y agregar el elemento
-                feedbackDiv.classList.remove('hidden');
-                feedbackDiv.appendChild(feedbackElement);
-                
-                console.log('✅ Feedback personalizado generado con IA y mostrado en DOM');
-                return;
-            }
-            
-            // Si la IA no funciona, usar fallback personalizado
-            this.generateFallbackFeedback(userAnswer, correctAnswer, isCorrect, feedbackDiv);
-            
-        } catch (error) {
-            console.error('❌ Error generando feedback personalizado:', error);
-            this.generateFallbackFeedback(userAnswer, correctAnswer, isCorrect, feedbackDiv);
-        }
+function updateTopicHeader(topicData) {
+    const topicTitle = document.getElementById('topic-title');
+    if (topicTitle) {
+        topicTitle.textContent = topicData.titulo;
     }
-
-    generateFallbackFeedback(userAnswer, correctAnswer, isCorrect, feedbackDiv) {
-        const studentName = this.selectedStudent.full_name.split(' ')[0];
-        
-        let message;
-        let colorClass;
-        let borderClass;
-        
-        if (isCorrect) {
-            const positiveMessages = [
-                `¡Excelente trabajo, ${studentName}! 🌟 ¡Lo hiciste perfecto!`,
-                `¡Fantástico, ${studentName}! 🎉 ¡Eres genial con las matemáticas!`,
-                `¡Muy bien, ${studentName}! ✨ ¡Sigue así que lo estás haciendo increíble!`,
-                `¡Perfecto, ${studentName}! 🏆 ¡Eres un campeón de las matemáticas!`,
-                `¡Súper bien, ${studentName}! 🌈 ¡Me encanta cómo resuelves los problemas!`
-            ];
-            message = positiveMessages[Math.floor(Math.random() * positiveMessages.length)];
-            colorClass = 'text-blue-600';
-            borderClass = 'border-blue-500';
-        } else {
-            const encouragingMessages = [
-                `¡Muy buen intento, ${studentName}! 💪 ¿Quieres intentar otra vez? ¡Tú puedes!`,
-                `¡Casi lo tienes, ${studentName}! 🌟 Piensa un poquito más y seguro lo logras.`,
-                `¡No te preocupes, ${studentName}! 😊 Los errores nos ayudan a aprender. ¡Inténtalo de nuevo!`,
-                `¡Sigue intentando, ${studentName}! 🚀 Estás muy cerca de la respuesta correcta.`,
-                `¡Ánimo, ${studentName}! 🌈 Revisa los números otra vez, ¡estoy seguro de que lo conseguirás!`
-            ];
-            message = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
-            colorClass = 'text-purple-600';
-            borderClass = 'border-purple-500';
-        }
-        
-        // Crear elemento para el feedback fallback y agregarlo correctamente
-        const feedbackElement = document.createElement('div');
-        feedbackElement.className = `${colorClass} mt-3 p-3 bg-gray-50 rounded-lg border-l-4 ${borderClass}`;
-        feedbackElement.innerHTML = `<p class="font-medium">🤖 <strong>Profesora IA:</strong></p><p class="mt-1">${message}</p>`;
-        
-        // Asegurar que el contenedor sea visible y agregar el elemento
-        feedbackDiv.classList.remove('hidden');
-        feedbackDiv.appendChild(feedbackElement);
-        
-        console.log('✅ Feedback fallback generado y mostrado en DOM');
+    
+    const topicDescription = document.getElementById('topic-description');
+    if (topicDescription) {
+        topicDescription.textContent = topicData.descripcion;
     }
+    
+    // Actualizar subtemas
+    const subtopicsContainer = document.getElementById('subtopics-pills');
+    if (subtopicsContainer) {
+        subtopicsContainer.innerHTML = '';
+        
+        topicData.subtemas.forEach(subtema => {
+            const pill = document.createElement('span');
+            pill.className = 'subtopic-pill';
+            pill.textContent = subtema;
+            subtopicsContainer.appendChild(pill);
+        });
+    }
+}
 
-    async handleCustomProblemSubmit() {
-        const num1 = parseInt(this.elements.num1Input.value);
-        const num2 = parseInt(this.elements.num2Input.value);
-        const operator = this.elements.operatorSelect.value;
+function showPedagogicalRecommendations(topicData) {
+    const recsSection = document.getElementById('pedagogical-recommendations');
+    if (!recsSection) return;
+    
+    recsSection.classList.remove('hidden');
+    
+    // Llenar recomendaciones solo si los elementos existen
+    const recMethodology = document.getElementById('rec-methodology');
+    if (recMethodology) {
+        recMethodology.textContent = 
+            `${topicData.metodologia.concreto} → ${topicData.metodologia.pictórico} → ${topicData.metodologia.simbólico}`;
+    }
+    
+    const recTime = document.getElementById('rec-time');
+    if (recTime) {
+        recTime.textContent = topicData.tiempo_sugerido;
+    }
+    
+    const recMaterials = document.getElementById('rec-materials');
+    if (recMaterials) {
+        recMaterials.textContent = topicData.materiales.join(', ');
+    }
+    
+    const recEvaluation = document.getElementById('rec-evaluation');
+    if (recEvaluation) {
+        recEvaluation.textContent = 
+            `Evaluación ${CURRICULUM_SEGUNDO_BASICO.configuracion_pedagogica.metodologia_base}`;
+    }
+}
 
-        if (!num1 || !num2) {
-            alert('Por favor, ingresa ambos números');
-            return;
-        }
+function clearExercisesContent() {
+    const exercisesContent = document.getElementById('exercises-content');
+    const exercisesLoader = document.getElementById('exercises-loader');
+    const sessionStats = document.getElementById('session-stats');
+    
+    if (exercisesContent) exercisesContent.classList.add('hidden');
+    if (exercisesLoader) exercisesLoader.classList.add('hidden');
+    if (sessionStats) sessionStats.classList.add('hidden');
+}
 
-        console.log(`🎯 Generando problema personalizado: ${num1} ${operator} ${num2}`);
-
+// 🎲 GENERACIÓN DE EJERCICIOS
+async function generateExercises() {
+    if (!DASHBOARD_CONFIG.currentTopic) {
+        showErrorMessage('No hay tema seleccionado');
+        return;
+    }
+    
+    try {
         // Mostrar loader
-        this.elements.customStoryLoader.style.display = 'block';
-        this.elements.customStoryOutput.style.display = 'none';
-        this.elements.customFeedbackDiv.innerHTML = '';
-
-        // Generar cuento
-        const storyText = await this.getWordProblemText(num1, num2, operator);
-
-        // Mostrar resultado
-        this.elements.customStoryLoader.style.display = 'none';
-        this.elements.customStoryOutput.style.display = 'block';
-        this.elements.customStoryText.textContent = storyText;
-        this.elements.customStoryAnswerInput.value = '';
-
-        // Configurar botón de verificación
-        this.elements.customCheckBtn.onclick = () => this.checkAnswer(num1, num2, operator, this.elements.customStoryAnswerInput, this.elements.customFeedbackDiv);
-    }
-
-    async printToPDF() {
-        let originalButtonText = '';
+        document.getElementById('exercises-loader').classList.remove('hidden');
         
-        try {
-            console.log('📄 Iniciando generación de PDF...');
-            
-            // Esperar a que las librerías estén disponibles
-            const librariesLoaded = await window.pdfLoadingPromise;
-            
-            if (!librariesLoaded || !window.pdfLibrariesLoaded) {
-                console.error('❌ Librerías de PDF no disponibles');
-                this.showErrorNotification('📄 Error: Las librerías de PDF no están disponibles. Por favor, revisa tu conexión a internet.');
-                return;
-            }
-
-            // Verificar html2canvas primero
-            if (!window.html2canvas) {
-                console.error('❌ html2canvas no está disponible');
-                this.showErrorNotification('📄 Error: html2canvas no se cargó correctamente.');
-                return;
-            }
-
-            // Verificar jsPDF con todas las posibles formas de exposición
-            let jsPDFConstructor = null;
-            
-            // Probar diferentes formas de acceso a jsPDF
-            if (window.jspdf && window.jspdf.jsPDF) {
-                // Versión UMD con namespace
-                jsPDFConstructor = window.jspdf.jsPDF;
-                console.log('📄 jsPDF encontrado en window.jspdf.jsPDF');
-            } else if (window.jsPDF) {
-                // Versión global directa
-                jsPDFConstructor = window.jsPDF;
-                console.log('📄 jsPDF encontrado en window.jsPDF');
-            } else if (window.jspdf) {
-                // Versión con namespace minúsculo
-                jsPDFConstructor = window.jspdf;
-                console.log('📄 jsPDF encontrado en window.jspdf');
-            }
-
-            if (!jsPDFConstructor) {
-                console.error('❌ jsPDF no está disponible en ninguna forma conocida');
-                console.log('Verificando window object:', Object.keys(window).filter(k => k.toLowerCase().includes('pdf')));
-                this.showErrorNotification('📄 Error: jsPDF no se cargó correctamente.');
-                return;
-            }
-
-            // Mostrar mensaje de carga
-            originalButtonText = this.elements.printPdfBtn.innerHTML;
-            this.elements.printPdfBtn.innerHTML = '<div class="loader inline-block mr-2"></div>Generando PDF...';
-            this.elements.printPdfBtn.disabled = true;
-            
-            const content = this.elements.content;
-            
-            console.log('📄 Generando canvas...');
-            
-            // Generar canvas del contenido con mejor calidad
-            const canvas = await window.html2canvas(content, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                width: content.scrollWidth,
-                height: content.scrollHeight
-            });
-
-            console.log('📄 Canvas generado, creando PDF...');
-
-            // Crear PDF usando el constructor encontrado
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDFConstructor('p', 'mm', 'a4');
-            
-            // Calcular dimensiones para ajustar al A4
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 295; // A4 height in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
-
-            // Agregar primera página
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            // Agregar páginas adicionales si es necesario
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
-            // Generar nombre del archivo
-            const studentName = this.selectedStudent.full_name.replace(/\s+/g, '_');
-            const date = new Date().toISOString().split('T')[0];
-            const fileName = `Matematica_${studentName}_${date}.pdf`;
-            
-            // Guardar PDF
-            pdf.save(fileName);
-            
-            console.log('✅ PDF generado exitosamente:', fileName);
-            
-            // Mostrar notificación de éxito
-            this.showSuccessNotification('📄 ¡PDF generado exitosamente!');
-            
-        } catch (error) {
-            console.error('❌ Error generando PDF:', error);
-            console.log('Estado de las librerías:', {
-                html2canvas: !!window.html2canvas,
-                jsPDF: !!window.jsPDF,
-                jspdf: !!window.jspdf,
-                windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes('pdf'))
-            });
-            this.showErrorNotification(`❌ Error al generar PDF: ${error.message}. Por favor, inténtalo de nuevo.`);
-        } finally {
-            // Restaurar botón solo si se definió originalButtonText
-            if (originalButtonText && this.elements.printPdfBtn) {
-                this.elements.printPdfBtn.innerHTML = originalButtonText;
-                this.elements.printPdfBtn.disabled = false;
-            }
+        // Obtener configuración
+        const difficulty = document.getElementById('difficulty-select').value;
+        const quantity = parseInt(document.getElementById('quantity-select').value);
+        
+        console.log(`🎲 Generando ${quantity} ejercicios de nivel ${difficulty}...`);
+        
+        // Obtener configuración curricular
+        const config = generarConfiguracionEjercicios(
+            DASHBOARD_CONFIG.currentTopic.unit,
+            DASHBOARD_CONFIG.currentTopic.key,
+            difficulty
+        );
+        
+        if (!config) {
+            throw new Error('No se pudo obtener configuración del tema');
         }
-    }
-
-    showSuccessNotification(message) {
-        this.showNotification(message, 'success');
-    }
-
-    showErrorNotification(message) {
-        this.showNotification(message, 'error');
-    }
-
-    showNotification(message, type = 'success') {
-        // Crear notificación temporal
-        const notification = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-        notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
-        notification.textContent = message;
         
-        document.body.appendChild(notification);
+        // Generar ejercicios según el tipo de tema
+        let exercises = [];
+        const topicId = DASHBOARD_CONFIG.currentTopic.data.id;
         
-        // Animar entrada
-        setTimeout(() => {
-            notification.classList.remove('translate-x-full');
-        }, 100);
-        
-        // Animar salida y remover
-        setTimeout(() => {
-            notification.classList.add('translate-x-full');
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, type === 'error' ? 5000 : 3000); // Errores se muestran más tiempo
-    }
-
-    async generateCustomStory() {
-        const customFeedback = document.getElementById('custom-feedback');
-        const generateBtn = document.getElementById('generate-story-btn');
-        const originalText = generateBtn.textContent;
-        
-        try {
-            // Mostrar estado de carga
-            generateBtn.textContent = '🤖 Generando cuento...';
-            generateBtn.disabled = true;
-            
-            customFeedback.innerHTML = '<p class="text-blue-600">🎨 Creando tu cuento personalizado...</p>';
-            customFeedback.classList.remove('hidden'); // Hacer visible el contenedor
-            
-            console.log('🎭 Generando cuento personalizado...');
-            
-            const studentName = this.selectedStudent.full_name.split(' ')[0];
-            
-            const prompt = `Crea un cuento educativo corto y divertido para un niño de 7-8 años llamado ${studentName}.
-
-REQUISITOS:
-- El protagonista debe llamarse ${studentName}
-- Incluir 2-3 problemas matemáticos de suma o resta sencillos (números de 1-2 dígitos)
-- Los problemas deben estar integrados naturalmente en la historia
-- Tema divertido: aventuras, animales, magia, exploración, etc.
-- Longitud: 3-4 párrafos cortos
-- Lenguaje simple y motivador
-- Final positivo donde ${studentName} resuelve los problemas con éxito
-
-FORMATO:
-- Usa emojis para hacer el cuento más atractivo
-- Destaca los problemas matemáticos con **negritas**
-- Incluye diálogos cuando sea apropiado
-- Haz que ${studentName} sea el héroe de la historia
-
-Ejemplo: "${studentName} encontró 3 manzanas en el primer árbol y 5 en el segundo. **¿Cuántas manzanas encontró ${studentName} en total?**"`;
-
-            const response = await this.callGemini(prompt);
-            
-            if (response && response.trim()) {
-                const story = response.trim();
-                
-                // Limpiar el contenedor y agregar el cuento
-                customFeedback.innerHTML = '';
-                customFeedback.classList.remove('hidden');
-                
-                const storyElement = document.createElement('div');
-                storyElement.className = 'bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200';
-                storyElement.innerHTML = `
-                    <h4 class="text-lg font-bold text-purple-700 mb-3">📚 Cuento Personalizado para ${studentName}</h4>
-                    <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">${story}</div>
-                `;
-                
-                customFeedback.appendChild(storyElement);
-                
-                console.log('✅ Cuento personalizado generado y mostrado');
-                return;
-            }
-            
-            // Fallback si la IA no funciona
-            this.generateFallbackStory(studentName, customFeedback);
-            
-        } catch (error) {
-            console.error('❌ Error generando cuento personalizado:', error);
-            this.generateFallbackStory(this.selectedStudent.full_name.split(' ')[0], customFeedback);
-        } finally {
-            // Restaurar botón
-            generateBtn.textContent = originalText;
-            generateBtn.disabled = false;
+        switch (topicId) {
+            case 'adicion-sustraccion':
+                exercises = await generateMathExercises(config, quantity, difficulty);
+                break;
+            case 'calculo-mental':
+                exercises = await generateMentalMathExercises(config, quantity, difficulty);
+                break;
+            case 'comparacion-orden':
+                exercises = await generateComparisonExercises(config, quantity, difficulty);
+                break;
+            case 'conteo-agrupacion':
+                exercises = await generateCountingExercises(config, quantity, difficulty);
+                break;
+            default:
+                exercises = await generateGenericExercises(config, quantity, difficulty);
         }
-    }
-
-    generateFallbackStory(studentName, feedbackDiv) {
-        const stories = [
-            {
-                title: `🌟 La Aventura Mágica de ${studentName}`,
-                content: `${studentName} encontró una varita mágica en el jardín. ✨
-
-Primero, la varita creó **7 mariposas** y luego aparecieron **3 más**. **¿Cuántas mariposas voló ${studentName} en total?**
-
-Después, ${studentName} vio **12 flores** en el jardín, pero **4 se marchitaron**. **¿Cuántas flores hermosas quedaron para ${studentName}?**
-
-Al final del día, ${studentName} había resuelto todos los acertijos mágicos y se convirtió en el mejor mago matemático del reino. 🏆
-
-¡Qué aventura tan increíble vivió ${studentName}! 🎉`
-            },
-            {
-                title: `🐾 ${studentName} y los Animales del Bosque`,
-                content: `${studentName} fue de excursión al bosque y conoció muchos amigos animales. 🌳
-
-En el camino, encontró **6 conejos** jugando y después llegaron **5 más** a unirse. **¿Cuántos conejos en total vio ${studentName}?**
-
-Luego, ${studentName} vio **15 pájaros** en los árboles, pero **6 volaron** a buscar comida. **¿Cuántos pájaros quedaron cantando para ${studentName}?**
-
-Todos los animales quedaron impresionados con las habilidades matemáticas de ${studentName}. 🦋
-
-¡${studentName} se convirtió en el mejor amigo de todo el bosque! 🌟`
-            },
-            {
-                title: `🚀 ${studentName} Explorador del Espacio`,
-                content: `${studentName} se convirtió en un astronauta y viajó a las estrellas. 🌌
-
-En su nave espacial, ${studentName} contó **8 planetas** azules y **4 planetas** rojos. **¿Cuántos planetas descubrió ${studentName} en total?**
-
-Después, ${studentName} tenía **14 estrellas** en su colección, pero regaló **5 estrellas** a otros niños de la Tierra. **¿Cuántas estrellas conservó ${studentName}?**
-
-La misión espacial de ${studentName} fue un gran éxito gracias a sus increíbles habilidades matemáticas. 🎯
-
-¡${studentName} regresó a casa como un héroe del espacio! 👨‍🚀`
+        
+        // Guardar ejercicios en sesión
+        DASHBOARD_CONFIG.exerciseSession = {
+            active: true,
+            exercises: exercises,
+            currentIndex: 0,
+            startTime: Date.now(),
+            stats: {
+                completed: 0,
+                correct: 0,
+                totalTime: 0
             }
-        ];
+        };
         
-        const randomStory = stories[Math.floor(Math.random() * stories.length)];
+        // Mostrar ejercicios
+        displayExercises(exercises);
         
-        // Limpiar el contenedor y agregar el cuento fallback
-        feedbackDiv.innerHTML = '';
-        feedbackDiv.classList.remove('hidden');
+        console.log(`✅ ${exercises.length} ejercicios generados correctamente`);
         
-        const storyElement = document.createElement('div');
-        storyElement.className = 'bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border border-blue-200';
-        storyElement.innerHTML = `
-            <h4 class="text-lg font-bold text-blue-700 mb-3">${randomStory.title}</h4>
-            <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">${randomStory.content}</div>
-        `;
-        
-        feedbackDiv.appendChild(storyElement);
-        
-        console.log('✅ Cuento fallback generado y mostrado');
+    } catch (error) {
+        console.error('❌ Error generando ejercicios:', error);
+        showErrorMessage('Error al generar ejercicios. Inténtalo de nuevo.');
+    } finally {
+        document.getElementById('exercises-loader').classList.add('hidden');
     }
 }
 
-new DashboardApp();
+// 🧮 GENERADORES DE EJERCICIOS ESPECÍFICOS - VERSIÓN CORREGIDA
+async function generateMathExercises(config, quantity, difficulty) {
+    console.log(`🧮 Generando EXACTAMENTE ${quantity} ejercicios matemáticos...`);
+    
+    try {
+        // Obtener tipo de operación seleccionada
+        const operationTypeElement = document.getElementById('operation-type-select');
+        const operationType = operationTypeElement ? operationTypeElement.value : 'ambos';
+        
+        console.log(`🎯 Tipo: ${operationType}, Dificultad: ${difficulty}, Cantidad EXACTA: ${quantity}`);
+        
+        // ✅ USAR GEMINI AI con cantidad EXACTA
+        if (window.geminiAI && window.geminiAI.configured) {
+            console.log('🎯 Usando Google Gemini AI para ejercicios personalizados');
+            
+            // Mapear dificultad del dashboard a niveles de Gemini
+            const difficultyMap = {
+                'facil': 1,
+                'medio': 2, 
+                'dificil': 3
+            };
+            const geminiLevel = difficultyMap[difficulty] || 2;
+            
+            let geminiExercises = [];
+            
+            // ✅ GENERAR SOLO LA CANTIDAD EXACTA SOLICITADA
+            switch (operationType) {
+                case 'suma':
+                    console.log(`➕ Generando EXACTAMENTE ${quantity} sumas con IA`);
+                    geminiExercises = await window.geminiAI.generateAdditions(geminiLevel, quantity);
+                    break;
+                case 'resta':
+                    console.log(`➖ Generando EXACTAMENTE ${quantity} restas con IA`);
+                    geminiExercises = await window.geminiAI.generateSubtractions(geminiLevel, quantity);
+                    break;
+                case 'ambos':
+                default:
+                    console.log(`➕➖ Generando EXACTAMENTE ${quantity} ejercicios mixtos con IA`);
+                    // ✅ CALCULAR DISTRIBUCIÓN EXACTA
+                    const sumasCount = Math.ceil(quantity / 2);
+                    const restasCount = quantity - sumasCount;
+                    
+                    console.log(`🔢 Distribución: ${sumasCount} sumas + ${restasCount} restas = ${quantity} total`);
+                    
+                    // ✅ GENERAR CANTIDADES EXACTAS
+                    const [sums, subs] = await Promise.all([
+                        window.geminiAI.generateAdditions(geminiLevel, sumasCount),
+                        window.geminiAI.generateSubtractions(geminiLevel, restasCount)
+                    ]);
+                    
+                    // ✅ COMBINAR SIN EXCEDER LA CANTIDAD
+                    geminiExercises = [...sums, ...subs];
+                    
+                    // ✅ MEZCLAR ORDEN ALEATORIAMENTE
+                    geminiExercises.sort(() => Math.random() - 0.5);
+                    break;
+            }
+            
+            // ✅ VERIFICAR QUE TENEMOS LA CANTIDAD EXACTA
+            if (geminiExercises.length !== quantity) {
+                console.warn(`⚠️ IA generó ${geminiExercises.length} pero se solicitaron ${quantity}. Ajustando...`);
+                geminiExercises = geminiExercises.slice(0, quantity);
+            }
+            
+            // Convertir a formato VERTICAL del dashboard
+            const exercises = [];
+            for (let i = 0; i < geminiExercises.length; i++) {
+                const ex = geminiExercises[i];
+                const operation = ex.operation === 'addition' ? '+' : '-';
+                const answer = ex.operation === 'addition' ? ex.num1 + ex.num2 : ex.num1 - ex.num2;
+                
+                exercises.push({
+                    id: i + 1,
+                    type: 'math_operation_vertical',
+                    num1: ex.num1,
+                    num2: ex.num2,
+                    operation: operation,
+                    answer: answer,
+                    difficulty: difficulty,
+                    completed: false,
+                    correct: null,
+                    userAnswer: null,
+                    timeSpent: 0,
+                    generatedWith: 'gemini-ai',
+                    showDUHelp: difficulty === 'facil' // Mostrar ayuda D|U solo en fácil
+                });
+            }
+            
+            console.log(`✅ ${exercises.length} ejercicios generados EXACTOS con Gemini AI`);
+            return exercises;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error con Gemini AI, usando generador local:', error);
+    }
+    
+    // 📚 FALLBACK: Generador local offline
+    console.log(`📚 Usando generador local offline para ${quantity} ejercicios`);
+    
+    const { ejercicios_tipo } = config;
+    const ranges = ejercicios_tipo.rangos;
+    const exercises = [];
+    
+    for (let i = 0; i < quantity; i++) {
+        let num1, num2, operation, answer;
+        
+        // Generar según tipo de operación
+        const operationTypeElement = document.getElementById('operation-type-select');
+        const operationType = operationTypeElement ? operationTypeElement.value : 'ambos';
+        
+        switch (operationType) {
+            case 'suma':
+                num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                operation = '+';
+                answer = num1 + num2;
+                break;
+            case 'resta':
+                // Generar números para que el resultado no sea negativo
+                const larger = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                const smaller = Math.floor(Math.random() * larger) + 1;
+                num1 = larger;
+                num2 = smaller;
+                operation = '-';
+                answer = num1 - num2;
+                break;
+            case 'ambos':
+            default:
+                const isAddition = Math.random() > 0.5;
+                if (isAddition) {
+                    num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                    num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                    operation = '+';
+                    answer = num1 + num2;
+                } else {
+                    const larger = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+                    const smaller = Math.floor(Math.random() * larger) + 1;
+                    num1 = larger;
+                    num2 = smaller;
+                    operation = '-';
+                    answer = num1 - num2;
+                }
+                break;
+        }
+        
+        exercises.push({
+            id: i + 1,
+            type: 'math_operation_vertical',
+            num1: num1,
+            num2: num2,
+            operation: operation,
+            answer: answer,
+            difficulty: difficulty,
+            completed: false,
+            correct: null,
+            userAnswer: null,
+            timeSpent: 0,
+            generatedWith: 'local',
+            showDUHelp: difficulty === 'facil' // Mostrar ayuda D|U solo en fácil
+        });
+    }
+    
+    console.log(`✅ ${exercises.length} ejercicios generados localmente`);
+    return exercises;
+}
+
+async function generateMentalMathExercises(config, quantity, difficulty) {
+    const exercises = [];
+    const maxNum = difficulty === 'facil' ? 10 : difficulty === 'medio' ? 15 : 20;
+    
+    for (let i = 0; i < quantity; i++) {
+        const num1 = Math.floor(Math.random() * maxNum) + 1;
+        const num2 = Math.floor(Math.random() * maxNum) + 1;
+        
+        const strategies = ['dobles', 'casi_dobles', 'conteo', 'descomposicion'];
+        const strategy = strategies[Math.floor(Math.random() * strategies.length)];
+        
+        let question, answer, hint;
+        
+        switch (strategy) {
+            case 'dobles':
+                const double = Math.floor(Math.random() * 10) + 1;
+                question = `${double} + ${double} = ?`;
+                answer = double * 2;
+                hint = `💡 Piensa en los dobles: ${double} × 2`;
+                break;
+            case 'casi_dobles':
+                const base = Math.floor(Math.random() * 9) + 1;
+                question = `${base} + ${base + 1} = ?`;
+                answer = base + (base + 1);
+                hint = `💡 Casi dobles: ${base} + ${base} + 1`;
+                break;
+            default:
+                const isAdd = Math.random() > 0.5;
+                if (isAdd) {
+                    question = `${num1} + ${num2} = ?`;
+                    answer = num1 + num2;
+                } else {
+                    const larger = Math.max(num1, num2);
+                    const smaller = Math.min(num1, num2);
+                    question = `${larger} - ${smaller} = ?`;
+                    answer = larger - smaller;
+                }
+                hint = `💡 Usa tu estrategia favorita`;
+        }
+        
+        exercises.push({
+            id: i + 1,
+            type: 'mental_math',
+            question: question,
+            answer: answer,
+            hint: hint,
+            strategy: strategy,
+            difficulty: difficulty,
+            completed: false,
+            correct: null,
+            userAnswer: null,
+            timeSpent: 0
+        });
+    }
+    
+    return exercises;
+}
+
+async function generateComparisonExercises(config, quantity, difficulty) {
+    const exercises = [];
+    const { ejercicios_tipo } = config;
+    const ranges = ejercicios_tipo.rangos;
+    
+    for (let i = 0; i < quantity; i++) {
+        const num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+        const num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
+        
+        let question, answer;
+        const comparisonType = Math.random();
+        
+        if (comparisonType < 0.33) {
+            question = `¿Cuál es mayor: ${num1} o ${num2}?`;
+            answer = Math.max(num1, num2).toString();
+        } else if (comparisonType < 0.66) {
+            question = `Completa: ${num1} ___ ${num2}`;
+            if (num1 > num2) answer = '>';
+            else if (num1 < num2) answer = '<';
+            else answer = '=';
+        } else {
+            const numbers = [num1, num2, Math.floor(Math.random() * ranges.max) + ranges.min];
+            numbers.sort((a, b) => Math.random() - 0.5); // Mezclar
+            question = `Ordena de menor a mayor: ${numbers.join(', ')}`;
+            answer = numbers.sort((a, b) => a - b).join(', ');
+        }
+        
+        exercises.push({
+            id: i + 1,
+            type: 'comparison',
+            question: question,
+            answer: answer,
+            difficulty: difficulty,
+            completed: false,
+            correct: null,
+            userAnswer: null,
+            timeSpent: 0
+        });
+    }
+    
+    return exercises;
+}
+
+async function generateCountingExercises(config, quantity, difficulty) {
+    const exercises = [];
+    const increments = [2, 5, 10];
+    
+    for (let i = 0; i < quantity; i++) {
+        const increment = increments[Math.floor(Math.random() * increments.length)];
+        const start = Math.floor(Math.random() * 20);
+        const steps = Math.floor(Math.random() * 5) + 3;
+        
+        const sequence = [];
+        for (let j = 0; j < steps; j++) {
+            sequence.push(start + (j * increment));
+        }
+        
+        const questionTypes = ['continue', 'missing', 'count_groups'];
+        const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+        
+        let question, answer;
+        
+        switch (questionType) {
+            case 'continue':
+                const partial = sequence.slice(0, -1);
+                question = `Continúa la secuencia: ${partial.join(', ')}, ___`;
+                answer = sequence[sequence.length - 1].toString();
+                break;
+            case 'missing':
+                const missingIndex = Math.floor(sequence.length / 2);
+                const withMissing = [...sequence];
+                withMissing[missingIndex] = '___';
+                question = `¿Qué número falta? ${withMissing.join(', ')}`;
+                answer = sequence[missingIndex].toString();
+                break;
+            case 'count_groups':
+                const total = increment * Math.floor(Math.random() * 6 + 2);
+                question = `Si tienes ${total} objetos y los agrupas de ${increment} en ${increment}, ¿cuántos grupos completos formas?`;
+                answer = Math.floor(total / increment).toString();
+                break;
+        }
+        
+        exercises.push({
+            id: i + 1,
+            type: 'counting',
+            question: question,
+            answer: answer,
+            increment: increment,
+            difficulty: difficulty,
+            completed: false,
+            correct: null,
+            userAnswer: null,
+            timeSpent: 0
+        });
+    }
+    
+    return exercises;
+}
+
+async function generateGenericExercises(config, quantity, difficulty) {
+    // Ejercicios genéricos para temas no implementados específicamente
+    const exercises = [];
+    
+    for (let i = 0; i < quantity; i++) {
+        exercises.push({
+            id: i + 1,
+            type: 'generic',
+            question: `Ejercicio ${i + 1} de ${DASHBOARD_CONFIG.currentTopic.data.titulo}`,
+            answer: 'Respuesta correcta',
+            difficulty: difficulty,
+            completed: false,
+            correct: null,
+            userAnswer: null,
+            timeSpent: 0,
+            note: 'Este tipo de ejercicio estará disponible próximamente'
+        });
+    }
+    
+    return exercises;
+}
+
+// 📺 VISUALIZACIÓN DE EJERCICIOS
+function displayExercises(exercises) {
+    const grid = document.getElementById('exercises-grid');
+    grid.innerHTML = '';
+    
+    exercises.forEach((exercise, index) => {
+        const exerciseCard = createExerciseCard(exercise, index);
+        grid.appendChild(exerciseCard);
+    });
+    
+    // Mostrar contenido de ejercicios
+    const exercisesContent = document.getElementById('exercises-content');
+    const sessionStats = document.getElementById('session-stats');
+    
+    if (exercisesContent) exercisesContent.classList.remove('hidden');
+    if (sessionStats) sessionStats.classList.remove('hidden');
+    
+    // Actualizar estadísticas
+    updateSessionStats();
+}
+
+function createExerciseCard(exercise, index) {
+    const card = document.createElement('div');
+    card.className = `exercise-item ${exercise.completed ? (exercise.correct ? 'completed' : 'incorrect') : ''}`;
+    card.dataset.exerciseId = exercise.id;
+    
+    let content = '';
+    
+    if (exercise.type === 'generic' && exercise.note) {
+        content = `
+            <div class="text-center">
+                <div class="text-gray-400 text-3xl mb-2">🚧</div>
+                <div class="font-medium text-gray-700 mb-2">${exercise.question}</div>
+                <div class="text-xs text-gray-500 mb-3">${exercise.note}</div>
+                <button class="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed" disabled>
+                    Próximamente
+                </button>
+            </div>
+        `;
+    } else if (exercise.type === 'math_operation_vertical') {
+        // 📊 SISTEMA VERTICAL DE OPERACIONES
+        content = `
+            <div class="exercise-number text-sm font-bold text-gray-500 mb-2">Ejercicio ${exercise.id}</div>
+            
+            <!-- Operación Vertical -->
+            <div class="vertical-operation-container mb-4">
+                ${exercise.showDUHelp ? `
+                    <!-- Ayuda D|U para nivel fácil -->
+                    <div class="du-helper mb-2 text-xs text-blue-600 font-medium">
+                        <div class="flex justify-center space-x-8">
+                            <span>D</span>
+                            <span>U</span>
+                        </div>
+                        <div class="border-b border-blue-300 mt-1"></div>
+                    </div>
+                ` : ''}
+                
+                <div class="vertical-operation bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
+                    <!-- Primera fila: primer número -->
+                    <div class="operation-row flex justify-center items-center mb-1">
+                        ${exercise.showDUHelp ? `
+                            <div class="du-breakdown flex space-x-4 font-mono text-lg">
+                                <span class="decena text-blue-700 font-bold">${Math.floor(exercise.num1 / 10)}</span>
+                                <span class="unidad text-blue-700 font-bold">${exercise.num1 % 10}</span>
+                            </div>
+                        ` : `
+                            <span class="number-display font-mono text-xl font-bold text-blue-800">${exercise.num1}</span>
+                        `}
+                    </div>
+                    
+                    <!-- Segunda fila: operador y segundo número -->
+                    <div class="operation-row flex justify-center items-center mb-2">
+                        <span class="operator font-mono text-xl font-bold text-orange-600 mr-2">${exercise.operation}</span>
+                        ${exercise.showDUHelp ? `
+                            <div class="du-breakdown flex space-x-4 font-mono text-lg">
+                                <span class="decena text-blue-700 font-bold">${Math.floor(exercise.num2 / 10)}</span>
+                                <span class="unidad text-blue-700 font-bold">${exercise.num2 % 10}</span>
+                            </div>
+                        ` : `
+                            <span class="number-display font-mono text-xl font-bold text-blue-800">${exercise.num2}</span>
+                        `}
+                    </div>
+                    
+                    <!-- Línea divisoria -->
+                    <div class="operation-line border-t-2 border-gray-400 mb-2"></div>
+                    
+                    <!-- Tercera fila: área de respuesta -->
+                    <div class="operation-result">
+                        ${exercise.showDUHelp ? `
+                            <div class="du-answer-breakdown flex justify-center space-x-4">
+                                <input type="number" 
+                                       class="decena-input w-8 h-10 text-center border border-gray-300 rounded font-mono text-lg font-bold bg-yellow-50"
+                                       placeholder="D"
+                                       min="0" max="9"
+                                       data-exercise-id="${exercise.id}"
+                                       data-digit="decena"
+                                       ${exercise.completed ? 'readonly' : ''}>
+                                <input type="number" 
+                                       class="unidad-input w-8 h-10 text-center border border-gray-300 rounded font-mono text-lg font-bold bg-yellow-50"
+                                       placeholder="U"
+                                       min="0" max="9"
+                                       data-exercise-id="${exercise.id}"
+                                       data-digit="unidad"
+                                       ${exercise.completed ? 'readonly' : ''}>
+                            </div>
+                        ` : `
+                            <input type="number" 
+                                   class="answer-input w-20 h-10 text-center border-2 border-yellow-400 rounded-lg font-mono text-xl font-bold bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="?"
+                                   data-exercise-id="${exercise.id}"
+                                   ${exercise.completed ? 'readonly' : ''}>
+                        `}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="exercise-actions space-y-2">
+                <button class="check-answer-btn w-full py-2 px-4 ${exercise.completed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white font-medium rounded-lg transition-colors"
+                        data-exercise-id="${exercise.id}"
+                        ${exercise.completed ? 'disabled' : ''}>
+                    ${exercise.completed ? (exercise.correct ? '✅ Correcto' : '❌ Incorrecto') : '✓ Comprobar'}
+                </button>
+                
+                ${exercise.generatedWith === 'gemini-ai' && !exercise.completed ? `
+                    <button class="create-story-btn w-full py-2 px-4 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
+                            data-exercise-id="${exercise.id}">
+                        📖 Crear Cuento con IA
+                    </button>
+                ` : ''}
+            </div>
+            
+            ${exercise.completed && !exercise.correct ? 
+                `<div class="correct-answer text-sm text-green-600 mt-2 text-center">✅ Respuesta correcta: <strong>${exercise.answer}</strong></div>` 
+                : ''
+            }
+        `;
+    } else {
+        // Ejercicios no matemáticos (mantener original)
+        content = `
+            <div class="exercise-number text-sm font-bold text-gray-500 mb-2">Ejercicio ${exercise.id}</div>
+            <div class="exercise-question text-lg font-medium text-gray-800 mb-4">${exercise.question}</div>
+            
+            ${exercise.hint ? `<div class="exercise-hint text-sm text-blue-600 mb-3">${exercise.hint}</div>` : ''}
+            
+            <div class="exercise-input mb-3">
+                <input type="text" 
+                       class="answer-input w-full px-3 py-2 border border-gray-300 rounded-md text-center font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Tu respuesta..."
+                       data-exercise-id="${exercise.id}"
+                       ${exercise.completed ? 'readonly' : ''}>
+            </div>
+            
+            <button class="check-answer-btn w-full py-2 px-4 ${exercise.completed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white font-medium rounded-lg transition-colors"
+                    data-exercise-id="${exercise.id}"
+                    ${exercise.completed ? 'disabled' : ''}>
+                ${exercise.completed ? (exercise.correct ? '✅ Correcto' : '❌ Incorrecto') : '✓ Comprobar'}
+            </button>
+            
+            ${exercise.completed && !exercise.correct ? 
+                `<div class="correct-answer text-sm text-green-600 mt-2">Respuesta correcta: ${exercise.answer}</div>` 
+                : ''
+            }
+        `;
+    }
+    
+    card.innerHTML = content;
+    
+    // Agregar event listeners
+    if (exercise.type !== 'generic' || !exercise.note) {
+        const checkButton = card.querySelector('.check-answer-btn');
+        const storyButton = card.querySelector('.create-story-btn');
+        
+        if (checkButton) {
+            checkButton.addEventListener('click', () => {
+                checkAnswer(exercise.id);
+            });
+        }
+        
+        if (storyButton) {
+            storyButton.addEventListener('click', () => {
+                createMathStory(exercise.id);
+            });
+        }
+        
+        // Event listeners para inputs
+        if (exercise.type === 'math_operation_vertical') {
+            if (exercise.showDUHelp) {
+                // Inputs de decena y unidad
+                const decenaInput = card.querySelector('.decena-input');
+                const unidadInput = card.querySelector('.unidad-input');
+                
+                if (decenaInput && unidadInput) {
+                    [decenaInput, unidadInput].forEach(input => {
+                        input.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                checkAnswer(exercise.id);
+                            }
+                        });
+                    });
+                }
+            } else {
+                // Input normal
+                const input = card.querySelector('.answer-input');
+                if (input) {
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            checkAnswer(exercise.id);
+                        }
+                    });
+                }
+            }
+        } else {
+            // Inputs de otros tipos de ejercicios
+            const input = card.querySelector('.answer-input');
+            if (input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        checkAnswer(exercise.id);
+                    }
+                });
+            }
+        }
+    }
+    
+    return card;
+}
+
+// ✅ VERIFICACIÓN DE RESPUESTAS (actualizada para sistema vertical)
+async function checkAnswer(exerciseId) {
+    const exercise = DASHBOARD_CONFIG.exerciseSession.exercises.find(ex => ex.id === exerciseId);
+    if (!exercise || exercise.completed) return;
+    
+    let userAnswer;
+    
+    if (exercise.type === 'math_operation_vertical' && exercise.showDUHelp) {
+        // Obtener respuesta de inputs D|U
+        const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+        const decenaInput = card.querySelector('.decena-input');
+        const unidadInput = card.querySelector('.unidad-input');
+        
+        const decena = parseInt(decenaInput.value) || 0;
+        const unidad = parseInt(unidadInput.value) || 0;
+        
+        userAnswer = (decena * 10) + unidad;
+        
+        if (decenaInput.value.trim() === '' && unidadInput.value.trim() === '') {
+            showErrorMessage('Por favor, completa ambos dígitos (D y U)');
+            return;
+        }
+    } else {
+        // Obtener respuesta de input normal
+        const input = document.querySelector(`input[data-exercise-id="${exerciseId}"]`);
+        userAnswer = parseInt(input.value);
+        
+        if (!input.value.trim()) {
+            showErrorMessage('Por favor, ingresa una respuesta');
+            return;
+        }
+    }
+    
+    if (isNaN(userAnswer)) {
+        showErrorMessage('Por favor, ingresa un número válido');
+        return;
+    }
+    
+    // Verificar respuesta
+    const isCorrect = userAnswer === exercise.answer;
+    
+    // ✅ ¡CONFETI CUANDO EL NIÑO ACIERTA!
+    if (isCorrect) {
+        launchConfetti();
+    }
+    
+    // Actualizar ejercicio
+    exercise.completed = true;
+    exercise.correct = isCorrect;
+    exercise.userAnswer = userAnswer;
+    exercise.timeSpent = Date.now() - DASHBOARD_CONFIG.exerciseSession.startTime;
+    
+    // ✅ GENERAR FEEDBACK INTELIGENTE CON IA
+    let feedback = '';
+    try {
+        if (window.geminiAI && window.geminiAI.configured) {
+            console.log('🤖 Generando feedback personalizado con IA...');
+            feedback = await window.geminiAI.generateFeedback(userAnswer, exercise.answer, isCorrect);
+        } else {
+            feedback = isCorrect ? 
+                '¡Excelente trabajo! ¡Respuesta correcta!' : 
+                '¡Buen intento! Revisa tu respuesta e inténtalo de nuevo.';
+        }
+    } catch (error) {
+        console.error('❌ Error generando feedback:', error);
+        feedback = isCorrect ? 
+            '¡Muy bien! ¡Correcto!' : 
+            '¡Sigue intentando! Puedes hacerlo.';
+    }
+    
+    // Mostrar feedback en el ejercicio
+    exercise.feedback = feedback;
+    
+    // Actualizar estadísticas
+    DASHBOARD_CONFIG.exerciseSession.stats.completed++;
+    if (isCorrect) {
+        DASHBOARD_CONFIG.exerciseSession.stats.correct++;
+    }
+    
+    // Actualizar UI
+    updateExerciseCard(exerciseId, exercise);
+    updateSessionStats();
+    
+    // Guardar progreso
+    saveExerciseProgress(exercise);
+    
+    console.log(`${isCorrect ? '✅🎉' : '❌'} Ejercicio ${exerciseId}: ${userAnswer} (Correcto: ${exercise.answer})`);
+    console.log(`💬 Feedback: ${feedback}`);
+}
+
+// 🎉 SISTEMA DE CONFETI PARA NIÑOS
+function launchConfetti() {
+    console.log('🎉 ¡Lanzando confeti por respuesta correcta!');
+    
+    // Crear contenedor de confeti si no existe
+    let confettiContainer = document.getElementById('confetti-container');
+    if (!confettiContainer) {
+        confettiContainer = document.createElement('div');
+        confettiContainer.id = 'confetti-container';
+        confettiContainer.className = 'fixed inset-0 pointer-events-none z-50 overflow-hidden';
+        document.body.appendChild(confettiContainer);
+    }
+    
+    // Crear múltiples piezas de confeti
+    const confettiCount = 50;
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+    const shapes = ['●', '▲', '■', '★', '♦', '♥', '♠', '♣'];
+    
+    for (let i = 0; i < confettiCount; i++) {
+        createConfettiPiece(confettiContainer, colors, shapes);
+    }
+    
+    // Reproducir sonido de celebración (si está disponible)
+    playSuccessSound();
+    
+    // Limpiar confeti después de la animación
+    setTimeout(() => {
+        confettiContainer.innerHTML = '';
+    }, 4000);
+}
+
+function createConfettiPiece(container, colors, shapes) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti-piece';
+    
+    // Propiedades aleatorias
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const shape = shapes[Math.floor(Math.random() * shapes.length)];
+    const size = Math.random() * 10 + 8; // Entre 8px y 18px
+    const startX = Math.random() * window.innerWidth;
+    const duration = Math.random() * 2 + 2; // Entre 2s y 4s
+    const delay = Math.random() * 0.5; // Hasta 0.5s de delay
+    
+    // Estilos del confeti
+    confetti.style.cssText = `
+        position: absolute;
+        top: -20px;
+        left: ${startX}px;
+        color: ${color};
+        font-size: ${size}px;
+        animation: confetti-fall ${duration}s linear ${delay}s forwards;
+        pointer-events: none;
+        user-select: none;
+        font-weight: bold;
+    `;
+    
+    confetti.textContent = shape;
+    container.appendChild(confetti);
+}
+
+function playSuccessSound() {
+    try {
+        // Crear un sonido de celebración con Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Crear una secuencia de tonos alegres
+        const frequencies = [523.25, 659.25, 783.99, 1046.50]; // Do, Mi, Sol, Do octava alta
+        
+        frequencies.forEach((freq, index) => {
+            setTimeout(() => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }, index * 100);
+        });
+    } catch (error) {
+        console.log('🔊 Audio no disponible, solo confeti visual');
+    }
+}
+
+// 🔄 ACTUALIZAR TARJETA DE EJERCICIO DESPUÉS DE RESPUESTA
+function updateExerciseCard(exerciseId, exercise) {
+    const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+    if (!card) return;
+    
+    // Actualizar clases de la tarjeta
+    card.className = `exercise-item ${exercise.completed ? (exercise.correct ? 'completed' : 'incorrect') : ''}`;
+    
+    // Actualizar botón de comprobar
+    const checkButton = card.querySelector('.check-answer-btn');
+    if (checkButton) {
+        if (exercise.completed) {
+            checkButton.disabled = true;
+            checkButton.className = 'check-answer-btn w-full py-2 px-4 bg-gray-400 cursor-not-allowed text-white font-medium rounded-lg transition-colors';
+            checkButton.textContent = exercise.correct ? '✅ Correcto' : '❌ Incorrecto';
+        }
+    }
+    
+    // Mostrar respuesta correcta si es incorrecta
+    if (exercise.completed && !exercise.correct) {
+        // Verificar si ya existe el mensaje de respuesta correcta
+        let correctAnswerDiv = card.querySelector('.correct-answer');
+        if (!correctAnswerDiv) {
+            correctAnswerDiv = document.createElement('div');
+            correctAnswerDiv.className = 'correct-answer text-sm text-green-600 mt-2 text-center';
+            correctAnswerDiv.innerHTML = `✅ Respuesta correcta: <strong>${exercise.answer}</strong>`;
+            
+            // Insertar después de los botones de acción
+            const actionsDiv = card.querySelector('.exercise-actions');
+            if (actionsDiv) {
+                actionsDiv.parentNode.insertBefore(correctAnswerDiv, actionsDiv.nextSibling);
+            } else {
+                card.appendChild(correctAnswerDiv);
+            }
+        }
+    }
+    
+    // Mostrar feedback si existe
+    if (exercise.feedback) {
+        // Verificar si ya existe el feedback
+        let feedbackDiv = card.querySelector('.exercise-feedback');
+        if (!feedbackDiv) {
+            feedbackDiv = document.createElement('div');
+            feedbackDiv.className = `exercise-feedback mt-3 p-3 rounded-lg text-sm ${
+                exercise.correct ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-blue-50 border border-blue-200 text-blue-800'
+            }`;
+            feedbackDiv.innerHTML = `💬 ${exercise.feedback}`;
+            
+            // Insertar antes del mensaje de respuesta correcta o al final
+            const correctAnswerDiv = card.querySelector('.correct-answer');
+            if (correctAnswerDiv) {
+                correctAnswerDiv.parentNode.insertBefore(feedbackDiv, correctAnswerDiv);
+            } else {
+                card.appendChild(feedbackDiv);
+            }
+        }
+    }
+    
+    // Deshabilitar inputs si está completado
+    if (exercise.completed) {
+        const inputs = card.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.setAttribute('readonly', true);
+        });
+    }
+}
