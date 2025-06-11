@@ -51,7 +51,7 @@ class AdicionSustraccionModule {
 
                 <!-- Loader más amigable para niños -->
                 <div id="exercises-loader" class="hidden">
-                    ${this.renderLoader()}
+                    <!-- El loader está integrado en el panel de configuración -->
                 </div>
 
                 <!-- Grid de ejercicios responsive optimizado -->
@@ -112,10 +112,26 @@ class AdicionSustraccionModule {
                     </div>
                     
                     <div class="bg-pink-50 p-4 rounded-lg border-2 border-pink-200">
-                        <label class="block text-sm font-bold text-pink-800 mb-2">Generar Ejercicios Mágicos</label>
+                        <label class="block text-sm font-bold text-pink-800 mb-2">🧙🏻‍♂️ Generar Ejercicios Mágicos</label>
                         <button id="generate-exercises-btn" class="w-full px-3 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold text-lg rounded-lg transition-all transform hover:scale-105 shadow-lg">
                             🪄 ¡Crear Magia!
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Loader dentro del panel de configuración -->
+                <div id="config-panel-loader" class="hidden mt-6">
+                    <div class="bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl p-6 text-center border-2 border-blue-200 shadow-lg">
+                        <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-3"></div>
+                        <p class="text-lg font-bold text-gray-700 mb-2">🎨 ¡Creando ejercicios súper divertidos!</p>
+                        <p class="text-md text-gray-600">✨ matemáticas geniales 🧙🏻‍♂️🪄</p>
+                        
+                        <!-- Animación adicional para niños -->
+                        <div class="mt-3 flex justify-center space-x-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                            <div class="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                            <div class="w-3 h-3 bg-pink-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -124,24 +140,6 @@ class AdicionSustraccionModule {
                     <button id="download-pdf-btn" class="py-4 px-6 bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg rounded-lg transition-all transform hover:scale-105 shadow-lg">
                         📄 ¡Descargar PDF!
                     </button>
-                </div>
-            </div>
-        `;
-    }
-
-    // ✅ LOADER AMIGABLE
-    renderLoader() {
-        return `
-            <div class="bg-white rounded-xl p-8 text-center border-2 border-blue-200 shadow-lg">
-                <div class="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
-                <p class="text-xl font-bold text-gray-700 mb-2">🎨 ¡Creando ejercicios súper divertidos ❤️!</p>
-                <p class="text-lg text-gray-600">✨ matemáticas geniales 🧙🏻‍♂️🪄</p>
-                
-                <!-- Animación adicional para niños -->
-                <div class="mt-4 flex justify-center space-x-2">
-                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-                    <div class="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                    <div class="w-3 h-3 bg-pink-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
                 </div>
             </div>
         `;
@@ -175,6 +173,144 @@ class AdicionSustraccionModule {
         document.getElementById('download-pdf-btn')?.addEventListener('click', () => this.downloadPDF());
     }
 
+    // ✅ INICIALIZAR INDICADOR DE IA
+    initializeAIIndicator() {
+        // Verificar si existe el indicador global de IA
+        if (window.AIIndicator) {
+            const isConfigured = window.geminiAI && window.geminiAI.configured;
+            if (isConfigured) {
+                window.AIIndicator.setStatus('active');
+                console.log('🤖 IA activa - Ejercicios únicos disponibles');
+            } else {
+                window.AIIndicator.setStatus('inactive');
+                console.log('📚 Modo offline - Usando plantillas predefinidas');
+            }
+        }
+    }
+
+    // ✅ SISTEMA DE NOTIFICACIONES TOAST
+    showErrorToast(message) {
+        this.showToast(message, 'error');
+    }
+
+    showInfoToast(message) {
+        this.showToast(message, 'info');
+    }
+
+    showSuccessToast(message) {
+        this.showToast(message, 'success');
+    }
+
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container') || this.createToastContainer();
+        const toast = document.createElement('div');
+        
+        const colors = {
+            error: 'bg-red-500 text-white',
+            success: 'bg-green-500 text-white',
+            info: 'bg-blue-500 text-white'
+        };
+        
+        toast.className = `${colors[type]} px-4 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300`;
+        toast.innerHTML = `
+            <div class="flex items-center justify-between">
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-3 text-white hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+        
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // ✅ CONFIGURAR LISTENER RESPONSIVE
+    setupResponsiveListener() {
+        // 🚫 PREVENIR MÚLTIPLES LISTENERS - Remover listener anterior si existe
+        if (this.resizeListener) {
+            window.removeEventListener('resize', this.resizeListener);
+        }
+        
+        // 🎯 CREAR NUEVO LISTENER Y GUARDARLO
+        this.resizeListener = () => {
+            // Solo ajustar el grid, NO volver a mostrar stickers
+            const grid = document.getElementById('exercises-grid');
+            if (!grid) return;
+            
+            const screenWidth = window.innerWidth;
+            if (screenWidth >= 1000) {
+                grid.style.gridTemplateColumns = 'repeat(5, minmax(0, 1fr))';
+                console.log('🖥️ Desktop - 5 columnas - Ancho:', screenWidth);
+            } else if (screenWidth >= 768) {
+                grid.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+                console.log('💻 Tablet - 3 columnas - Ancho:', screenWidth);
+            } else {
+                grid.style.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
+                console.log('📱 Móvil - 1 columna - Ancho:', screenWidth);
+            }
+        };
+        
+        window.addEventListener('resize', this.resizeListener);
+    }
+
+    // ✅ ACTUALIZAR ESTADÍSTICAS
+    updateStats() {
+        const completed = this.currentExercises.filter(ex => ex.completed).length;
+        const correct = this.currentExercises.filter(ex => ex.completed && ex.correct).length;
+        const accuracy = completed > 0 ? Math.round((correct / completed) * 100) : 0;
+        
+        const statCompleted = document.getElementById('stat-completed');
+        const statCorrect = document.getElementById('stat-correct');
+        const statAccuracy = document.getElementById('stat-accuracy');
+        
+        if (statCompleted) statCompleted.textContent = completed;
+        if (statCorrect) statCorrect.textContent = correct;
+        if (statAccuracy) statAccuracy.textContent = accuracy + '%';
+    }
+
+    // ✅ MOSTRAR FEEDBACK POSITIVO
+    async showPositiveFeedback(exerciseId) {
+        // Mostrar sticker sorpresa
+        this.showSurpriseReward(exerciseId);
+        
+        // Efecto visual de celebración
+        const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`)?.closest('.bg-white');
+        if (card) {
+            card.style.background = 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)';
+            card.style.borderColor = '#16a34a';
+            card.style.transform = 'scale(1.02)';
+            
+            setTimeout(() => {
+                card.style.transform = 'scale(1)';
+            }, 300);
+        }
+    }
+
+    // ✅ DESCARGAR PDF
+    downloadPDF() {
+        if (this.currentExercises.length === 0) {
+            this.showErrorToast('Primero genera algunos ejercicios');
+            return;
+        }
+        
+        this.showInfoToast('Función de PDF próximamente disponible');
+    }
+
     // ✅ GENERAR EJERCICIOS VERTICALES
     async generateExercises() {
         try {
@@ -184,9 +320,11 @@ class AdicionSustraccionModule {
             
             const loader = document.getElementById('exercises-loader');
             const content = document.getElementById('exercises-content');
+            const configLoader = document.getElementById('config-panel-loader');
             
             if (loader) loader.classList.remove('hidden');
             if (content) content.classList.add('hidden');
+            if (configLoader) configLoader.classList.remove('hidden');
             
             console.log(`🧮 Generando ${quantity} ejercicios VERTICALES de tipo ${operationType} y nivel ${difficulty}...`);
             
@@ -221,6 +359,8 @@ class AdicionSustraccionModule {
             this.showErrorToast('Error al generar ejercicios. Inténtalo de nuevo.');
             const loader = document.getElementById('exercises-loader');
             if (loader) loader.classList.add('hidden');
+            const configLoader = document.getElementById('config-panel-loader');
+            if (configLoader) configLoader.classList.add('hidden');
         }
     }
 
@@ -278,6 +418,7 @@ class AdicionSustraccionModule {
         const loader = document.getElementById('exercises-loader');
         const content = document.getElementById('exercises-content');
         const stats = document.getElementById('session-stats');
+        const configLoader = document.getElementById('config-panel-loader');
         
         if (!grid) return;
         
@@ -295,8 +436,8 @@ class AdicionSustraccionModule {
             console.log('💻 Tablet - 3 columnas - Ancho:', screenWidth);
         } else {
             // 📱 Móvil: 2 columnas
-            grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-            console.log('📱 Móvil - 2 columnas - Ancho:', screenWidth);
+            grid.style.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
+            console.log('📱 Móvil - 1 columna - Ancho:', screenWidth);
         }
         
         this.currentExercises.forEach((exercise, index) => {
@@ -307,6 +448,7 @@ class AdicionSustraccionModule {
         if (loader) loader.classList.add('hidden');
         if (content) content.classList.remove('hidden');
         if (stats) stats.classList.remove('hidden');
+        if (configLoader) configLoader.classList.add('hidden');
         
         this.updateStats();
         
@@ -353,7 +495,7 @@ class AdicionSustraccionModule {
                 </span>
                 <!-- 🎨 NUEVO: Badge simple sin stickers hasta completar -->
                 <span class="${exercise.completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'} px-2 py-1 rounded-full text-xs font-bold">
-                    ${exercise.completed ? '✅ ¡Listo!' : '📝 Trabajando...'}
+                    ${exercise.completed ? '✅ ¡Listo!' : '😊 Intentalo'}
                 </span>
             </div>
             
@@ -498,10 +640,54 @@ class AdicionSustraccionModule {
         return div;
     }
 
-    // ✅ NUEVO: Mostrar recompensa sorpresa (sticker y mensaje)
+    // ✅ NUEVO: Mostrar recompensa sorpresa (sticker y mensaje) - CORREGIDO DINÁMICAMENTE
     showSurpriseReward(exerciseId) {
-        const stickerDiv = document.getElementById(`surprise-sticker-${exerciseId}`);
-        const messageDiv = document.getElementById(`positive-message-${exerciseId}`);
+        console.log(`🎯 Intentando mostrar sorpresa para ejercicio ${exerciseId}`);
+        
+        // Buscar los elementos con más especificidad y verificación
+        const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`)?.closest('.bg-white, .bg-gray-100');
+        if (!exerciseCard) {
+            console.log(`❌ No se encontró tarjeta para ejercicio ${exerciseId}`);
+            return;
+        }
+        
+        let stickerDiv = exerciseCard.querySelector(`#surprise-sticker-${exerciseId}`);
+        let messageDiv = exerciseCard.querySelector(`#positive-message-${exerciseId}`);
+        
+        console.log(`🔍 Elementos encontrados - Sticker: ${!!stickerDiv}, Mensaje: ${!!messageDiv}`);
+        
+        // 🆕 Si no existen los elementos, crearlos dinámicamente
+        if (!stickerDiv || !messageDiv) {
+            console.log(`🔧 Creando sección de sorpresa dinámicamente para ejercicio ${exerciseId}`);
+            
+            // Buscar el botón de verificación para insertar después
+            const checkButton = exerciseCard.querySelector('.check-answer-btn');
+            if (!checkButton) {
+                console.log(`❌ No se encontró botón de verificación para ejercicio ${exerciseId}`);
+                return;
+            }
+            
+            // Crear la sección de sorpresa completa
+            const surpriseSection = document.createElement('div');
+            surpriseSection.className = 'surprise-feedback bg-gradient-to-r from-yellow-100 to-green-100 border-2 border-green-300 rounded-lg p-3 text-center mt-2';
+            surpriseSection.innerHTML = `
+                <div class="text-2xl mb-2" id="surprise-sticker-${exerciseId}">
+                    <!-- El sticker sorpresa se carga aquí -->
+                </div>
+                <div class="text-sm font-bold text-green-700" id="positive-message-${exerciseId}">
+                    <!-- El mensaje positivo se carga aquí -->
+                </div>
+            `;
+            
+            // Insertar después del botón de verificación
+            checkButton.parentNode.insertBefore(surpriseSection, checkButton.nextSibling);
+            
+            // Actualizar las referencias
+            stickerDiv = exerciseCard.querySelector(`#surprise-sticker-${exerciseId}`);
+            messageDiv = exerciseCard.querySelector(`#positive-message-${exerciseId}`);
+            
+            console.log(`✅ Sección de sorpresa creada dinámicamente. Sticker: ${!!stickerDiv}, Mensaje: ${!!messageDiv}`);
+        }
         
         if (stickerDiv && messageDiv) {
             // 🎨 Array de stickers divertidos para niños (aleatorios)
@@ -513,16 +699,16 @@ class AdicionSustraccionModule {
             
             // 🎉 Mensajes positivos aleatorios
             const positiveMessages = [
-                '¡Excelente trabajo! 🎉',
-                '¡Eres increíble! ⭐',
-                '¡Lo lograste! 💪',
-                '¡Fantástico! 🌟',
-                '¡Súper bien! 🎯',
-                '¡Genial! 🎊',
-                '¡Perfecto! 💝',
-                '¡Bravo! 🎈',
-                '¡Asombroso! 🦄',
-                '¡Magnífico! 🌈'
+                '¡Excelente trabajo!',
+                '¡Eres increíble!',
+                '¡Lo lograste!',
+                '¡Fantástico!',
+                '¡Súper bien!',
+                '¡Genial!',
+                '¡Perfecto!',
+                '¡Bravo!',
+                '¡Asombroso!',
+                '¡Magnífico!'
             ];
             
             const randomMessage = positiveMessages[Math.floor(Math.random() * positiveMessages.length)];
@@ -550,6 +736,8 @@ class AdicionSustraccionModule {
             }
             
             console.log(`🎉 Sorpresa mostrada para ejercicio ${exerciseId}: ${surpriseSticker} - ${randomMessage}`);
+        } else {
+            console.log(`❌ FALLO CRÍTICO: No se pudieron crear elementos de sorpresa para ejercicio ${exerciseId}`);
         }
     }
 
@@ -616,15 +804,36 @@ class AdicionSustraccionModule {
             const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
             if (!exercise || exercise.completed) return;
             
-            const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`).closest('.bg-white');
-            if (!card) return;
+            // 🚫 PREVENIR MÚLTIPLES CLICKS - Deshabilitar botón inmediatamente
+            const button = document.querySelector(`button[onclick*="checkAnswer(${exerciseId})"]`);
+            if (button) {
+                button.disabled = true;
+                button.style.pointerEvents = 'none';
+            }
+            
+            const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`)?.closest('.bg-white, .bg-gray-100');
+            if (!card) {
+                // Re-habilitar botón si no se encuentra la tarjeta
+                if (button) {
+                    button.disabled = false;
+                    button.style.pointerEvents = 'auto';
+                }
+                return;
+            }
             
             // Obtener todos los inputs de respuesta
             const centenaInput = card.querySelector('input[data-digit="centena"]');
             const decenaInput = card.querySelector('input[data-digit="decena"]');
             const unidadInput = card.querySelector('input[data-digit="unidad"]');
             
-            if (!decenaInput || !unidadInput) return;
+            if (!decenaInput || !unidadInput) {
+                // Re-habilitar botón si no se encuentran los inputs
+                if (button) {
+                    button.disabled = false;
+                    button.style.pointerEvents = 'auto';
+                }
+                return;
+            }
             
             // Construir la respuesta del usuario
             let userAnswer = 0;
@@ -638,12 +847,22 @@ class AdicionSustraccionModule {
             // Validar que se hayan completado los campos esenciales
             if (decenaInput.value.trim() === '' || unidadInput.value.trim() === '') {
                 this.showErrorToast('Por favor, completa los dígitos de la respuesta');
+                // Re-habilitar botón
+                if (button) {
+                    button.disabled = false;
+                    button.style.pointerEvents = 'auto';
+                }
                 return;
             }
             
             // Para respuestas de 3 dígitos, validar centena
             if (exercise.answer >= 100 && (!centenaInput?.value || centenaInput.value.trim() === '')) {
                 this.showErrorToast('Este resultado necesita centenas. Completa todos los campos.');
+                // Re-habilitar botón
+                if (button) {
+                    button.disabled = false;
+                    button.style.pointerEvents = 'auto';
+                }
                 return;
             }
             
@@ -656,12 +875,17 @@ class AdicionSustraccionModule {
                 exercise.userAnswer = userAnswer;
                 exercise.timeSpent = Date.now() - (exercise.startTime || Date.now());
                 
+                // 🎉 NUEVO: Lanzar confeti inmediatamente
+                this.launchConfetti();
+                
                 // Actualizar UI para respuesta correcta
-                const button = card.querySelector('.check-answer-btn');
                 if (button) {
                     button.textContent = '✅ ¡Correcto!';
                     button.className = 'check-answer-btn w-full py-3 px-4 text-sm font-bold rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed';
                     button.disabled = true;
+                    button.style.pointerEvents = 'none';
+                    // 🚫 ELIMINAR onclick para prevenir bucle infinito
+                    button.removeAttribute('onclick');
                 }
                 
                 // Deshabilitar todos los inputs
@@ -693,12 +917,12 @@ class AdicionSustraccionModule {
                     exercise.attemptCount++;
                 }
                 
-                // Cambiar botón a "Volver a intentar"
-                const button = card.querySelector('.check-answer-btn');
+                // Cambiar botón a "Volver a intentar" y re-habilitarlo
                 if (button) {
                     button.textContent = 'Volver a intentar 😊';
                     button.className = 'check-answer-btn w-full py-3 px-4 text-sm font-bold rounded-lg bg-gradient-to-r from-orange-400 to-pink-400 hover:from-orange-500 hover:to-pink-500 text-white transition-all transform hover:scale-105';
                     button.disabled = false;
+                    button.style.pointerEvents = 'auto';
                 }
                 
                 // Limpiar inputs para nuevo intento
@@ -724,339 +948,141 @@ class AdicionSustraccionModule {
         } catch (error) {
             console.error('Error verificando respuesta:', error);
             this.showErrorToast('Error al verificar la respuesta');
+            
+            // Re-habilitar botón en caso de error
+            const button = document.querySelector(`button[onclick*="checkAnswer(${exerciseId})"]`);
+            if (button) {
+                button.disabled = false;
+                button.style.pointerEvents = 'auto';
+            }
         }
     }
 
-    // 🔄 NUEVO: Feedback progresivo unificado (reemplaza a showBasicHelp y showProgressiveBorrowingHelp)
-    async showProgressiveFeedback(exerciseId, attemptCount) {
-        const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
-        if (!exercise) return;
+    // 🎉 NUEVO: Sistema de confeti específico para el módulo
+    launchConfetti() {
+        console.log('🎉 ¡Lanzando confeti por respuesta correcta!');
         
-        // Remover cualquier feedback anterior
-        this.removeExistingFeedback(exerciseId);
+        // Usar el sistema de confeti global si existe
+        if (typeof window.launchConfetti === 'function') {
+            window.launchConfetti();
+            return;
+        }
         
-        // Determinar el tipo de ayuda según la operación y el intento
-        let contenidoFeedback = '';
-        const esResta = exercise.operation === '-';
-        const necesitaPrestamo = esResta && this.needsBorrowingHelp(exercise);
-        
-        if (attemptCount === 1) {
-            // 🥇 PRIMER INTENTO: Motivación y revisión básica
-            contenidoFeedback = `
-                <div class="bg-blue-100 border-2 border-blue-400 rounded-lg p-3">
-                    <div class="text-center mb-2">
-                        <span class="text-lg font-bold text-blue-700">💪 ¡Puedes hacerlo!</span>
-                    </div>
-                    <div class="text-sm text-gray-800">
-                        <div class="mb-1">🔍 <strong>Revisa:</strong> ${exercise.num1} ${exercise.operation} ${exercise.num2}</div>
-                        <div class="mb-1">📝 ¿Escribiste bien cada dígito?</div>
-                        <div class="text-center mt-2 text-blue-700 font-bold">¡Inténtalo de nuevo! 🎯</div>
-                    </div>
-                    <button onclick="this.closest('.feedback-automatico').remove()" 
-                            class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                        Cerrar ❌
-                    </button>
-                </div>
+        // Crear contenedor de confeti si no existe
+        let confettiContainer = document.getElementById('confetti-container');
+        if (!confettiContainer) {
+            confettiContainer = document.createElement('div');
+            confettiContainer.id = 'confetti-container';
+            confettiContainer.className = 'fixed inset-0 pointer-events-none z-50 overflow-hidden';
+            confettiContainer.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 1000;
+                overflow: hidden;
             `;
-        } else if (attemptCount === 2) {
-            // 🥈 SEGUNDO INTENTO: Guía paso a paso específica
-            if (necesitaPrestamo) {
-                contenidoFeedback = `
-                    <div class="bg-purple-100 border-2 border-purple-400 rounded-lg p-3">
-                        <div class="text-center mb-2">
-                            <span class="text-lg font-bold text-purple-700">🤔 Resta con Préstamo</span>
-                        </div>
-                        <div class="text-sm text-gray-800">
-                            <div class="mb-1"><strong>❗</strong> ${exercise.num1 % 10} es menor que ${exercise.num2 % 10}</div>
-                            <div class="mb-1"><strong>🏠</strong> Pide prestado 10 de las decenas</div>
-                            <div class="mb-1"><strong>🔄</strong> Ahora tienes ${(exercise.num1 % 10) + 10} unidades</div>
-                            <div class="text-center mt-2 text-purple-700 font-bold">¡Paso a paso! 💜</div>
-                        </div>
-                        <button onclick="this.closest('.feedback-automatico').remove()" 
-                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                            Cerrar ❌
-                        </button>
-                    </div>
-                `;
-            } else {
-                // Suma o resta simple
-                const operationName = esResta ? 'Resta' : 'Suma';
-                const operationColor = esResta ? 'green' : 'yellow';
-                const colorClass = operationColor === 'yellow' ? 'yellow-700' : 'green-700';
-                
-                contenidoFeedback = `
-                    <div class="bg-${operationColor}-100 border-2 border-${operationColor}-400 rounded-lg p-3">
-                        <div class="text-center mb-2">
-                            <span class="text-lg font-bold text-${colorClass}">🤔 ${operationName} Paso a Paso</span>
-                        </div>
-                        <div class="text-sm text-gray-800">
-                            <div class="mb-1"><strong>1️⃣</strong> ${operationName === 'Suma' ? 'Suma' : 'Resta'} las unidades: ${exercise.num1 % 10} ${exercise.operation} ${exercise.num2 % 10}</div>
-                            <div class="mb-1"><strong>2️⃣</strong> ${operationName === 'Suma' ? 'Suma' : 'Resta'} las decenas: ${Math.floor(exercise.num1/10)} ${exercise.operation} ${Math.floor(exercise.num2/10)}</div>
-                            <div class="mb-1"><strong>3️⃣</strong> Junta ambos resultados</div>
-                            <div class="mb-1"><strong>💡</strong> Usa tus dedos o dibuja si necesitas</div>
-                            <div class="text-center mt-2 text-${colorClass} font-bold">¡Paso a paso puedes! 💪</div>
-                        </div>
-                        <button onclick="this.closest('.feedback-automatico').remove()" 
-                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                            Cerrar ❌
-                        </button>
-                    </div>
-                `;
-            }
-        } else {
-            // 🥉 TERCER INTENTO O MÁS: Ayuda más detallada SIN revelar la respuesta
-            if (necesitaPrestamo) {
-                contenidoFeedback = `
-                    <div class="bg-orange-100 border-2 border-orange-400 rounded-lg p-3">
-                        <div class="text-center mb-2">
-                            <span class="text-lg font-bold text-orange-700">🧠 Vamos paso a paso</span>
-                        </div>
-                        <div class="text-sm text-gray-800">
-                            <div class="mb-1"><strong>🔍</strong> Mira bien: ${exercise.num1 % 10} unidades vs ${exercise.num2 % 10} unidades</div>
-                            <div class="mb-1"><strong>🤝</strong> Como ${exercise.num1 % 10} < ${exercise.num2 % 10}, necesitas pedir prestado</div>
-                            <div class="mb-1"><strong>📦</strong> Abre 1 decena = 10 unidades más</div>
-                            <div class="mb-1"><strong>🧮</strong> Ahora calcula: ${(exercise.num1 % 10) + 10} - ${exercise.num2 % 10} en unidades</div>
-                            <div class="text-center mt-2 text-orange-700 font-bold">¡Inténtalo con estos pasos! 🎯</div>
-                        </div>
-                        <button onclick="this.closest('.feedback-automatico').remove()" 
-                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                            Cerrar ❌
-                        </button>
-                    </div>
-                `;
-            } else {
-                // Suma o resta simple - Dar estrategias SIN respuesta
-                const operationName = esResta ? 'Resta' : 'Suma';
-                const operationColor = esResta ? 'green' : 'yellow';
-                const colorClass = operationColor === 'yellow' ? 'yellow-700' : 'green-700';
-                
-                contenidoFeedback = `
-                    <div class="bg-orange-100 border-2 border-orange-400 rounded-lg p-3">
-                        <div class="text-center mb-2">
-                            <span class="text-lg font-bold text-orange-700">🧠 Estrategia ${operationName}</span>
-                        </div>
-                        <div class="text-sm text-gray-800">
-                            <div class="mb-1"><strong>1️⃣</strong> Unidades: ${exercise.num1 % 10} ${exercise.operation} ${exercise.num2 % 10} = ?</div>
-                            <div class="mb-1"><strong>2️⃣</strong> Decenas: ${Math.floor(exercise.num1/10)} ${exercise.operation} ${Math.floor(exercise.num2/10)} = ?</div>
-                            <div class="mb-1"><strong>3️⃣</strong> Junta ambos resultados</div>
-                            <div class="mb-1"><strong>💡</strong> Usa tus dedos o dibuja si necesitas</div>
-                            <div class="text-center mt-2 text-orange-700 font-bold">¡Paso a paso puedes! 💪</div>
-                        </div>
-                        <button onclick="this.closest('.feedback-automatico').remove()" 
-                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                            Cerrar ❌
-                        </button>
-                    </div>
-                `;
-            }
+            document.body.appendChild(confettiContainer);
         }
         
-        // Crear y mostrar el feedback usando el mismo sistema que la ayuda manual
-        const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
-        if (helpButton) {
-            const feedbackDiv = document.createElement('div');
-            feedbackDiv.className = 'feedback-automatico mt-2';
-            feedbackDiv.innerHTML = contenidoFeedback;
-            
-            // Insertar en el mismo lugar que la ayuda manual
-            helpButton.parentNode.insertBefore(feedbackDiv, helpButton.nextSibling);
-            
-            console.log(`🔄 Feedback progresivo mostrado para ejercicio ${exerciseId} - Intento ${attemptCount}`);
+        // Crear múltiples piezas de confeti
+        const confettiCount = 50;
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+        const shapes = ['●', '▲', '■', '★', '♦', '♥', '♠', '♣', '🌟', '⭐', '💖', '🎈', '🎉', '🎊'];
+        
+        for (let i = 0; i < confettiCount; i++) {
+            this.createConfettiPiece(confettiContainer, colors, shapes);
         }
+        
+        // Reproducir sonido de celebración (si está disponible)
+        this.playSuccessSound();
+        
+        // Limpiar confeti después de la animación
+        setTimeout(() => {
+            if (confettiContainer) {
+                confettiContainer.innerHTML = '';
+            }
+        }, 4000);
     }
 
-    // 🗑️ NUEVO: Función para remover feedback anterior
-    removeExistingFeedback(exerciseId) {
-        const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
-        if (helpButton && helpButton.parentNode) {
-            // Remover ayuda manual, feedback automático Y mensajes de carga
-            const existingHelp = helpButton.parentNode.querySelector('.ayuda-pedagogica');
-            const existingFeedback = helpButton.parentNode.querySelector('.feedback-automatico');
-            const existingLoading = helpButton.parentNode.querySelector('.ayuda-cargando');
-            
-            if (existingHelp) {
-                existingHelp.remove();
+    // 🎨 NUEVO: Crear pieza individual de confeti
+    createConfettiPiece(container, colors, shapes) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-piece';
+        
+        // Propiedades aleatorias
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        const size = Math.random() * 10 + 8; // Entre 8px y 18px
+        const startX = Math.random() * window.innerWidth;
+        const duration = Math.random() * 2 + 2; // Entre 2s y 4s
+        const delay = Math.random() * 0.5; // Hasta 0.5s de delay
+        
+        // Estilos del confeti con animación CSS
+        confetti.style.cssText = `
+            position: absolute;
+            top: -20px;
+            left: ${startX}px;
+            color: ${color};
+            font-size: ${size}px;
+            animation: confetti-fall ${duration}s linear ${delay}s forwards;
+            pointer-events: none;
+            user-select: none;
+            z-index: 1000;
+            font-weight: bold;
+        `;
+        
+        confetti.textContent = shape;
+        container.appendChild(confetti);
+        
+        // Auto-remover después de la animación
+        setTimeout(() => {
+            if (confetti && confetti.parentNode) {
+                confetti.remove();
             }
-            if (existingFeedback) {
-                existingFeedback.remove();
-            }
-            if (existingLoading) {
-                existingLoading.remove();
-            }
-        }
+        }, (duration + delay) * 1000);
     }
 
-    // 🆘 ACTUALIZADO: Ayuda pedagógica con IA de Gemini - MÁS EXPLICATIVA
-    async showPedagogicalHelp(exerciseId) {
+    // 🔊 NUEVO: Reproducir sonido de éxito
+    playSuccessSound() {
         try {
-            const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
-            if (!exercise || exercise.completed) return;
-            
-            const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
-            if (!helpButton) {
-                console.error(`❌ No se encontró botón de ayuda para ejercicio ${exerciseId}`);
+            // Usar función global si existe
+            if (typeof window.playSuccessSound === 'function') {
+                window.playSuccessSound();
                 return;
             }
             
-            // Remover cualquier feedback anterior
-            this.removeExistingFeedback(exerciseId);
+            // Crear un sonido de celebración con Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            // 🔄 NUEVO: Mostrar mensaje de carga dinámico mientras se genera la ayuda
-            const loadingDiv = this.createDynamicLoadingMessage(exerciseId);
-            helpButton.parentNode.insertBefore(loadingDiv, helpButton.nextSibling);
+            // Crear una secuencia de tonos alegres
+            const frequencies = [523.25, 659.25, 783.99, 1046.50]; // Do, Mi, Sol, Do octava alta
             
-            // 🎯 NUEVO: Generar ayuda con IA de Gemini más explicativa
-            let contenidoAyuda = await this.generatePedagogicalHelpWithAI(exercise);
-            
-            // Remover mensaje de carga
-            if (loadingDiv && loadingDiv.parentNode) {
-                loadingDiv.remove();
-            }
-            
-            const ayudaDiv = document.createElement('div');
-            ayudaDiv.className = 'ayuda_pedagogica mt-2';
-            ayudaDiv.innerHTML = contenidoAyuda;
-            
-            // Insertar en la misma ubicación que el feedback automático
-            helpButton.parentNode.insertBefore(ayudaDiv, helpButton.nextSibling);
-            
-            console.log(`✅ Ayuda pedagógica con IA mostrada para ejercicio ${exerciseId}`);
-            
+            frequencies.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                }, index * 100);
+            });
         } catch (error) {
-            console.error('Error mostrando ayuda:', error);
-            this.showErrorToast('Error al mostrar la ayuda');
-            
-            // Asegurar que se remueva el mensaje de carga en caso de error
-            const loadingDiv = document.querySelector(`#loading-help-${exerciseId}`);
-            if (loadingDiv) loadingDiv.remove();
+            console.log('🔇 Audio no disponible:', error.message);
         }
     }
-
-    // 🎭 NUEVO: Crear mensaje de carga dinámico con frases divertidas
-    createDynamicLoadingMessage(exerciseId) {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = `loading-help-${exerciseId}`;
-        loadingDiv.className = 'ayuda-cargando mt-2';
-        
-        // 🎪 Array de mensajes divertidos para niños
-        const mensajesDivertidos = [
-            "🎩 Haciendo magia matemática...",
-            "🪄 ¡Abracadabra! Creando ayuda...",
-            "🐰 Patas de conejo... ¡aparece la ayuda!",
-            "🤔 Pensando muuuy fuerte...",
-            "🔍 Mmm... veamos qué encontramos...",
-            "🧙‍♀️ La profesora mágica está trabajando...",
-            "⭐ Consultando las estrellas matemáticas...",
-            "🎯 Apuntando a la mejor ayuda...",
-            "🍎 Mezclando ingredientes de sabiduría...",
-            "🌟 Iluminando el camino de las matemáticas...",
-            "🎨 Pintando explicaciones coloridas...",
-            "🦄 Los unicornios están calculando...",
-            "🎪 Preparando el espectáculo de ayuda...",
-            "🎈 Inflando globos de conocimiento...",
-            "🎵 Componiendo la melodía perfecta...",
-            "🚀 Volando a buscar la mejor explicación...",
-            "🌈 Creando un arcoíris de aprendizaje...",
-            "🎁 Envolviendo un regalo de sabiduría...",
-            "🍭 Endulzando las matemáticas...",
-            "🎊 Preparando una fiesta de conocimiento..."
-        ];
-        
-        let mensajeIndex = 0;
-        let puntos = "";
-        
-        loadingDiv.innerHTML = `
-            <div class="bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 rounded-lg p-4 animate-pulse">
-                <div class="text-center">
-                    <div class="text-2xl mb-2 animate-bounce" id="loading-emoji-${exerciseId}">🎩</div>
-                    <div class="text-sm font-bold text-purple-700 mb-2" id="loading-message-${exerciseId}">
-                        ${mensajesDivertidos[0]}
-                    </div>
-                    <div class="text-xs text-gray-600" id="loading-dots-${exerciseId}">•</div>
-                </div>
-                
-                <!-- Barra de progreso animada -->
-                <div class="mt-3 bg-purple-200 rounded-full h-2 overflow-hidden">
-                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full animate-pulse loading-bar"></div>
-                </div>
-                
-                <!-- Botón para cancelar (opcional) -->
-                <button onclick="this.closest('.ayuda-cargando').remove()" 
-                        class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs text-gray-600">
-                    Cancelar ❌
-                </button>
-            </div>
-        `;
-        
-        // 🎭 Configurar animaciones dinámicas
-        const messageElement = loadingDiv.querySelector(`#loading-message-${exerciseId}`);
-        const emojiElement = loadingDiv.querySelector(`#loading-emoji-${exerciseId}`);
-        const dotsElement = loadingDiv.querySelector(`#loading-dots-${exerciseId}`);
-        
-        // 🔄 Cambiar mensaje cada 1.5 segundos
-        const messageInterval = setInterval(() => {
-            mensajeIndex = (mensajeIndex + 1) % mensajesDivertidos.length;
-            if (messageElement) {
-                messageElement.style.transform = 'scale(0.8)';
-                messageElement.style.opacity = '0.5';
-                
-                setTimeout(() => {
-                    messageElement.textContent = mensajesDivertidos[mensajeIndex];
-                    messageElement.style.transform = 'scale(1)';
-                    messageElement.style.opacity = '1';
-                }, 200);
-            }
-        }, 1500);
-        
-        // 🎨 Cambiar emoji cada 2 segundos
-        const emojis = ['🎩', '🪄', '🐰', '🤔', '🔍', '🧙‍♀️', '⭐', '🎯', '🍎', '🌟', '🎨', '🦄'];
-        let emojiIndex = 0;
-        const emojiInterval = setInterval(() => {
-            emojiIndex = (emojiIndex + 1) % emojis.length;
-            if (emojiElement) {
-                emojiElement.textContent = emojis[emojiIndex];
-            }
-        }, 2000);
-        
-        // 💫 Animar puntos cada 300ms
-        const dotsInterval = setInterval(() => {
-            puntos = puntos.length >= 3 ? "•" : puntos + "•";
-            if (dotsElement) {
-                dotsElement.textContent = puntos;
-            }
-        }, 300);
-        
-        // 🗑️ Limpiar intervalos cuando se remueva el elemento
-        loadingDiv.dataset.messageInterval = messageInterval;
-        loadingDiv.dataset.emojiInterval = emojiInterval;
-        loadingDiv.dataset.dotsInterval = dotsInterval;
-        
-        // Observer para limpiar intervalos cuando se remueva del DOM
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.removedNodes.forEach((node) => {
-                    if (node === loadingDiv) {
-                        clearInterval(messageInterval);
-                        clearInterval(emojiInterval);
-                        clearInterval(dotsInterval);
-                        observer.disconnect();
-                    }
-                });
-            });
-        });
-        
-        // Observar el padre del loadingDiv cuando se agregue al DOM
-        setTimeout(() => {
-            if (loadingDiv.parentNode) {
-                observer.observe(loadingDiv.parentNode, { childList: true });
-            }
-        }, 100);
-        
-        console.log(`🎭 Mensaje de carga dinámico creado para ejercicio ${exerciseId}`);
-        
-        return loadingDiv;
-    }
-
+    
     // ✅ GENERAR AYUDA PEDAGÓGICA CON IA
     async generatePedagogicalHelpWithAI(exercise) {
         // Determinar nivel de frustración basado en intentos anteriores
@@ -1137,355 +1163,459 @@ EJEMPLO DE ESTRUCTURA:
 💪 [Motivación final]
 
 Responde SOLO con el contenido pedagógico, sin formato adicional.`;
-
+        
         try {
-            const response = await window.geminiAI.callGemini(prompt);
-            console.log('✅ Ayuda pedagógica generada con IA');
+            const response = await window.geminiAI.generateContent(prompt);
             return response;
         } catch (error) {
-            console.error('❌ Error generando ayuda con IA:', error);
+            console.error('Error generando ayuda con IA:', error);
             return null;
         }
     }
 
-    // 🎨 Formatear contenido de IA
-    formatAIHelpContent(aiContent, exercise) {
-        const operationColor = exercise.operation === '+' ? 'yellow' : 
-                              (this.needsBorrowingHelp(exercise) ? 'purple' : 'green');
-        const operationTitle = exercise.operation === '+' ? 
-                              '➕ Ayuda para Suma' : 
-                              (this.needsBorrowingHelp(exercise) ? '➖ Ayuda para Resta con Préstamo' : '➖ Ayuda para Resta');
-        
+    // 🎨 Formatear contenido de ayuda con IA
+    formatAIHelpContent(aiHelp, exercise) {
         return `
-            <div class="bg-${operationColor}-100 border-2 border-${operationColor}-400 rounded-lg p-3">
-                <div class="text-center mb-3">
-                    <span class="text-lg font-bold text-${operationColor}-700">
-                        ${operationTitle}
-                    </span>
+            <div class="bg-gradient-to-r from-indigo-100 to-purple-100 border-2 border-indigo-400 rounded-lg p-4">
+                <div class="text-center mb-2">
+                    <span class="text-lg font-bold text-indigo-700">🤖✨ Ayuda Mágica de la IA</span>
                 </div>
                 <div class="text-sm text-gray-800 leading-relaxed">
-                    ${aiContent.split('\n').map(line => 
-                        line.trim() ? `<div class="mb-2">${line.trim()}</div>` : ''
-                    ).join('')}
+                    ${aiHelp.replace(/\n/g, '<br>')}
                 </div>
-                <button onclick="this.closest('.ayuda-pedagogica').remove()" 
-                        class="mt-3 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                <div class="mt-3 text-center">
+                    <div class="text-xs text-indigo-600 font-bold">🧙‍♀️ Generado especialmente para ti</div>
+                </div>
+                <button onclick="this.closest('.ayuda_pedagogica').remove()" 
+                        class="mt-3 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs">
                     Cerrar ❌
                 </button>
             </div>
         `;
     }
 
-    // 🏠 Ayuda local mejorada con ejemplos y emojis
+    // 📚 Ayuda local explicativa como fallback
     generateLocalExplanatoryHelp(exercise, frustrationLevel) {
-        const operationColor = exercise.operation === '+' ? 'yellow' : 
-                              (this.needsBorrowingHelp(exercise) ? 'purple' : 'green');
+        const needsBorrow = exercise.operation === '-' && this.needsBorrowingHelp(exercise);
+        const needsCarry = exercise.operation === '+' && ((exercise.num1 % 10) + (exercise.num2 % 10)) >= 10;
         
-        let helpContent = '';
+        // Mensajes motivacionales según frustración
+        const motivationMessages = {
+            inicial: "¡Perfecto! Vamos a resolver esto juntos 🌟",
+            bajo: "¡No te preocupes! Todo matemático se equivoca 💪",
+            medio: "¡Estás muy cerca! Vamos paso a paso 🎯",
+            alto: "¡Eres increíble por seguir intentando! 🦄"
+        };
         
-        if (exercise.operation === '+') {
-            // SUMA con ejemplos y emojis
-            const unidades = (exercise.num1 % 10) + (exercise.num2 % 10);
-            const necesitaReserva = unidades >= 10;
+        const motivation = motivationMessages[frustrationLevel] || motivationMessages.inicial;
+        
+        if (needsBorrow) {
+            return `
+                <div class="bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-pink-400 rounded-lg p-4">
+                    <div class="text-center mb-2">
+                        <span class="text-lg font-bold text-pink-700">🏠 Casa de los Números</span>
+                    </div>
+                    <div class="text-sm text-gray-800">
+                        <div class="mb-2 text-center font-bold text-purple-700">${motivation}</div>
+                        <div class="mb-2">🧮 <strong>Problema:</strong> ${exercise.num1 % 10} unidades son menos que ${exercise.num2 % 10}</div>
+                        <div class="mb-2">🏠 <strong>Solución:</strong> ¡Pide prestado a la casa de las decenas!</div>
+                        <div class="mb-2">📦 <strong>10 unidades = 1 decena</strong></div>
+                        <div class="mb-2">🔄 <strong>Ahora tienes:</strong> ${(exercise.num1 % 10) + 10} unidades para restar</div>
+                        <div class="mb-2">🎯 <strong>Calcula:</strong> ${(exercise.num1 % 10) + 10} - ${exercise.num2 % 10} = ?</div>
+                        <div class="text-center mt-3 text-pink-700 font-bold">¡Como pedir prestado juguetes! 🧸</div>
+                    </div>
+                    <button onclick="this.closest('.ayuda_pedagogica').remove()" 
+                            class="mt-3 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                        Cerrar ❌
+                    </button>
+                </div>
+            `;
+        } else if (needsCarry) {
+            return `
+                <div class="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-lg p-4">
+                    <div class="text-center mb-2">
+                        <span class="text-lg font-bold text-yellow-700">🎒 Mochila de Números</span>
+                    </div>
+                    <div class="text-sm text-gray-800">
+                        <div class="mb-2 text-center font-bold text-teal-700">${motivation}</div>
+                        <div class="mb-2">🧮 <strong>Suma:</strong> ${exercise.num1 % 10} + ${exercise.num2 % 10} unidades</div>
+                        <div class="mb-2">🎒 <strong>¡Ups!</strong> Son más de 9, necesitas una mochila extra</div>
+                        <div class="mb-2">📦 <strong>10 unidades = 1 decena</strong></div>
+                        <div class="mb-2">✨ <strong>Truco:</strong> Guarda 1 decena en la mochila</div>
+                        <div class="mb-2">🎯 <strong>Ahora suma las decenas:</strong> ${Math.floor(exercise.num1/10)} + ${Math.floor(exercise.num2/10)} + 1</div>
+                        <div class="text-center mt-3 text-yellow-700 font-bold">¡Como juntar caramelos! 🍭</div>
+                    </div>
+                    <button onclick="this.closest('.ayuda_pedagogica').remove()" 
+                            class="mt-3 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                        Cerrar ❌
+                    </button>
+                </div>
+            `;
+        } else {
+            // Suma o resta simple
+            const operationName = exercise.operation === '+' ? 'Suma' : 'Resta';
+            const operationColor = exercise.operation === '+' ? 'green' : 'blue';
+            const emoji = exercise.operation === '+' ? '🌱' : '🎯';
             
-            if (necesitaReserva) {
-                const reserva = Math.floor(unidades / 10);
-                const unidadesResultado = unidades % 10;
-                
-                helpContent = `
-                    <div class="text-sm text-gray-800 space-y-3">
-                        <div class="text-center">
-                            <span class="text-2xl">🍎</span>
-                            <div class="font-bold text-purple-600">¡Imagina manzanas en cajas!</div>
+            return `
+                <div class="bg-gradient-to-r from-${operationColor}-100 to-teal-100 border-2 border-${operationColor}-400 rounded-lg p-4">
+                    <div class="text-center mb-2">
+                        <span class="text-lg font-bold text-${operationColor}-700">${emoji} ${operationName} Fácil</span>
+                    </div>
+                    <div class="text-sm text-gray-800">
+                        <div class="mb-2 text-center font-bold text-teal-700">${motivation}</div>
+                        <div class="mb-2">1️⃣ <strong>Unidades:</strong> ${exercise.num1 % 10} ${exercise.operation} ${exercise.num2 % 10} = ?</div>
+                        <div class="mb-2">2️⃣ <strong>Decenas:</strong> ${Math.floor(exercise.num1/10)} ${exercise.operation} ${Math.floor(exercise.num2/10)} = ?</div>
+                        <div class="mb-2">3️⃣ <strong>Junta:</strong> Decenas + Unidades</div>
+                        <div class="mb-2"><strong>🖐️ Truco:</strong> Usa tus dedos o dibuja palitos</div>
+                        <div class="mb-2"><strong>🎨 Imagina:</strong> ${exercise.operation === '+' ? 'Juntar ' : 'Quitar '} ${exercise.operation === '+' ? 'manzanas' : 'globos'}</div>
+                        <div class="text-center mt-3 text-${operationColor}-700 font-bold">¡Paso a paso siempre funciona! ⭐</div>
+                    </div>
+                    <button onclick="this.closest('.ayuda_pedagogica').remove()" 
+                            class="mt-3 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                        Cerrar ❌
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // 🗑️ NUEVO: Función para remover feedback anterior
+    removeExistingFeedback(exerciseId) {
+        const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
+        if (helpButton && helpButton.parentNode) {
+            // Remover ayuda manual, feedback automático Y mensajes de carga
+            const existingHelp = helpButton.parentNode.querySelector('.ayuda-pedagogica');
+            const existingFeedback = helpButton.parentNode.querySelector('.feedback-automatico');
+            const existingLoading = helpButton.parentNode.querySelector('.ayuda-cargando');
+            
+            if (existingHelp) {
+                existingHelp.remove();
+            }
+            if (existingFeedback) {
+                existingFeedback.remove();
+            }
+            if (existingLoading) {
+                existingLoading.remove();
+            }
+        }
+    }
+
+    // 🔄 NUEVO: Feedback progresivo unificado
+    async showProgressiveFeedback(exerciseId, attemptCount) {
+        const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
+        if (!exercise) return;
+        
+        // Remover cualquier feedback anterior
+        this.removeExistingFeedback(exerciseId);
+        
+        // Determinar el tipo de ayuda según la operación y el intento
+        let contenidoFeedback = '';
+        const esResta = exercise.operation === '-';
+        const necesitaPrestamo = esResta && this.needsBorrowingHelp(exercise);
+        
+        if (attemptCount === 1) {
+            // 🥇 PRIMER INTENTO: Motivación y revisión básica
+            contenidoFeedback = `
+                <div class="bg-blue-100 border-2 border-blue-400 rounded-lg p-3">
+                    <div class="text-center mb-2">
+                        <span class="text-lg font-bold text-blue-700">💪 ¡Puedes hacerlo!</span>
+                    </div>
+                    <div class="text-sm text-gray-800">
+                        <div class="mb-1">🔍 <strong>Revisa:</strong> ${exercise.num1} ${exercise.operation} ${exercise.num2}</div>
+                        <div class="mb-1">📝 ¿Escribiste bien cada dígito?</div>
+                        <div class="text-center mt-2 text-blue-700 font-bold">¡Inténtalo de nuevo! 🎯</div>
+                    </div>
+                    <button onclick="this.closest('.feedback-automatico').remove()" 
+                            class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                        Cerrar ❌
+                    </button>
+                </div>
+            `;
+        } else if (attemptCount === 2) {
+            // 🥈 SEGUNDO INTENTO: Guía paso a paso específica
+            if (necesitaPrestamo) {
+                contenidoFeedback = `
+                    <div class="bg-purple-100 border-2 border-purple-400 rounded-lg p-3">
+                        <div class="text-center mb-2">
+                            <span class="text-lg font-bold text-purple-700">🤔 Resta con Préstamo</span>
                         </div>
-                        
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="font-bold text-blue-700 mb-1">🔢 Paso 1: Las unidades</div>
-                            <div class="text-xs">Tienes ${exercise.num1 % 10} manzanas + ${exercise.num2 % 10} manzanas = ${unidades} manzanas</div>
-                            <div class="text-xs mt-1 text-blue-600">¡Ups! ${unidades} es más de 10, así que necesitas una caja nueva 📦</div>
+                        <div class="text-sm text-gray-800">
+                            <div class="mb-1"><strong>❗</strong> ${exercise.num1 % 10} es menor que ${exercise.num2 % 10}</div>
+                            <div class="mb-1"><strong>🏠</strong> Pide prestado 10 de las decenas</div>
+                            <div class="mb-1"><strong>🔄</strong> Ahora tienes ${(exercise.num1 % 10) + 10} unidades</div>
+                            <div class="text-center mt-2 text-purple-700 font-bold">¡Paso a paso! 💜</div>
                         </div>
-                        
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="font-bold text-green-700 mb-1">📦 Paso 2: Llevar a la siguiente columna</div>
-                            <div class="text-xs">Pon ${unidadesResultado} manzanas sueltas y lleva ${reserva} caja completa a las decenas</div>
-                            <div class="text-xs mt-1 text-green-600">🎯 Recuerda: ¡Siempre lleva a la siguiente columna cuando pases de 10!</div>
-                        </div>
-                        
-                        ${frustrationLevel === 'alto' ? `
-                            <div class="bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
-                                <div class="text-xs text-yellow-700">
-                                    💡 <strong>Truco especial:</strong> Usa tus dedos para contar. 
-                                    ¡Es súper normal necesitar ayuda! 🤗
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="text-center bg-pink-50 p-2 rounded">
-                            <span class="text-lg">🌟</span>
-                            <div class="text-xs font-bold text-pink-700">
-                                ${frustrationLevel === 'alto' ? '¡Eres muy valiente por seguir intentando! 💪' : 
-                                  frustrationLevel === 'medio' ? '¡Casi lo tienes! ¡Tú puedes! 🎯' : 
-                                  '¡Vamos paso a paso, eres genial! ⭐'}
-                            </div>
-                        </div>
+                        <button onclick="this.closest('.feedback-automatico').remove()" 
+                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                            Cerrar ❌
+                        </button>
                     </div>
                 `;
             } else {
-                // Suma simple con ejemplo de juguetes
-                helpContent = `
-                    <div class="text-sm text-gray-800 space-y-3">
-                        <div class="text-center">
-                            <span class="text-2xl">🧸</span>
-                            <div class="font-bold text-green-600">¡Como contar juguetes!</div>
+                // Suma o resta simple
+                const operationName = esResta ? 'Resta' : 'Suma';
+                const operationColor = esResta ? 'green' : 'yellow';
+                
+                contenidoFeedback = `
+                    <div class="bg-${operationColor}-100 border-2 border-${operationColor}-400 rounded-lg p-3">
+                        <div class="text-center mb-2">
+                            <span class="text-lg font-bold text-${operationColor === 'yellow' ? 'yellow-700' : 'green-700'}">🤔 ${operationName} Paso a Paso</span>
                         </div>
-                        
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="font-bold text-blue-700 mb-1">🎈 Unidades (juguetes sueltos)</div>
-                            <div class="text-xs">${exercise.num1 % 10} carritos + ${exercise.num2 % 10} pelotas = ? juguetes</div>
+                        <div class="text-sm text-gray-800">
+                            <div class="mb-1"><strong>1️⃣</strong> ${operationName === 'Suma' ? 'Suma' : 'Resta'} las unidades: ${exercise.num1 % 10} ${exercise.operation} ${exercise.num2 % 10}</div>
+                            <div class="mb-1"><strong>2️⃣</strong> ${operationName === 'Suma' ? 'Suma' : 'Resta'} las decenas: ${Math.floor(exercise.num1/10)} ${exercise.operation} ${Math.floor(exercise.num2/10)}</div>
+                            <div class="mb-1"><strong>3️⃣</strong> Junta ambos resultados</div>
+                            <div class="mb-1"><strong>💡</strong> Usa tus dedos o dibuja si necesitas</div>
+                            <div class="mb-1"><strong>🎨 Imagina:</strong> ${exercise.operation === '+' ? 'Juntar ' : 'Quitar '} ${exercise.operation === '+' ? 'manzanas' : 'globos'}</div>
+                            <div class="text-center mt-3 text-${operationColor === 'yellow' ? 'yellow-700' : 'green-700'} font-bold">¡Paso a paso puedes! 💪</div>
                         </div>
-                        
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="font-bold text-green-700 mb-1">📦 Decenas (cajas de juguetes)</div>
-                            <div class="text-xs">${Math.floor(exercise.num1/10)} cajas + ${Math.floor(exercise.num2/10)} cajas = ? cajas</div>
-                        </div>
-                        
-                        <div class="text-center bg-yellow-50 p-2 rounded">
-                            <span class="text-lg">🎯</span>
-                            <div class="text-xs font-bold text-yellow-700">
-                                ¡Cuenta por columnas como guardando juguetes! 
-                                ${frustrationLevel === 'medio' ? '¡Ya casi! 💪' : '¡Fácil! 🌟'}
-                            </div>
-                        </div>
+                        <button onclick="this.closest('.feedback-automatico').remove()" 
+                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                            Cerrar ❌
+                        </button>
                     </div>
                 `;
             }
         } else {
-            // RESTA con ejemplos y terminología clara
-            const necesitaPrestamo = this.needsBorrowingHelp(exercise);
-            
+            // 🥉 TERCER INTENTO O MÁS: Ayuda más detallada SIN revelar la respuesta
             if (necesitaPrestamo) {
-                helpContent = `
-                    <div class="text-sm text-gray-800 space-y-3">
-                        <div class="text-center">
-                            <span class="text-2xl">🍪</span>
-                            <div class="font-bold text-purple-600">¡Como compartir galletas!</div>
+                contenidoFeedback = `
+                    <div class="bg-orange-100 border-2 border-orange-400 rounded-lg p-3">
+                        <div class="text-center mb-2">
+                            <span class="text-lg font-bold text-orange-700">🧠 Vamos paso a paso</span>
                         </div>
-                        
-                        <div class="bg-red-50 p-3 rounded-lg">
-                            <div class="font-bold text-red-700 mb-1">😅 ¡Oh no! Problema</div>
-                            <div class="text-xs">Solo tienes ${exercise.num1 % 10} galletas sueltas, pero necesitas dar ${exercise.num2 % 10} galletas</div>
+                        <div class="text-sm text-gray-800">
+                            <div class="mb-1"><strong>🔍</strong> Mira bien: ${exercise.num1 % 10} unidades vs ${exercise.num2 % 10} unidades</div>
+                            <div class="mb-1"><strong>🤝</strong> Como ${exercise.num1 % 10} < ${exercise.num2 % 10}, necesitas pedir prestado</div>
+                            <div class="mb-1"><strong>📦</strong> Abre 1 decena = 10 unidades más</div>
+                            <div class="mb-1"><strong>🧮</strong> Ahora calcula: ${(exercise.num1 % 10) + 10} - ${exercise.num2 % 10} en unidades</div>
+                            <div class="text-center mt-2 text-orange-700 font-bold">¡Inténtalo con estos pasos! 🎯</div>
                         </div>
-                        
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="font-bold text-blue-700 mb-1">🏪 ¡Pide prestado de las decenas!</div>
-                            <div class="text-xs">Abre 1 paquete de galletas (10 galletas) 📦→🍪🍪🍪...</div>
-                            <div class="text-xs mt-1">Ahora tienes ${(exercise.num1 % 10) + 10} galletas sueltas</div>
-                        </div>
-                        
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="font-bold text-green-700 mb-1">✨ ¡Ahora sí puedes!</div>
-                            <div class="text-xs">Ya puedes dar las ${exercise.num2 % 10} galletas que te pidieron</div>
-                        </div>
-                        
-                        ${frustrationLevel === 'alto' ? `
-                            <div class="bg-purple-50 p-2 rounded border-l-4 border-purple-400">
-                                <div class="text-xs text-purple-700">
-                                    🤗 <strong>Es normal que cueste:</strong> Imagina que tienes una alcancía y necesitas cambio.
-                                    ¡Cambias un billete por monedas! 💰
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="text-center bg-pink-50 p-2 rounded">
-                            <span class="text-lg">💪</span>
-                            <div class="text-xs font-bold text-pink-700">
-                                ${frustrationLevel === 'alto' ? '¡Eres un campeón por no rendirte! 🏆' : 
-                                  '¡Pedir prestado es como pedir ayuda, está bien! 🌟'}
-                            </div>
-                        </div>
+                        <button onclick="this.closest('.feedback-automatico').remove()" 
+                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                            Cerrar ❌
+                        </button>
                     </div>
                 `;
             } else {
-                // Resta simple con ejemplo de stickers
-                helpContent = `
-                    <div class="text-sm text-gray-800 space-y-3">
-                        <div class="text-center">
-                            <span class="text-2xl">⭐</span>
-                            <div class="font-bold text-green-600">¡Como regalar stickers!</div>
+                // Suma o resta simple - Dar estrategias SIN respuesta
+                const operationName = esResta ? 'Resta' : 'Suma';
+                
+                contenidoFeedback = `
+                    <div class="bg-orange-100 border-2 border-orange-400 rounded-lg p-3">
+                        <div class="text-center mb-2">
+                            <span class="text-lg font-bold text-orange-700">🧠 Estrategia ${operationName}</span>
                         </div>
-                        
-                        <div class="bg-blue-50 p-3 rounded-lg">
-                            <div class="font-bold text-blue-700 mb-1">✨ Stickers sueltos</div>
-                            <div class="text-xs">Tienes ${exercise.num1 % 10} stickers, regalas ${exercise.num2 % 10} stickers</div>
-                            <div class="text-xs text-blue-600">¿Cuántos te quedan? 🤔</div>
+                        <div class="text-sm text-gray-800">
+                            <div class="mb-1"><strong>1️⃣</strong> Unidades: ${exercise.num1 % 10} ${exercise.operation} ${exercise.num2 % 10} = ?</div>
+                            <div class="mb-1"><strong>2️⃣</strong> Decenas: ${Math.floor(exercise.num1/10)} ${exercise.operation} ${Math.floor(exercise.num2/10)} = ?</div>
+                            <div class="mb-1"><strong>3️⃣</strong> Junta ambos resultados</div>
+                            <div class="mb-1"><strong>💡</strong> Usa tus dedos o dibuja si necesitas</div>
+                            <div class="text-center mt-2 text-orange-700 font-bold">¡Paso a paso puedes! 💪</div>
                         </div>
-                        
-                        <div class="bg-green-50 p-3 rounded-lg">
-                            <div class="font-bold text-green-700 mb-1">📋 Hojas de stickers</div>
-                            <div class="text-xs">Tienes ${Math.floor(exercise.num1/10)} hojas, regalas ${Math.floor(exercise.num2/10)} hojas</div>
-                        </div>
-                        
-                        <div class="text-center bg-yellow-50 p-2 rounded">
-                            <span class="text-lg">🎁</span>
-                            <div class="text-xs font-bold text-yellow-700">
-                                ¡Restar es como regalar! ¿Cuánto te queda después de ser generoso? 
-                                ${frustrationLevel === 'medio' ? '¡Casi! 💫' : '¡Súper! 🌈'}
-                            </div>
-                        </div>
+                        <button onclick="this.closest('.feedback-automatico').remove()" 
+                                class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
+                            Cerrar ❌
+                        </button>
                     </div>
                 `;
             }
         }
         
-        return `
-            <div class="bg-${operationColor}-100 border-2 border-${operationColor}-400 rounded-lg p-3">
-                <div class="text-center mb-3">
-                    <span class="text-lg font-bold text-${operationColor}-700">
-                        ${exercise.operation === '+' ? '➕ Ayuda para Suma con Reserva' : '➖ Ayuda para Resta con Préstamo'}
-                    </span>
-                </div>
-                ${helpContent}
-                <button onclick="this.closest('.ayuda-pedagogica').remove()" 
-                        class="mt-3 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">
-                    Cerrar ❌
-                </button>
-            </div>
-        `;
-    }
-
-    // 🔧 NUEVO: Función para determinar si necesita préstamo
-    needsBorrowingHelp(exercise) {
-        if (exercise.operation !== '-') return false;
-        return (exercise.num1 % 10) < (exercise.num2 % 10);
-    }
-
-    // ✅ FEEDBACK POSITIVO
-    async showPositiveFeedback(exerciseId) {
-        // Mostrar recompensa sorpresa
-        await this.showSurpriseReward(exerciseId);
-        
-        // Cambiar estilo de la tarjeta a completado
-        let card = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-        if (card) {
-            // Cambiar clases CSS para indicar que está completado
-            card.classList.remove('bg-white', 'border-blue-300', 'hover:shadow-xl');
-            card.classList.add('bg-gray-100', 'border-gray-300', 'opacity-75');
+        // Crear y mostrar el feedback usando el mismo sistema que la ayuda manual
+        const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
+        if (helpButton) {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'feedback-automatico mt-2';
+            feedbackDiv.innerHTML = contenidoFeedback;
             
-            // Actualizar el contenedor de matemáticas
-            const mathContainer = card.querySelector('.vertical-math-container');
-            if (mathContainer) {
-                mathContainer.classList.remove('bg-gray-50', 'border-gray-200');
-                mathContainer.classList.add('bg-gray-200', 'border-gray-300');
-            }
+            // Insertar en el mismo lugar que la ayuda manual
+            helpButton.parentNode.insertBefore(feedbackDiv, helpButton.nextSibling);
+            
+            console.log(`🔄 Feedback progresivo mostrado para ejercicio ${exerciseId} - Intento ${attemptCount}`);
         }
     }
 
-    // ✅ ACTUALIZAR ESTADÍSTICAS
-    updateStats() {
-        const completed = this.currentExercises.filter(ex => ex.completed).length;
-        const correct = this.currentExercises.filter(ex => ex.completed && ex.correct).length;
-        const accuracy = completed > 0 ? Math.round((correct / completed) * 100) : 0;
-        
-        const statCompleted = document.getElementById('stat-completed');
-        const statCorrect = document.getElementById('stat-correct');
-        const statAccuracy = document.getElementById('stat-accuracy');
-        
-        if (statCompleted) statCompleted.textContent = completed;
-        if (statCorrect) statCorrect.textContent = correct;
-        if (statAccuracy) statAccuracy.textContent = `${accuracy}%`;
-        
-        console.log(`📊 Stats actualizadas: ${completed} completados, ${correct} correctos, ${accuracy}% precisión`);
-    }
-
-    // ✅ CONFIGURAR LISTENER RESPONSIVE
-    setupResponsiveListener() {
-        // Evitar múltiples listeners
-        if (this.responsiveListenerAdded) return;
-        
-        window.addEventListener('resize', () => {
-            const grid = document.getElementById('exercises-grid');
-            if (!grid) return;
-            
-            const screenWidth = window.innerWidth;
-            if (screenWidth >= 1000) {
-                grid.style.gridTemplateColumns = 'repeat(5, minmax(0, 1fr))';
-            } else if (screenWidth >= 768) {
-                grid.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
-            } else {
-                grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-            }
-        });
-        
-        this.responsiveListenerAdded = true;
-    }
-
-    // ✅ DESCARGAR PDF
-    async downloadPDF() {
+    // 🆘 ACTUALIZADO: Ayuda pedagógica con IA de Gemini
+    async showPedagogicalHelp(exerciseId) {
         try {
-            if (this.currentExercises.length === 0) {
-                this.showErrorToast('Primero genera algunos ejercicios');
+            const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
+            if (!exercise || exercise.completed) return;
+            
+            const helpButton = document.querySelector(`button[onclick*="showPedagogicalHelp(${exerciseId})"]`);
+            if (!helpButton) {
+                console.error(`❌ No se encontró botón de ayuda para ejercicio ${exerciseId}`);
                 return;
             }
             
-            this.showInfoToast('Generando PDF... 📄');
+            // Remover cualquier feedback anterior
+            this.removeExistingFeedback(exerciseId);
             
-            // Usar función global si está disponible
-            if (typeof generatePDFReport === 'function') {
-                await generatePDFReport(this.currentExercises, 'vertical');
-                this.showSuccessToast('¡PDF descargado exitosamente! 🎉');
-            } else {
-                // Fallback básico
-                console.warn('⚠️ Función generatePDFReport no disponible, usando fallback');
-                this.showErrorToast('Función de PDF no disponible en este momento');
+            // 🔄 NUEVO: Mostrar mensaje de carga dinámico mientras se genera la ayuda
+            const loadingDiv = this.createDynamicLoadingMessage(exerciseId);
+            helpButton.parentNode.insertBefore(loadingDiv, helpButton.nextSibling);
+            
+            // 🎯 NUEVO: Generar ayuda con IA de Gemini más explicativa
+            let contenidoAyuda = await this.generatePedagogicalHelpWithAI(exercise);
+            
+            // Remover mensaje de carga
+            if (loadingDiv && loadingDiv.parentNode) {
+                loadingDiv.remove();
             }
             
+            const ayudaDiv = document.createElement('div');
+            ayudaDiv.className = 'ayuda-pedagogica mt-2';
+            ayudaDiv.innerHTML = contenidoAyuda;
+            
+            // Insertar en la misma ubicación que el feedback automático
+            helpButton.parentNode.insertBefore(ayudaDiv, helpButton.nextSibling);
+            
+            console.log(`✅ Ayuda pedagógica con IA mostrada para ejercicio ${exerciseId}`);
+            
         } catch (error) {
-            console.error('Error generando PDF:', error);
-            this.showErrorToast('Error al generar el PDF');
+            console.error('Error mostrando ayuda:', error);
+            this.showErrorToast('Error al mostrar la ayuda');
+            
+            // Asegurar que se remueva el mensaje de carga en caso de error
+            const loadingDiv = document.querySelector(`#loading-help-${exerciseId}`);
+            if (loadingDiv) loadingDiv.remove();
         }
     }
 
-    // ✅ INICIALIZAR INDICADOR DE IA
-    initializeAIIndicator() {
-        if (typeof updateAIIndicator === 'function') {
-            updateAIIndicator();
-        }
+    // 🎭 NUEVO: Crear mensaje de carga dinámico con frases divertidas
+    createDynamicLoadingMessage(exerciseId) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = `loading-help-${exerciseId}`;
+        loadingDiv.className = 'ayuda-cargando mt-2';
+        
+        // 🎪 Array de mensajes divertidos para niños
+        const mensajesDivertidos = [
+            "🎩 Haciendo magia matemática...",
+            "🪄 ¡Abracadabra! Creando ayuda...",
+            "🐰 Patas de conejo... ¡aparece la ayuda!",
+            "🤔 Pensando muuuy fuerte...",
+            "🔍 Mmm... veamos qué encontramos...",
+            "🧙‍♀️ La profesora mágica está trabajando...",
+            "⭐ Consultando las estrellas matemáticas...",
+            "🎯 Apuntando a la mejor ayuda...",
+            "🍎 Mezclando ingredientes de sabiduría...",
+            "🌟 Iluminando el camino de las matemáticas...",
+            "🎨 Pintando explicaciones coloridas...",
+            "🦄 Los unicornios están calculando...",
+            "🎪 Preparando el espectáculo de ayuda...",
+            "🎈 Inflando globos de conocimiento...",
+            "🎵 Componiendo la melodía perfecta...",
+            "🚀 Volando a buscar la mejor explicación...",
+            "🌈 Creando un arcoíris de aprendizaje...",
+            "🎁 Envolviendo un regalo de sabiduría...",
+            "🍭 Endulzando las matemáticas...",
+            "🎊 Preparando una fiesta de conocimiento..."
+        ];
+        
+        let mensajeIndex = 0;
+        let puntos = "";
+        
+        loadingDiv.innerHTML = `
+            <div class="bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 rounded-lg p-4 animate-pulse">
+                <div class="text-center">
+                    <div class="text-2xl mb-2 animate-bounce" id="loading-emoji-${exerciseId}">🎩</div>
+                    <div class="text-sm font-bold text-purple-700 mb-2" id="loading-message-${exerciseId}">
+                        ${mensajesDivertidos[0]}
+
+                    </div>
+                    <div class="text-xs text-gray-600" id="loading-dots-${exerciseId}">•</div>
+                </div>
+                
+                <!-- Barra de progreso animada -->
+                <div class="mt-3 bg-purple-200 rounded-full h-2 overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full animate-pulse loading-bar"></div>
+                </div>
+                
+                <!-- Botón para cancelar (opcional) -->
+                <button onclick="this.closest('.ayuda-cargando').remove()" 
+                        class="mt-2 w-full py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs text-gray-600">
+                    Cancelar ❌
+                </button>
+            </div>
+        `;
+        
+        // 🎭 Configurar animaciones dinámicas
+        const messageElement = loadingDiv.querySelector(`#loading-message-${exerciseId}`);
+        const emojiElement = loadingDiv.querySelector(`#loading-emoji-${exerciseId}`);
+        const dotsElement = loadingDiv.querySelector(`#loading-dots-${exerciseId}`);
+        
+        // 🔄 Cambiar mensaje cada  1.5 segundos
+        const messageInterval = setInterval(() => {
+            mensajeIndex = (mensajeIndex + 1) % mensajesDivertidos.length;
+            if (messageElement) {
+                messageElement.style.transform = 'scale(0.8)';
+                messageElement.style.opacity = '0.5';
+                
+                setTimeout(() => {
+                    messageElement.textContent = mensajesDivertidos[mensajeIndex];
+                    messageElement.style.transform = 'scale(1)';
+                    messageElement.style.opacity = '1';
+                }, 200);
+            }
+        }, 1500);
+        
+        // 🎨 Cambiar emoji cada 2 segundos
+        const emojis = ['🎩', '🪄', '🐰', '🤔', '🔍', '🧙‍♀️', '⭐', '🎯', '🍎', '🌟', '🎨', '🦄'];
+        let emojiIndex = 0;
+        const emojiInterval = setInterval(() => {
+            emojiIndex = (emojiIndex + 1) % emojis.length;
+            if (emojiElement) {
+                emojiElement.textContent = emojis[emojiIndex];
+            }
+        }, 2000);
+        
+        // 💫 Animar puntos cada 300ms
+        const dotsInterval = setInterval(() => {
+            puntos = puntos.length >= 3 ? "•" : puntos + "•";
+            if (dotsElement) {
+                dotsElement.textContent = puntos;
+            }
+        }, 300);
+        
+        // 🗑️ Limpiar intervalos cuando se remueva el elemento
+        loadingDiv.dataset.messageInterval = messageInterval;
+        loadingDiv.dataset.emojiInterval = emojiInterval;
+        loadingDiv.dataset.dotsInterval = dotsInterval;
+        
+        // Observer para limpiar intervalos cuando se remueva del DOM
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === loadingDiv) {
+                        clearInterval(messageInterval);
+                        clearInterval(emojiInterval);
+                        clearInterval(dotsInterval);
+                        observer.disconnect();
+                    }
+                });
+            });
+        });
+        
+        // Observar el padre del loadingDiv cuando se agregue al DOM
+        setTimeout(() => {
+            if (loadingDiv.parentNode) {
+                observer.observe(loadingDiv.parentNode, { childList: true });
+            }
+        }, 100);
+        
+        console.log(`🎭 Mensaje de carga dinámico creado para ejercicio ${exerciseId}`);
+        
+        return loadingDiv;
     }
 
-    // ✅ FUNCIONES DE TOAST (MENSAJES)
-    showSuccessToast(message) {
-        this.showToast(message, 'success');
-    }
-
-    showErrorToast(message) {
-        this.showToast(message, 'error');
-    }
-
-    showInfoToast(message) {
-        this.showToast(message, 'info');
-    }
-
-    showToast(message, type = 'info') {
-        if (typeof showToast === 'function') {
-            showToast(message, type);
-        } else {
-            // Fallback: console log
-            console.log(`${type.toUpperCase()}: ${message}`);
-        }
+    // ✅ Verificar si necesita ayuda con préstamo
+    needsBorrowingHelp(exercise) {
+        return exercise.operation === '-' && (exercise.num1 % 10) < (exercise.num2 % 10);
     }
 }
 
-// ✅ INSTANCIA GLOBAL
+// ✅ CREAR INSTANCIA GLOBAL
 window.adicionSustraccionModule = new AdicionSustraccionModule();
 
-// ✅ FUNCIÓN GLOBAL PARA VOLVER AL DASHBOARD
-function volverAMatematicas() {
-    if (typeof showMathematicsCurriculum === 'function') {
-        showMathematicsCurriculum();
-    } else {
-        // Fallback: recargar página
-        window.location.reload();
-    }
-}
-
-console.log('✅ Módulo de Adición y Sustracción Vertical cargado correctamente');
+console.log('✅ Módulo de Adición y Sustracción inicializado correctamente');
