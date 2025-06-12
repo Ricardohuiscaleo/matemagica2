@@ -88,14 +88,14 @@ class MathematicsNavigationModule {
                     </button>
                 </div>
                 
-                <!-- Header del módulo -->
-                <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg text-white p-6 mb-8">
-                    <h2 class="text-2xl font-bold mb-2">🧮 Matemáticas - 2° Básico</h2>
-                    <p class="text-blue-100 mb-4">Números y Operaciones Básicas</p>
-                    <div class="bg-white bg-opacity-20 rounded-full h-3 mb-2">
-                        <div class="bg-yellow-400 h-3 rounded-full transition-all duration-500" style="width: 75%"></div>
+                <!-- Header del módulo con fondo más claro y amigable -->
+                <div class="bg-gradient-to-r from-blue-100 to-indigo-200 border border-blue-300 rounded-lg shadow-lg text-gray-800 p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-2 text-blue-800">🧮 Matemáticas - 2° Básico</h2>
+                    <p class="text-blue-700 mb-4">Números y Operaciones Básicas</p>
+                    <div class="bg-white bg-opacity-70 rounded-full h-3 mb-2 border border-blue-200">
+                        <div class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 75%"></div>
                     </div>
-                    <div class="text-sm text-blue-100">Ejercicios interactivos • ${studentData?.name || 'Estudiante'}</div>
+                    <div class="text-sm text-blue-600 font-medium">Ejercicios interactivos • ${studentData?.name || 'Estudiante'}</div>
                 </div>
 
                 <!-- Grid de temas -->
@@ -227,22 +227,80 @@ class MathematicsNavigationModule {
         }
     }
 
-    // ✅ VOLVER AL DASHBOARD PRINCIPAL
+    // ✅ VOLVER AL DASHBOARD PRINCIPAL - CORREGIDO
     goBackToDashboard() {
         try {
+            console.log('🔙 Regresando al dashboard principal...');
+            
+            // Ocultar contenido de matemáticas
             const mathematicsContent = document.getElementById('matematicas-segundo-content');
+            if (mathematicsContent) {
+                mathematicsContent.classList.add('hidden');
+            }
+            
+            // Mostrar dashboard principal
             const dashboardContent = document.getElementById('dashboard-content');
+            if (dashboardContent) {
+                dashboardContent.classList.remove('hidden');
+            } else {
+                console.warn('⚠️ Elemento dashboard-content no encontrado, intentando fallback...');
+                
+                // Fallback: usar la función global showDashboard si existe
+                if (typeof showDashboard === 'function') {
+                    showDashboard();
+                } else if (window.showDashboard) {
+                    window.showDashboard();
+                } else {
+                    // Último recurso: recargar página
+                    console.log('🔄 Usando último recurso: recargar página');
+                    location.reload();
+                }
+                return;
+            }
             
-            if (mathematicsContent) mathematicsContent.classList.add('hidden');
-            if (dashboardContent) dashboardContent.classList.remove('hidden');
-            
+            // Actualizar estado interno
             this.currentView = 'dashboard';
-            console.log('🔙 Regresando al dashboard principal');
+            
+            // Actualizar navegación del sidebar para destacar "Dashboard"
+            this.updateSidebarNavigation();
+            
+            console.log('✅ Dashboard principal mostrado correctamente');
             
         } catch (error) {
-            console.error('Error regresando al dashboard:', error);
-            // Fallback: recargar página
-            location.reload();
+            console.error('❌ Error regresando al dashboard:', error);
+            
+            // Fallback robusto
+            try {
+                if (typeof showDashboard === 'function') {
+                    showDashboard();
+                } else {
+                    location.reload();
+                }
+            } catch (fallbackError) {
+                console.error('❌ Error en fallback:', fallbackError);
+                location.reload();
+            }
+        }
+    }
+    
+    // ✅ NUEVO: Actualizar navegación del sidebar
+    updateSidebarNavigation() {
+        try {
+            // Remover clase "active" de todos los elementos de navegación
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Agregar clase "active" al enlace del dashboard
+            const dashboardLink = document.querySelector('[href="#dashboard"]');
+            if (dashboardLink) {
+                dashboardLink.classList.add('active');
+            }
+            
+            console.log('✅ Navegación del sidebar actualizada');
+            
+        } catch (error) {
+            console.warn('⚠️ Error actualizando navegación sidebar:', error);
         }
     }
 

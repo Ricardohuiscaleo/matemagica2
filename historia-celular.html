@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infografía: La Historia del Celular</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0f9ff; /* Light blue sky */
+            overflow-x: hidden;
+        }
+        body.modal-open {
+            overflow: hidden;
+        }
+        .title-font {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 10%;
+            height: 80%;
+            width: 8px;
+            background: linear-gradient(to bottom, #86efac, #3b82f6, #a855f7);
+            border-radius: 4px;
+        }
+        .timeline-item {
+            position: relative;
+            width: 40%;
+            padding: 20px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, opacity 0.6s ease;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        .timeline-item.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .timeline-item:hover {
+            transform: translateY(-5px) scale(1.02);
+        }
+        .timeline-item:nth-child(odd) {
+            align-self: flex-start;
+            margin-left: 5%;
+            background-color: #fef08a;
+            border: 4px solid #facc15;
+        }
+        .timeline-item:nth-child(even) {
+            align-self: flex-end;
+            margin-right: 5%;
+            background-color: #a7f3d0;
+            border: 4px solid #4ade80;
+        }
+        .timeline-dot {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 6px solid #ffffff;
+            background-color: #fb923c;
+            box-shadow: 0 0 0 4px #fb923c;
+        }
+        .timeline-item:nth-child(odd) .timeline-dot { right: -48px; }
+        .timeline-item:nth-child(even) .timeline-dot { left: -48px; }
+
+        /* --- MODAL STYLES --- */
+        #modal-popup {
+            transition: opacity 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-popup.hidden {
+            display: none;
+        }
+        #modal-content {
+             transition: transform 0.3s ease;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes blink-screen-1983 {
+            0%, 100% { fill: #4b5563; }
+            50% { fill: #374151; }
+        }
+        #phone-1983.is-animating .screen-1983 {
+            animation: blink-screen-1983 1s step-end infinite;
+        }
+        
+        @keyframes blink-screen { 0%, 100% { fill: #bef264; } 50% { fill: #eab308; } }
+        #phone-1995.is-animating .screen { animation: blink-screen 0.8s step-end infinite; }
+        
+        @keyframes move-snake-group {
+            0% { transform: translate(0px, 0px); }
+            25% { transform: translate(15px, 0px); }
+            50% { transform: translate(15px, -10px); }
+            75% { transform: translate(0px, -10px); }
+            100% { transform: translate(0px, 0px); }
+        }
+        #phone-2000.is-animating .snake-group {
+            animation: move-snake-group 2.5s linear infinite;
+        }
+        
+        @keyframes camera-flash { 0%, 60%, 100% { opacity: 0; } 50% { opacity: 1; } }
+        #phone-2002.is-animating .flash { animation: camera-flash 1.5s ease-in-out infinite; }
+        
+        @keyframes web-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(-20px); } }
+        #phone-2007.is-animating .web-content { animation: web-scroll 2s linear infinite; }
+
+        @keyframes icon-scroll { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-15px); } }
+        #phone-today.is-animating .app-icons { animation: icon-scroll 3s ease-in-out infinite; }
+
+        @media (max-width: 768px) {
+            .timeline-line { left: 30px; transform: translateX(0); }
+            .timeline-item { width: 80%; align-self: flex-end !important; margin-left: 60px !important; margin-right: 0 !important; }
+            .timeline-dot { left: -48px !important; right: auto !important; }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Botón Volver -->
+        <div class="mb-6">
+            <button onclick="volverAPresentaciones()" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i>
+                <span class="title-font">Volver a Presentaciones</span>
+            </button>
+        </div>
+
+        <header class="text-center bg-white p-6 rounded-2xl shadow-lg mb-12 border-4 border-violet-400">
+            <h1 class="title-font text-4xl md:text-6xl font-bold text-violet-600">¡La Historia del Celular!</h1>
+            <p class="mt-4 text-lg md:text-2xl text-gray-600">Presentado por:</p>
+            <p class="title-font text-2xl md:text-4xl text-pink-500 font-semibold mt-2">Gabriela Fernanda Huiscaleo Bugueño</p>
+            <p class="mt-2 text-base md:text-xl text-gray-500">Colegio Fines Relmu</p>
+        </header>
+        
+        <section class="text-center bg-white p-6 rounded-2xl shadow-lg mb-12 border-4 border-sky-400">
+             <h2 class="title-font text-3xl md:text-5xl font-bold text-sky-600">Un Viaje en el Tiempo</h2>
+             <p class="mt-4 text-xl md:text-2xl text-gray-600">¿Sabían que los celulares no siempre fueron como los de ahora? ¡Antes eran muy diferentes! Acompáñenme a descubrir cómo han cambiado. ¡Hagan clic en cada parada para ver la magia!</p>
+        </section>
+
+        <div class="relative flex flex-col items-center py-10">
+            <div class="hidden md:block timeline-line"></div>
+            
+            <div class="timeline-item" data-phone-id="phone-1983">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2">
+                        <svg id="phone-1983" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <g>
+                                <rect x="25" y="2" width="50" height="96" rx="8" fill="#d1d5db"/>
+                                <rect class="screen-1983" x="30" y="20" width="40" height="10" rx="2" fill="#4b5563"/>
+                                <g>
+                                    <rect x="30" y="40" width="40" height="56" rx="4" fill="#6b7280"/>
+                                    <text x="38" y="52" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">1</text>
+                                    <text x="50" y="52" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">2</text>
+                                    <text x="62" y="52" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">3</text>
+                                    <text x="38" y="65" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">4</text>
+                                    <text x="50" y="65" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">5</text>
+                                    <text x="62" y="65" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">6</text>
+                                    <text x="38" y="78" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">7</text>
+                                    <text x="50" y="78" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">8</text>
+                                    <text x="62" y="78" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">9</text>
+                                    <text x="38" y="91" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">*</text>
+                                    <text x="50" y="91" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">0</text>
+                                    <text x="62" y="91" font-family="Arial, sans-serif" font-size="6" fill="white" text-anchor="middle">#</text>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+                    <div><h2 class="title-font text-3xl font-bold text-amber-600">1983: El Abuelito</h2><p class="mt-2 text-xl text-gray-700">¡El primer celular! Era muy grande y pesado. ¡Como un ladrillo!</p></div>
+                </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+            
+            <div class="timeline-item" data-phone-id="phone-1995">
+                 <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2">
+                        <svg id="phone-1995" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <g>
+                                <path d="M 50,5 L 50,25" stroke="#737373" stroke-width="5" stroke-linecap="round" />
+                                <rect x="30" y="20" width="40" height="75" rx="7" fill="#a3a3a3"/>
+                                <rect class="screen" x="35" y="28" width="30" height="15" rx="3" fill="#bef264"/>
+                                <rect x="35" y="50" width="30" height="40" rx="3" fill="#57534e"/>
+                                <!-- Keypad for 1995 -->
+                                <g font-family="Arial, sans-serif" font-size="4" fill="#e5e7eb" text-anchor="middle">
+                                    <text x="40" y="59">1</text><text x="50" y="59">2</text><text x="60" y="59">3</text>
+                                    <text x="40" y="69">4</text><text x="50" y="69">5</text><text x="60" y="69">6</text>
+                                    <text x="40" y="79">7</text><text x="50" y="79">8</text><text x="60" y="79">9</text>
+                                    <text x="40" y="89">*</text><text x="50" y="89">0</text><text x="60" y="89">#</text>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+                    <div><h2 class="title-font text-3xl font-bold text-emerald-600">1995: Con Antenita</h2><p class="mt-2 text-xl text-gray-700">¡Ahora más pequeños! Tenían una antenita para poder hablar.</p></div>
+                 </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+
+            <div class="timeline-item" data-phone-id="phone-2000">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2"><svg id="phone-2000" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><rect x="30" y="15" width="40" height="70" rx="8" fill="#0c4a6e"/><rect x="35" y="22" width="30" height="25" rx="3" fill="#e0f2fe"/><g class="snake-group"><path d="M 40,38 L 45,38 L 45,33" stroke="#166534" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="40" cy="55" r="3" fill="#facc15"/><circle cx="50" cy="55" r="3" fill="#facc15"/><circle cx="60" cy="55" r="3" fill="#facc15"/><circle cx="40" cy="65" r="3" fill="#facc15"/><circle cx="50" cy="65" r="3" fill="#facc15"/><circle cx="60" cy="65" r="3" fill="#facc15"/></g></svg></div>
+                    <div><h2 class="title-font text-3xl font-bold text-amber-600">2000: ¡A Jugar!</h2><p class="mt-2 text-xl text-gray-700">¡Ya podías mandar mensajes y jugar al famoso juego de la viborita!</p></div>
+                </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+           
+            <div class="timeline-item" data-phone-id="phone-2002">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2"><svg id="phone-2002" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><rect x="30" y="10" width="40" height="80" rx="8" fill="#f472b6"/><rect x="35" y="15" width="30" height="40" rx="3" fill="#fbcfe8"/><circle cx="50" cy="35" r="8" fill="#1e293b"/><circle cx="50" cy="35" r="4" fill="#64748b"/><rect class="flash" x="35" y="15" width="30" height="40" rx="3" fill="white" opacity="0"/><rect x="35" y="60" width="30" height="25" rx="3" fill="#ec4899"/></g></svg></div>
+                    <div><h2 class="title-font text-3xl font-bold text-emerald-600">2002: ¡Una Foto!</h2><p class="mt-2 text-xl text-gray-700">¡Los celulares ahora sacaban fotos! Pero se veían un poquito borrosas.</p></div>
+                </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+            
+            <div class="timeline-item" data-phone-id="phone-2007">
+                 <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2"><svg id="phone-2007" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><rect x="25" y="10" width="50" height="80" rx="8" fill="#4b5563"/><rect x="28" y="13" width="44" height="64" rx="5" fill="#000000"/><g clip-path="url(#clip-2007)"><g class="web-content"><rect x="30" y="15" width="40" height="15" rx="2" fill="#3b82f6"/><rect x="30" y="35" width="40" height="3" rx="1" fill="#cbd5e1"/><rect x="30" y="42" width="30" height="3" rx="1" fill="#cbd5e1"/><rect x="30" y="55" width="40" height="3" rx="1" fill="#cbd5e1"/><rect x="30" y="62" width="25" height="3" rx="1" fill="#cbd5e1"/><rect x="30" y="75" width="40" height="3" rx="1" fill="#cbd5e1"/><rect x="30" y="82" width="32" height="3" rx="1" fill="#cbd5e1"/></g></g><defs><clipPath id="clip-2007"><rect x="30" y="15" width="40" height="60" rx="3"/></clipPath></defs><circle cx="50" cy="85" r="5" stroke="#e5e7eb" stroke-width="2" fill="none"/></g></svg></div>
+                    <div><h2 class="title-font text-3xl font-bold text-amber-600">2007: El Inteligente</h2><p class="mt-2 text-xl text-gray-700">¡Llegó el celular inteligente! Con pantalla para tocar y muchos juegos.</p></div>
+                </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+            
+            <div class="timeline-item" data-phone-id="phone-today">
+                <div class="flex flex-col md:flex-row items-center gap-6">
+                    <div class="w-32 h-32 flex-shrink-0 p-2"><svg id="phone-today" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><rect x="25" y="10" width="50" height="80" rx="8" fill="#1e293b" /><g clip-path="url(#clip-today)"><g class="app-icons"><rect x="35" y="28" width="12" height="12" rx="3" fill="#f43f5e"/><rect x="53" y="28" width="12" height="12" rx="3" fill="#22c55e"/><rect x="35" y="45" width="12" height="12" rx="3" fill="#3b82f6"/><rect x="53" y="45" width="12" height="12" rx="3" fill="#eab308"/><rect x="75" y="28" width="12" height="12" rx="3" fill="#8b5cf6"/><rect x="93" y="28" width="12" height="12" rx="3" fill="#ec4899"/><rect x="75" y="45" width="12" height="12" rx="3" fill="#10b981"/><rect x="93" y="45" width="12" height="12" rx="3" fill="#0ea5e9"/></g></g><defs><clipPath id="clip-today"><rect x="27" y="12" width="46" height="76" rx="6"/></clipPath></defs><circle cx="50" cy="18" r="2" fill="#111827"/></g></svg></div>
+                    <div><h2 class="title-font text-3xl font-bold text-emerald-600">Hoy: ¡Súper Celular!</h2><p class="mt-2 text-xl text-gray-700">¡Como el que conocemos! Para hablar, jugar, ver videos y aprender de todo.</p></div>
+                </div>
+                <div class="hidden md:block timeline-dot"></div>
+            </div>
+        </div>
+
+        <footer class="text-center bg-white p-6 rounded-2xl shadow-lg mt-8 border-4 border-pink-400">
+             <h2 class="title-font text-3xl md:text-5xl font-bold text-pink-600">¡Los celulares han cambiado mucho!</h2>
+             <p class="mt-4 text-xl md:text-3xl text-gray-600">¿Cómo crees que será el celular del futuro?</p>
+        </footer>
+    </div>
+    
+    <!-- Modal Popup -->
+    <div id="modal-popup" class="fixed inset-0 bg-black bg-opacity-70 z-50 items-center justify-center p-4 hidden opacity-0">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-2xl w-full relative transform scale-95">
+            <button id="modal-close" class="absolute top-2 right-4 text-gray-500 hover:text-gray-900 text-4xl font-bold">&times;</button>
+            <div class="flex flex-col md:flex-row items-center gap-8">
+                <div id="modal-svg" class="w-48 h-48 md:w-56 md:h-56 flex-shrink-0">
+                    <!-- SVG will be injected here -->
+                </div>
+                <div class="text-center md:text-left">
+                    <h2 id="modal-title" class="title-font text-4xl font-bold"></h2>
+                    <p id="modal-description" class="mt-4 text-2xl text-gray-700"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="js/presentation-stats-service.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Animate timeline items on scroll ---
+        const timelineItems = document.querySelectorAll('.timeline-item');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        timelineItems.forEach(item => {
+            observer.observe(item);
+        });
+
+        // --- Modal Logic ---
+        const modal = document.getElementById('modal-popup');
+        const modalContent = document.getElementById('modal-content');
+        const modalCloseBtn = document.getElementById('modal-close');
+        const modalSvgContainer = document.getElementById('modal-svg');
+        const modalTitle = document.getElementById('modal-title');
+        const modalDescription = document.getElementById('modal-description');
+        const body = document.body;
+
+        const openModal = (item) => {
+            const phoneSvgElement = item.querySelector('svg');
+            const title = item.querySelector('h2').innerText;
+            const description = item.querySelector('p').innerText;
+            const bgColor = window.getComputedStyle(item).backgroundColor;
+
+            // Populate modal
+            modalSvgContainer.innerHTML = phoneSvgElement.outerHTML;
+            modalTitle.innerText = title;
+            modalDescription.innerText = description;
+            modalContent.style.backgroundColor = bgColor;
+
+            // Animate the SVG inside the modal
+            const modalPhoneSvg = modalSvgContainer.querySelector('svg');
+            modalPhoneSvg.classList.add('is-animating');
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            body.classList.add('modal-open');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+            }, 10);
+        };
+
+        const closeModal = () => {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            body.classList.remove('modal-open');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalSvgContainer.innerHTML = ''; // Clear content
+            }, 300);
+        };
+
+        timelineItems.forEach(item => {
+            item.addEventListener('click', () => openModal(item));
+        });
+
+        modalCloseBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    });
+
+    // Función para volver a la página de presentaciones
+    function volverAPresentaciones() {
+        // Intentar cerrar la ventana actual si fue abierta desde otra página
+        if (window.opener) {
+            window.close();
+        } else {
+            // Si no se puede cerrar, navegar de vuelta
+            window.location.href = 'gaby-presentaciones.html';
+        }
+    }
+
+    // Variables para trackear tiempo de visualización
+    let tiempoInicio = Date.now();
+    let duracionTotal = 0;
+
+    // Función para calcular duración al cerrar
+    function calcularDuracion() {
+        return Math.round((Date.now() - tiempoInicio) / 1000); // en segundos
+    }
+
+    // Registrar duración cuando se cierra la ventana
+    window.addEventListener('beforeunload', function() {
+        duracionTotal = calcularDuracion();
+        
+        // Enviar duración si el servicio está disponible
+        if (window.PresentationStatsService && duracionTotal > 5) { // Solo si vio más de 5 segundos
+            // Usar sendBeacon para envío al cerrar ventana
+            const datos = {
+                presentacion_id: 'historia-celular',
+                duracion_segundos: duracionTotal,
+                session_id: window.PresentationStatsService.sessionId
+            };
+            
+            // Guardar localmente para sincronizar después
+            const pendientes = JSON.parse(localStorage.getItem('gaby-stats-duracion') || '[]');
+            pendientes.push(datos);
+            localStorage.setItem('gaby-stats-duracion', JSON.stringify(pendientes));
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sincronizar duraciones pendientes si hay servicio disponible
+        if (window.PresentationStatsService) {
+            setTimeout(() => {
+                sincronizarDuracionesPendientes();
+            }, 2000); // Esperar 2 segundos para que se cargue todo
+        }
+    });
+
+    // Función para sincronizar duraciones pendientes
+    async function sincronizarDuracionesPendientes() {
+        const pendientes = JSON.parse(localStorage.getItem('gaby-stats-duracion') || '[]');
+        
+        if (pendientes.length === 0) return;
+
+        console.log(`⏱️ Sincronizando ${pendientes.length} duraciones pendientes...`);
+
+        for (const datos of pendientes) {
+            try {
+                if (window.PresentationStatsService && window.PresentationStatsService.isOnline) {
+                    // Actualizar duración en Supabase
+                    await window.PresentationStatsService.registrarVisualizacion(
+                        datos.presentacion_id,
+                        'La Historia del Celular',
+                        datos.duracion_segundos
+                    );
+                }
+            } catch (error) {
+                console.warn('⚠️ Error sincronizando duración:', error);
+            }
+        }
+
+        // Limpiar pendientes
+        localStorage.removeItem('gaby-stats-duracion');
+        console.log('✅ Duraciones sincronizadas');
+    }
+</script>
+</body>
+</html>

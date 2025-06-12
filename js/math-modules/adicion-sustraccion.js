@@ -31,17 +31,17 @@ class AdicionSustraccionModule {
                 <!-- Header fijo superior -->
                 <div class="bg-white rounded-xl shadow-lg p-4 mb-6 border-2 border-blue-200">
                     <div class="flex justify-between items-center">
-                        <button onclick="volverAMatematicas()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center transition-colors">
+                        <button onclick="adicionSustraccionModule.goBackToMathematics()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors">
                             <i class="fas fa-arrow-left mr-2"></i>Volver
                         </button>
                         
-                        <h1 class="text-2xl font-bold text-center text-gray-800">
+                        <h1 class="text-2xl text-center text-gray-800">
                             ${this.moduleConfig.title} - ${this.moduleConfig.subtitle}
                         </h1>
                         
                         <div class="text-right">
                             <div class="text-sm text-gray-600">Estudiante:</div>
-                            <div class="font-bold text-blue-600">${studentData?.name || 'Demo'}</div>
+                            <div class="text-blue-600">${studentData?.name || 'Demo'}</div>
                         </div>
                     </div>
                 </div>
@@ -1683,9 +1683,66 @@ Responde SOLO con el contenido pedagógico, sin formato adicional.`;
         return loadingDiv;
     }
 
-    // ✅ Verificar si necesita ayuda con préstamo
-    needsBorrowingHelp(exercise) {
-        return exercise.operation === '-' && (exercise.num1 % 10) < (exercise.num2 % 10);
+    // ✅ Volver al módulo de matemáticas correctamente
+    goBackToMathematics() {
+        try {
+            console.log('🔙 Volviendo al módulo de matemáticas...');
+            
+            // Restaurar la estructura original del contenido
+            const mainContent = document.querySelector('main.flex-1');
+            if (mainContent) {
+                mainContent.innerHTML = `
+                    <!-- Dashboard Principal -->
+                    <div id="dashboard-content" class="p-6 hidden">
+                        <!-- El contenido del dashboard se restaurará -->
+                    </div>
+
+                    <!-- Contenido de Matemáticas 2° Básico -->
+                    <div id="matematicas-segundo-content" class="hidden">
+                        <!-- Este contenido será el dashboard curricular existente -->
+                    </div>
+                `;
+            }
+            
+            // Usar la navegación global si está disponible
+            if (window.mathematicsNavigation) {
+                // Activar vista de matemáticas
+                window.mathematicsNavigation.currentView = 'matematicas-segundo';
+                
+                // Recuperar datos del estudiante actual
+                const studentData = window.mathematicsNavigation.currentStudentData || {
+                    name: 'Estudiante'
+                };
+                
+                // Renderizar interfaz de matemáticas
+                window.mathematicsNavigation.renderMathematicsInterface(studentData);
+                
+                // Mostrar contenido de matemáticas
+                const dashboardContent = document.getElementById('dashboard-content');
+                const mathematicsContent = document.getElementById('matematicas-segundo-content');
+                
+                if (dashboardContent) dashboardContent.classList.add('hidden');
+                if (mathematicsContent) mathematicsContent.classList.remove('hidden');
+                
+                console.log('✅ Regresado correctamente al módulo de matemáticas');
+            } else {
+                // Fallback: usar la función global del dashboard
+                if (typeof volverAMatematicas === 'function') {
+                    volverAMatematicas();
+                } else {
+                    // Último recurso: recargar página
+                    console.log('🔄 Recargando página como último recurso...');
+                    location.reload();
+                }
+            }
+            
+        } catch (error) {
+            console.error('❌ Error volviendo a matemáticas:', error);
+            
+            // Fallback seguro: recargar página
+            console.log('🔄 Recargando página por error...');
+            location.reload();
+        }
     }
 }
 

@@ -11,6 +11,85 @@
     <link rel="icon" type="image/png" href="favicon.ico">
     <meta name="theme-color" content="#3B82F6">
     <link href="styles.css" rel="stylesheet">
+    <style>
+        /* SOLUCIÓN MEJORADA PARA PRESERVAR ICONOS DE ASIGNATURAS */
+        
+        /* Fuentes del sistema para el texto */
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            font-weight: 400 !important;
+        }
+
+        /* REGLAS MUY ESPECÍFICAS para eliminar bold solo de texto */
+        span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        p:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        button span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        div:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji) > span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji) {
+            font-weight: 400 !important;
+        }
+
+        /* Clases específicas de Tailwind - SOLO texto, NO iconos */
+        .text-xs.font-medium:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .text-sm.font-medium:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .text-lg.font-semibold:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .text-2xl.font-bold:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .font-bold:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .font-semibold:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon),
+        .font-medium:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon) {
+            font-weight: 400 !important;
+        }
+
+        /* ✅ FORZAR CORRECTAMENTE TODOS LOS ICONOS DE FONTAWESOME */
+        i, i[class*="fa"], .fas, .far, .fab, .fal, .fa,
+        i.fas, i.far, i.fab, i.fal, i.fa,
+        [class^="fa-"], [class*=" fa-"],
+        .fa-calculator, .fa-book, .fa-flask, .fa-landmark, .fa-globe,
+        .fa-chart-pie, .fa-bars, .fa-cog, .fa-bell, .fa-sign-out-alt,
+        .fa-edit, .fa-chevron-right, .fa-question-circle,
+        .fa-check-circle, .fa-bullseye, .fa-clock, .fa-star,
+        .fa-check, .fa-brain, .fa-trophy, .fa-plus-circle,
+        .fa-chart-line, .fa-book-open, .fa-gamepad, .fa-times,
+        .fa-plus, .fa-chalkboard-teacher, .fa-home, .fa-user-tie,
+        .fa-lock, .fa-cog, .fa-search, .fa-download, .fa-print,
+        .fa-save, .fa-settings, .fa-info-circle, .fa-exclamation-triangle,
+        .fa-heart, .fa-thumbs-up, .fa-lightbulb, .fa-graduation-cap,
+        .fa-calendar, .fa-folder, .fa-chart-bar {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 6 Pro" !important;
+            font-weight: 900 !important;
+            font-style: normal !important;
+            font-variant: normal !important;
+            text-rendering: auto !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+        }
+
+        /* ✅ ASEGURAR ICONOS DE ASIGNATURAS ESPECÍFICAMENTE */
+        .module-group i, .nav-item i, .sidebar i,
+        nav i, button i, a i {
+            font-family: "Font Awesome 6 Free" !important;
+            font-weight: 900 !important;
+            font-style: normal !important;
+        }
+
+        /* ÚNICA EXCEPCIÓN: Mantener "Matemágica" con cursiva */
+        h1[style*="Pacifico"], .magic-title {
+            font-family: 'Pacifico', cursive !important;
+            font-weight: 700 !important;
+            font-style: italic !important;
+        }
+
+        /* Asegurar contenedores no interfieren */
+        .w-12.h-12, .w-8.h-8, .w-5.text-center {
+            font-family: inherit !important;
+        }
+
+        /* ✅ BACKUP: Si FontAwesome no carga, usar Unicode */
+        .fa-calculator:before { content: "🧮" !important; font-family: system-ui !important; }
+        .fa-book:before { content: "📚" !important; font-family: system-ui !important; }
+        .fa-flask:before { content: "🧪" !important; font-family: system-ui !important; }
+        .fa-landmark:before { content: "🏛️" !important; font-family: system-ui !important; }
+        .fa-globe:before { content: "🌍" !important; font-family: system-ui !important; }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header Principal -->
@@ -92,7 +171,7 @@
                         </button>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
                             E
                         </div>
                         <div>
@@ -106,7 +185,7 @@
                 <div class="space-y-1">
                     <!-- Dashboard -->
                     <a href="#dashboard" class="nav-item active flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                        <i class="fas fa-chart-pie w-5 text-center mr-3"></i>
+                        <span class="w-5 text-center mr-3 text-xl">📊</span>
                         <span class="font-medium">Dashboard</span>
                     </a>
 
@@ -120,7 +199,7 @@
                     <div class="module-group">
                         <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors" data-module="matematicas">
                             <div class="flex items-center">
-                                <i class="fas fa-calculator w-5 text-center mr-3 text-blue-600"></i>
+                                <span class="w-5 text-center mr-3 text-xl text-blue-600">🧮</span>
                                 <span class="font-medium">Matemáticas</span>
                             </div>
                             <i class="fas fa-chevron-right text-xs transition-transform module-chevron"></i>
@@ -141,7 +220,7 @@
                     <div class="module-group">
                         <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
                             <div class="flex items-center">
-                                <i class="fas fa-book w-5 text-center mr-3 text-green-600"></i>
+                                <span class="w-5 text-center mr-3 text-xl text-green-600">📚</span>
                                 <span class="font-medium">Lenguaje</span>
                             </div>
                             <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
@@ -152,7 +231,7 @@
                     <div class="module-group">
                         <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
                             <div class="flex items-center">
-                                <i class="fas fa-flask w-5 text-center mr-3 text-purple-600"></i>
+                                <span class="w-5 text-center mr-3 text-xl text-purple-600">🧪</span>
                                 <span class="font-medium">Ciencias</span>
                             </div>
                             <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
@@ -163,7 +242,7 @@
                     <div class="module-group">
                         <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
                             <div class="flex items-center">
-                                <i class="fas fa-landmark w-5 text-center mr-3 text-orange-600"></i>
+                                <span class="w-5 text-center mr-3 text-xl text-orange-600">🏛️</span>
                                 <span class="font-medium">Historia</span>
                             </div>
                             <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
@@ -174,7 +253,7 @@
                     <div class="module-group">
                         <button class="nav-item nav-module flex items-center justify-between w-full px-3 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
                             <div class="flex items-center">
-                                <i class="fas fa-globe w-5 text-center mr-3 text-indigo-600"></i>
+                                <span class="w-5 text-center mr-3 text-xl text-indigo-600">🌍</span>
                                 <span class="font-medium">Idiomas</span>
                             </div>
                             <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Próximamente</span>
@@ -185,7 +264,7 @@
                 <!-- Soporte -->
                 <div class="mt-8 pt-4 border-t border-gray-200">
                     <a href="#" class="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <i class="fas fa-question-circle w-5 text-center mr-3"></i>
+                        <span class="w-5 text-center mr-3 text-lg">❓</span>
                         <span>Ayuda y Soporte</span>
                     </a>
                 </div>
@@ -551,25 +630,15 @@
                 </div>
                 
                 <div class="space-y-4">
-                    <!-- Tipo de Usuario -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Soy:</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
-                                <input type="radio" name="user-type" value="teacher" class="mr-2">
-                                <div class="text-center w-full">
-                                    <i class="fas fa-chalkboard-teacher text-blue-600 text-lg"></i>
-                                    <p class="text-sm font-medium text-gray-700">Profesor/a</p>
-                                </div>
-                            </label>
-                            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors">
-                                <input type="radio" name="user-type" value="parent" class="mr-2">
-                                <div class="text-center w-full">
-                                    <i class="fas fa-home text-purple-600 text-lg"></i>
-                                    <p class="text-sm font-medium text-gray-700">Apoderado/a</p>
-                                </div>
-                            </label>
+                    <!-- Mensaje de bienvenida simple y amigable -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <span class="text-2xl">😊</span>
+                            <h4 class="text-lg font-medium text-gray-800">¡Hola!</h4>
                         </div>
+                        <p class="text-sm text-blue-700">
+                            Puedes personalizar cómo prefieres que te llamen
+                        </p>
                     </div>
 
                     <!-- Personalización específica para Profesor -->
@@ -628,7 +697,7 @@
 
                     <!-- Nombre personalizado opcional -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre para mostrar (opcional)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre personalizado (opcional)</label>
                         <input type="text" id="custom-display-name" placeholder="Ej: Miss Carmen, Tía Ana, etc." 
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <p class="text-xs text-gray-500 mt-1">Si está vacío, usaremos la opción seleccionada arriba</p>
@@ -1294,12 +1363,8 @@
                 const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
                 const currentRole = userProfile.user_role || 'parent';
                 
-                // Marcar el radio correspondiente
-                const roleRadio = document.querySelector(`input[name="user-type"][value="${currentRole}"]`);
-                if (roleRadio) {
-                    roleRadio.checked = true;
-                    toggleRoleSpecificFields(currentRole);
-                }
+                // ✅ MOSTRAR LAS OPCIONES ESPECÍFICAS DEL ROL DETECTADO
+                toggleRoleSpecificFields(currentRole);
                 
                 // Cargar customizaciones guardadas
                 const customization = JSON.parse(localStorage.getItem('matemagica-role-customization') || '{}');
@@ -1317,6 +1382,8 @@
                 if (customNameInput && customization.displayName) {
                     customNameInput.value = customization.displayName;
                 }
+                
+                console.log(`🎯 Configuración cargada para rol: ${currentRole}`);
                 
             } catch (error) {
                 console.error('Error cargando customización:', error);
@@ -1338,19 +1405,25 @@
         
         function saveRoleCustomization() {
             try {
-                // Obtener valores del formulario
-                const selectedRole = document.querySelector('input[name="user-type"]:checked')?.value;
-                const selectedTitle = document.querySelector(`input[name="${selectedRole}-title"]:checked`)?.value;
+                // ✅ SEGURIDAD: Obtener el rol ORIGINAL desde el perfil (no del formulario)
+                const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+                const originalRole = userProfile.user_role || 'parent';
+                
+                // ✅ SOLO permitir cambios en título y nombre, NO en el tipo de rol
+                const selectedTitle = document.querySelector(`input[name="${originalRole}-title"]:checked`)?.value;
                 const customDisplayName = document.getElementById('custom-display-name')?.value.trim();
                 
-                if (!selectedRole) {
-                    showErrorToast('Por favor selecciona un tipo de usuario');
+                // ✅ VALIDACIÓN: Asegurar que no se intente cambiar el rol
+                const formRole = document.querySelector('input[name="user-type"]:checked')?.value;
+                if (formRole && formRole !== originalRole) {
+                    showErrorToast('🔒 No puedes cambiar tu tipo de cuenta por seguridad');
+                    console.warn('⚠️ Intento de cambio de rol bloqueado:', formRole, '→', originalRole);
                     return;
                 }
                 
-                // Crear objeto de customización
+                // Crear objeto de customización (manteniendo el rol original)
                 const customization = {
-                    role: selectedRole,
+                    role: originalRole, // ✅ USAR SIEMPRE EL ROL ORIGINAL
                     title: selectedTitle,
                     displayName: customDisplayName,
                     timestamp: new Date().toISOString()
@@ -1359,22 +1432,19 @@
                 // Guardar en localStorage
                 localStorage.setItem('matemagica-role-customization', JSON.stringify(customization));
                 
-                // Actualizar perfil de usuario si es necesario
-                const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
-                if (userProfile.user_role !== selectedRole) {
-                    userProfile.user_role = selectedRole;
-                    localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
-                }
+                // ✅ NO modificar el rol en el perfil de usuario - mantener el original
+                // Esta línea se elimina para preservar la seguridad:
+                // if (userProfile.user_role !== selectedRole) { ... }
                 
-                // Aplicar cambios inmediatamente
-                updateDashboardForRole(selectedRole);
+                // Aplicar cambios inmediatamente (sin cambiar el rol)
+                updateDashboardForRole(originalRole);
                 updateRoleDisplay(customization);
                 
                 // Cerrar modal y mostrar confirmación
                 closeRoleCustomizationModal();
                 showSuccessToast('✅ Personalización guardada correctamente');
                 
-                console.log('✅ Customización de rol guardada:', customization);
+                console.log('✅ Customización de rol guardada (sin cambio de tipo):', customization);
                 
             } catch (error) {
                 console.error('Error guardando customización:', error);

@@ -71,8 +71,8 @@
             margin: 0;
             padding: 0;
             font-family: 'Fredoka', sans-serif;
-            /* NORMALIZAR PESO DE FUENTE */
-            font-weight: 300; /* Peso normal por defecto */
+            /* NORMALIZAR PESO DE FUENTE A NORMAL */
+            font-weight: 400; /* Peso normal por defecto */
             font-variation-settings: normal;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -83,23 +83,28 @@
             overflow-x: hidden;
         }
         
-        /* NORMALIZAR FUENTES GLOBALMENTE */
+        /* NORMALIZAR FUENTES GLOBALMENTE - SOLO PESO NORMAL */
         *, *::before, *::after {
-            font-weight: inherit; /* Heredar peso normal */
+            font-weight: 400 !important; /* Forzar peso normal en todo */
         }
         
-        /* Asegurar que elementos específicos mantengan peso normal */
-        p, span, div, button, a, input, textarea, label {
-            font-weight: 400; /* Peso normal */
+        /* EXCEPCIÓN ESPECIAL: Solo "Matemágica" puede tener cursiva y bold */
+        .magic-title, .titulo-magico {
+            font-family: 'Pacifico', cursive !important;
+            font-weight: 700 !important; /* Solo el título principal */
+            font-style: italic !important;
         }
         
-        /* Solo elementos específicos tendrán peso más grueso */
-        h1, h2, h3, .font-bold, .font-semibold, .font-medium {
-            /* Estos SÍ pueden tener peso mayor */
+        /* Asegurar que otros elementos importantes mantengan peso normal */
+        p, span, div, button, a, input, textarea, label, h1, h2, h3, h4, h5, h6 {
+            font-weight: 400 !important; /* Peso normal para todo */
         }
         
-        h1, h2, h3 { 
-            font-family: 'Pacifico', cursive; 
+        /* Excepción solo para el título "Matemágica" */
+        h1.magic-title, .titulo-magico {
+            font-family: 'Pacifico', cursive !important;
+            font-weight: 700 !important;
+            font-style: italic !important;
         }
 
         /* Contenedor principal que FUERZA el centrado */
@@ -640,6 +645,51 @@
             padding: 72px 56px 80px 56px; /* Mismo padding aumentado */
             min-height: 720px; /* Aumentado de 640px a 720px */
             max-height: 720px; /* Aumentado de 640px a 720px */
+        }
+
+        /* FORZAR FUENTES NORMALES - SOLUCIÓN DEFINITIVA */
+        *, *::before, *::after,
+        h1, h2, h3, h4, h5, h6,
+        p, span, div, button, a, input, textarea, label,
+        .role-btn, .btn-content, .btn-description,
+        .auth-title, .section-title, .loading-text,
+        .google-btn, .back-btn {
+            font-weight: 400 !important; /* Peso normal para TODO */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+
+        /* ELIMINAR FREDOKA COMPLETAMENTE */
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            font-weight: 400 !important;
+        }
+
+        /* ÚNICA EXCEPCIÓN: Solo "Matemágica" */
+        .magic-title {
+            font-family: 'Pacifico', cursive !important;
+            font-weight: 700 !important;
+            font-style: italic !important;
+        }
+
+        /* ANULAR TODAS LAS FUENTES GRUESAS ESPECÍFICAS */
+        .role-btn {
+            font-weight: 400 !important; /* Cambiar de 700 a 400 */
+        }
+
+        .section-title {
+            font-weight: 400 !important; /* Cambiar de 600 a 400 */
+        }
+
+        .auth-title {
+            font-weight: 400 !important; /* Cambiar de 700 a 400 */
+        }
+
+        .loading-text {
+            font-weight: 400 !important; /* Cambiar de 700 a 400 */
+        }
+
+        .google-btn {
+            font-weight: 400 !important; /* Cambiar de 600 a 400 */
         }
     </style>
 </head>

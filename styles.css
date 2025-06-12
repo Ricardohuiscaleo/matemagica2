@@ -2211,7 +2211,7 @@ video {
 
 body {
   font-family: var(--font-fredoka);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #7c66ea58 0%, #00ffff26 100%);
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -3006,4 +3006,88 @@ body {
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+/* FUENTES GLOBALES - SOLO PESO NORMAL */
+*, *::before, *::after {
+  font-weight: 400 !important; /* Forzar peso normal en todo */
+}
+
+/* EXCEPCIÓN ESPECIAL: Solo "Matemágica" puede tener cursiva y bold */
+.magic-title, .titulo-magico, h1.magic-title, .titulo-magico {
+  font-family: 'Pacifico', cursive !important;
+  font-weight: 700 !important; /* Solo el título principal */
+  font-style: italic !important;
+}
+
+/* Normalizar fuentes para elementos específicos */
+p, span, div, button, a, input, textarea, label, 
+h1, h2, h3, h4, h5, h6,
+.font-bold, .font-semibold, .font-medium {
+  font-weight: 400 !important; /* Peso normal para todo */
+}
+
+/* Excepción específica solo para títulos "Matemágica" */
+h1.magic-title, .titulo-magico, 
+[class*="magic-title"], [class*="titulo-magico"] {
+  font-family: 'Pacifico', cursive !important;
+  font-weight: 700 !important;
+  font-style: italic !important;
+}
+
+/* FUENTES GLOBALES - SOLO PESO NORMAL - VERSIÓN ULTRA FUERTE */
+* {
+  font-weight: 400 !important; /* Forzar peso normal en TODO */
+}
+
+*::before, *::after {
+  font-weight: 400 !important;
+}
+
+/* ELIMINAR TODAS LAS FUENTES GRUESAS DE TAILWIND */
+.font-bold, .font-semibold, .font-medium, .font-black, .font-extrabold {
+  font-weight: 400 !important; /* Anular Tailwind */
+}
+
+/* ELIMINAR FUENTES REDONDEADAS - SOLO USAR FUENTES NORMALES */
+body, html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+/* NORMALIZAR TODOS LOS ELEMENTOS */
+p, span, div, button, a, input, textarea, label, 
+h1, h2, h3, h4, h5, h6, strong, b,
+.text-lg, .text-xl, .text-2xl, .text-3xl,
+.btn-rol, .role-btn, .btn-continuar, .btn-google {
+  font-weight: 400 !important; /* Peso normal para TODO */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* ELIMINAR FUENTE FREDOKA REDONDEADA GLOBALMENTE */
+[style*="Fredoka"], .font-fredoka {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-weight: 400 !important;
+}
+
+/* ÚNICA EXCEPCIÓN: Solo "Matemágica" con cursiva y bold */
+.magic-title, .titulo-magico, h1.magic-title, 
+[class*="magic-title"], [class*="titulo-magico"],
+h1:contains("Matemágica"), [title*="Matemágica"] {
+  font-family: 'Pacifico', cursive !important;
+  font-weight: 700 !important;
+  font-style: italic !important;
+}
+
+/* FORZAR FUENTES NORMALES EN TAILWIND */
+.text-base, .text-sm, .text-xs, .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl {
+  font-weight: 400 !important;
+}
+
+/* ANULAR VARIABLES CSS DE FUENTES GRUESAS */
+:root {
+  --tw-font-weight: 400 !important;
+  --font-weight-bold: 400 !important;
+  --font-weight-semibold: 400 !important;
+  --font-weight-medium: 400 !important;
 }

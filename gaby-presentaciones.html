@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentaciones Gaby - Acceso Público</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .title-font {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .presentation-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .presentation-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .modal-content {
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        .presentation-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .floating-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .badge-new {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Principal -->
+    <header class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-presentation-screen text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="title-font text-2xl font-bold text-gray-800">Presentaciones Gaby</h1>
+                        <p class="text-sm text-gray-600">Acceso Público</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="title-font text-lg text-purple-600 font-semibold">Gabriela Fernanda Huiscaleo Bugueño</p>
+                    <p class="text-sm text-gray-500">Colegio Fines Relmu</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Banner de Bienvenida -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8 text-center border-4 border-yellow-300">
+            <div class="floating-animation inline-block mb-4">
+                <i class="fas fa-star text-yellow-500 presentation-icon"></i>
+            </div>
+            <h2 class="title-font text-4xl font-bold text-gray-800 mb-4">¡Bienvenidos a mis Presentaciones!</h2>
+            <p class="text-xl text-gray-600 mb-4">Aquí encontrarás todas mis presentaciones educativas interactivas</p>
+            <div class="flex justify-center space-x-4 text-sm text-gray-500">
+                <span><i class="fas fa-eye mr-1"></i>Visualización</span>
+                <span><i class="fas fa-mobile-alt mr-1"></i>Responsive</span>
+                <span><i class="fas fa-heart mr-1"></i>Educativo</span>
+            </div>
+        </div>
+
+        <!-- Grid de Presentaciones -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="presentations-grid">
+            <!-- Presentación 1: Historia del Celular -->
+            <div class="presentation-card bg-white rounded-xl shadow-lg overflow-hidden border-2 border-blue-200" onclick="openPresentation('historia-celular')">
+                <div class="bg-gradient-to-br from-blue-400 to-purple-500 p-6 text-center text-white">
+                    <i class="fas fa-mobile-alt presentation-icon"></i>
+                    <h3 class="title-font text-xl font-bold mb-2">La Historia del Celular</h3>
+                    <span class="badge-new bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">¡NUEVO!</span>
+                </div>
+                <div class="p-6">
+                    <p class="text-gray-600 mb-4">Un viaje interactivo desde 1983 hasta hoy. Descubre cómo han evolucionado los teléfonos móviles.</p>
+                    <div class="flex justify-between items-center text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>5-10 min</span>
+                        <span><i class="fas fa-users mr-1"></i>Todas las edades</span>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Tecnología</span>
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">Historia</span>
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Interactivo</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presentación 2: Placeholder para futuras presentaciones -->
+            <div class="presentation-card bg-white rounded-xl shadow-lg overflow-hidden border-2 border-green-200 opacity-75" onclick="showComingSoon()">
+                <div class="bg-gradient-to-br from-green-400 to-teal-500 p-6 text-center text-white">
+                    <i class="fas fa-leaf presentation-icon"></i>
+                    <h3 class="title-font text-xl font-bold mb-2">Ciencias Naturales</h3>
+                    <span class="bg-orange-400 text-orange-900 px-3 py-1 rounded-full text-xs font-bold">PRÓXIMAMENTE</span>
+                </div>
+                <div class="p-6">
+                    <p class="text-gray-600 mb-4">Explora el mundo natural con presentaciones interactivas sobre plantas, animales y ecosistemas.</p>
+                    <div class="flex justify-between items-center text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>Por determinar</span>
+                        <span><i class="fas fa-users mr-1"></i>Primaria</span>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Ciencias</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Naturaleza</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presentación 3: Placeholder -->
+            <div class="presentation-card bg-white rounded-xl shadow-lg overflow-hidden border-2 border-pink-200 opacity-75" onclick="showComingSoon()">
+                <div class="bg-gradient-to-br from-pink-400 to-red-500 p-6 text-center text-white">
+                    <i class="fas fa-book presentation-icon"></i>
+                    <h3 class="title-font text-xl font-bold mb-2">Literatura</h3>
+                    <span class="bg-orange-400 text-orange-900 px-3 py-1 rounded-full text-xs font-bold">PRÓXIMAMENTE</span>
+                </div>
+                <div class="p-6">
+                    <p class="text-gray-600 mb-4">Cuentos interactivos y análisis literario para fomentar el amor por la lectura.</p>
+                    <div class="flex justify-between items-center text-sm text-gray-500">
+                        <span><i class="fas fa-clock mr-1"></i>Por determinar</span>
+                        <span><i class="fas fa-users mr-1"></i>Todas las edades</span>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="bg-pink-100 text-pink-800 px-2 py-1 rounded-full text-xs">Literatura</span>
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">Cuentos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas de la página -->
+        <div class="mt-12 bg-white rounded-xl shadow-lg p-6 border-2 border-gray-200">
+            <h3 class="title-font text-2xl font-bold text-gray-800 mb-6 text-center">📊 Estadísticas en Tiempo Real</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-600" id="contador-disponibles">1</div>
+                    <div class="text-sm text-gray-600">Disponibles</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-green-600" id="contador-vistas">0</div>
+                    <div class="text-sm text-gray-600">Total Vistas</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-purple-600">100%</div>
+                    <div class="text-sm text-gray-600">Interactivas</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-pink-600">0</div>
+                    <div class="text-sm text-gray-600">Costo</div>
+                </div>
+            </div>
+            <div class="mt-6 bg-gray-50 rounded-lg p-4">
+                <div class="text-center mb-3">
+                    <span class="text-sm text-gray-500">📈 Presentación más vista: </span>
+                    <span class="text-lg font-bold text-gray-800" id="popularidad">Historia del Celular</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>📱 Historia del Celular:</span>
+                        <span class="font-bold text-blue-600" id="vistas-historia">0 vistas</span>
+                    </div>
+                    <div class="flex justify-between opacity-50">
+                        <span>🌿 Ciencias Naturales:</span>
+                        <span class="font-bold text-green-600" id="vistas-ciencias">0 vistas</span>
+                    </div>
+                    <div class="flex justify-between opacity-50">
+                        <span>📚 Literatura:</span>
+                        <span class="font-bold text-pink-600" id="vistas-literatura">0 vistas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para Presentaciones -->
+    <div id="presentation-modal" class="fixed inset-0 modal-backdrop z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-6xl relative">
+                <!-- Header del Modal -->
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 id="modal-title" class="title-font text-2xl font-bold text-gray-800"></h3>
+                    <button onclick="closePresentation()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Contenido del Modal -->
+                <div id="modal-content" class="p-0">
+                    <!-- Aquí se cargará el iframe de la presentación -->
+                </div>
+                
+                <!-- Footer del Modal -->
+                <div class="flex justify-between items-center p-4 border-t bg-gray-50">
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Presentación creada por Gabriela Fernanda Huiscaleo Bugueño
+                    </div>
+                    <button onclick="closePresentation()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white shadow-lg mt-12">
+        <div class="container mx-auto px-4 py-6">
+            <div class="text-center">
+                <p class="text-gray-600 mb-2">© 2024 Presentaciones Gaby - Colegio Fines Relmu</p>
+                <div class="flex justify-center space-x-4 text-sm text-gray-500">
+                    <span><i class="fas fa-graduation-cap mr-1"></i>Educativo</span>
+                    <span><i class="fas fa-globe mr-1"></i>Acceso Público</span>
+                    <span><i class="fas fa-mobile-alt mr-1"></i>Responsive</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/presentation-stats-service.js"></script>
+    <script>
+        // Función para obtener estadísticas de visualizaciones (ahora híbrido)
+        async function obtenerEstadisticasVisualizaciones() {
+            if (window.PresentationStatsService) {
+                // Usar servicio híbrido (Supabase + LocalStorage)
+                return await window.PresentationStatsService.obtenerEstadisticasCombinadas();
+            } else {
+                // Fallback: solo LocalStorage
+                const estadisticas = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
+                return {
+                    'historia-celular': estadisticas['historia-celular'] || 0,
+                    'ciencias-naturales': estadisticas['ciencias-naturales'] || 0,
+                    'literatura': estadisticas['literatura'] || 0,
+                    total: Object.values(estadisticas).reduce((sum, val) => sum + val, 0),
+                    isOnline: false
+                };
+            }
+        }
+
+        // Función para incrementar contador de visualizaciones (ahora híbrido)
+        async function incrementarVisualizacion(presentacionId, titulo) {
+            if (window.PresentationStatsService) {
+                // Registrar en Supabase + LocalStorage
+                await window.PresentationStatsService.registrarVisualizacion(
+                    presentacionId, 
+                    titulo,
+                    null // duración se calculará en la presentación
+                );
+            } else {
+                // Fallback: solo LocalStorage
+                const estadisticas = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
+                estadisticas[presentacionId] = (estadisticas[presentacionId] || 0) + 1;
+                localStorage.setItem('gaby-presentaciones-stats', JSON.stringify(estadisticas));
+            }
+            
+            // Actualizar UI inmediatamente
+            await actualizarEstadisticasUI();
+        }
+
+        // Función para actualizar UI de estadísticas (mejorada)
+        async function actualizarEstadisticasUI() {
+            const stats = await obtenerEstadisticasVisualizaciones();
+            
+            // Actualizar contador total de vistas
+            const contadorVistas = document.getElementById('contador-vistas');
+            if (contadorVistas) {
+                contadorVistas.textContent = stats.total;
+                
+                // Añadir indicador de estado online/offline
+                const estadoIndicador = contadorVistas.parentElement.querySelector('.estado-indicator');
+                if (estadoIndicador) {
+                    estadoIndicador.remove();
+                }
+                
+                const indicator = document.createElement('div');
+                indicator.className = 'estado-indicator text-xs mt-1';
+                indicator.innerHTML = stats.isOnline 
+                    ? '<span class="text-green-600">🌐 En línea</span>'
+                    : '<span class="text-orange-600">📱 Offline</span>';
+                contadorVistas.parentElement.appendChild(indicator);
+            }
+
+            // Actualizar contador de disponibles
+            const contadorDisponibles = document.getElementById('contador-disponibles');
+            if (contadorDisponibles) {
+                const disponibles = (stats['historia-celular'] > 0 ? 1 : 0) + 
+                                  (stats['ciencias-naturales'] > 0 ? 1 : 0) + 
+                                  (stats['literatura'] > 0 ? 1 : 0);
+                contadorDisponibles.textContent = disponibles;
+            }
+
+            // Actualizar popularidad (más visto)
+            const popularidad = document.getElementById('popularidad');
+            if (popularidad) {
+                let masPopular = 'Historia del Celular';
+                let maxVistas = stats['historia-celular'];
+                
+                if (stats['ciencias-naturales'] > maxVistas) {
+                    masPopular = 'Ciencias Naturales';
+                    maxVistas = stats['ciencias-naturales'];
+                }
+                if (stats['literatura'] > maxVistas) {
+                    masPopular = 'Literatura';
+                }
+                
+                popularidad.textContent = masPopular;
+            }
+
+            // Actualizar vistas por presentación con animación
+            const actualizarContador = (elementId, valor) => {
+                const elemento = document.getElementById(elementId);
+                if (elemento) {
+                    const valorAnterior = parseInt(elemento.textContent) || 0;
+                    elemento.textContent = valor + ' vistas';
+                    
+                    // Animación si hay cambio
+                    if (valor > valorAnterior) {
+                        elemento.parentElement.classList.add('bg-green-100');
+                        elemento.classList.add('font-bold', 'text-green-700');
+                        setTimeout(() => {
+                            elemento.parentElement.classList.remove('bg-green-100');
+                            elemento.classList.remove('font-bold', 'text-green-700');
+                        }, 2000);
+                    }
+                }
+            };
+
+            actualizarContador('vistas-historia', stats['historia-celular']);
+            actualizarContador('vistas-ciencias', stats['ciencias-naturales']);
+            actualizarContador('vistas-literatura', stats['literatura']);
+
+            // Mostrar estadísticas online adicionales si están disponibles
+            if (stats.online && stats.online.length > 0) {
+                mostrarEstadisticasAdicionales(stats.online);
+            }
+        }
+
+        // Mostrar estadísticas adicionales cuando hay datos online
+        function mostrarEstadisticasAdicionales(estadisticasOnline) {
+            let infoAdicional = document.getElementById('info-adicional-stats');
+            if (!infoAdicional) {
+                infoAdicional = document.createElement('div');
+                infoAdicional.id = 'info-adicional-stats';
+                infoAdicional.className = 'mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200';
+                
+                const statsContainer = document.querySelector('.mt-12.bg-white.rounded-xl');
+                if (statsContainer) {
+                    statsContainer.appendChild(infoAdicional);
+                }
+            }
+
+            const totalOnline = estadisticasOnline.reduce((sum, stat) => sum + stat.total_visualizaciones, 0);
+            const ultimaVisualizacion = estadisticasOnline
+                .map(stat => new Date(stat.ultima_visualizacion))
+                .reduce((latest, date) => date > latest ? date : latest, new Date(0));
+
+            infoAdicional.innerHTML = `
+                <div class="text-center">
+                    <h4 class="font-bold text-blue-800 mb-2">📊 Estadísticas Globales Online</h4>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-blue-600 font-semibold">${totalOnline}</span>
+                            <br><span class="text-gray-600">Vistas totales globales</span>
+                        </div>
+                        <div>
+                            <span class="text-blue-600 font-semibold">${ultimaVisualizacion.toLocaleDateString()}</span>
+                            <br><span class="text-gray-600">Última visualización</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Función para abrir presentación (actualizada)
+        async function openPresentation(presentationId) {
+            if (presentationId === 'historia-celular') {
+                // Incrementar contador ANTES de abrir
+                await incrementarVisualizacion(presentationId, 'La Historia del Celular');
+                
+                // Abrir en nueva ventana/pestaña el archivo HTML independiente
+                window.open('historia-celular.html', '_blank');
+                return;
+            }
+            
+            // Para otras presentaciones futuras
+            showComingSoon();
+        }
+
+        // Función para cerrar presentación
+        function closePresentation() {
+            const modal = document.getElementById('presentation-modal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Función para mostrar "próximamente"
+        function showComingSoon() {
+            alert('🚧 Esta presentación estará disponible próximamente.\n\n✨ ¡Mantente atento a las nuevas actualizaciones!');
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('presentation-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePresentation();
+            }
+        });
+
+        // Cerrar modal con tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePresentation();
+            }
+        });
+
+        // Animación de entrada para las tarjetas
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.presentation-card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.transform = 'translateY(0)';
+                    card.style.opacity = '1';
+                }, index * 200);
+            });
+        });
+
+        // Inicializar las tarjetas ocultas para la animación
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.presentation-card');
+            cards.forEach(card => {
+                card.style.transform = 'translateY(20px)';
+                card.style.opacity = '0';
+                card.style.transition = 'all 0.5s ease';
+            });
+            
+            // Inicializar estadísticas al cargar la página
+            actualizarEstadisticasUI();
+        });
+    </script>
+</body>
+</html>
