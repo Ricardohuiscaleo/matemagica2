@@ -27,7 +27,7 @@ window.ConfigService = {
             return {
                 supabase: {
                     url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-                    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NzQ4NDQsImV4cCI6MjA0OTE1MDg0NH0.FELDriHpfy0xHwxJQGDXCi0Gd8vJWm4L9MLu3DWGZh8"
+                    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
                 },
                 environment: 'development'
             };

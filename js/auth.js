@@ -1,15 +1,12 @@
-// js/auth.js - Sistema SIMPLE v18.0 - CORREGIDO
-console.log("🚀 Auth System v18.0 - Versión SIMPLE");
+// js/auth.js - Sistema SIMPLE v18.1 - USANDO CONFIG SERVICE
+console.log("🚀 Auth System v18.1 - Versión SIMPLE con ConfigService");
 
 class LoginSystem {
     constructor() {
-        this.config = {
-            url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
-        };
+        this.config = null; // Se cargará dinámicamente desde ConfigService
         this.supabase = null;
         this.elements = {};
-        this.selectedRole = null;
+        this.initialized = false;
         
         // Mensajes simples
         this.friendlyMessages = {
@@ -37,6 +34,66 @@ class LoginSystem {
         // Hacer disponible globalmente
         window.loginSystem = this;
         window.addEventListener('load', this.init);
+    }
+
+    // 🔧 NUEVO: Inicializar configuración desde ConfigService
+    async initializeConfig() {
+        try {
+            console.log("🔧 Cargando configuración desde ConfigService...");
+            
+            // Cargar configuración
+            const config = await window.ConfigService.loadConfig();
+            
+            this.config = {
+                url: config.supabase.url,
+                anon_key: config.supabase.anonKey
+            };
+            
+            console.log("✅ Configuración cargada correctamente");
+            console.log("🔗 URL:", this.config.url);
+            console.log("🔑 Key:", this.config.anon_key.substring(0, 20) + "...");
+            
+            return true;
+        } catch (error) {
+            console.error("❌ Error cargando configuración:", error);
+            
+            // Fallback a configuración hardcodeada
+            this.config = {
+                url: "https://uznvakpuuxnpdhoejrog.supabase.co",
+                anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9zZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+            };
+            console.log("⚠️ Usando configuración de fallback");
+            return false;
+        }
+    }
+
+    // 🚀 NUEVO: Método de inicialización completa
+    async initialize() {
+        if (this.initialized) {
+            console.log("ℹ️ Sistema ya inicializado");
+            return true;
+        }
+
+        try {
+            // 1. Cargar configuración
+            await this.initializeConfig();
+
+            // 2. Inicializar Supabase
+            this.initSupabase();
+
+            // 3. Configurar elementos UI
+            this.setupElements();
+
+            // 4. Configurar eventos
+            this.setupEventListeners();
+
+            this.initialized = true;
+            console.log("✅ LoginSystem inicializado completamente");
+            return true;
+        } catch (error) {
+            console.error("❌ Error inicializando LoginSystem:", error);
+            return false;
+        }
     }
 
     async init() {
@@ -71,63 +128,18 @@ class LoginSystem {
             errorDisplay: document.getElementById('error-display'),
             teacherRoleBtn: document.getElementById('teacher-role-btn'),
             parentRoleBtn: document.getElementById('parent-role-btn'),
-            googleAuthBtn: document.getElementById('google-auth-btn'),
-            backBtn: document.getElementById('back-to-welcome-btn')
         };
-        
-        console.log("🔧 Elementos DOM configurados");
     }
 
     setupEventListeners() {
-        // Solo efectos visuales básicos
-        const buttons = [this.elements.teacherRoleBtn, this.elements.parentRoleBtn];
-        
-        buttons.forEach(btn => {
-            if (btn) {
-                btn.addEventListener('mouseenter', () => {
-                    btn.style.transform = 'translateY(-4px)';
-                });
-                btn.addEventListener('mouseleave', () => {
-                    btn.style.transform = 'translateY(0)';
-                });
-            }
-        });
-        
-        console.log("✅ Event listeners configurados");
-    }
-
-    async handleInitialLoad() {
-        this.showLoader(true);
-        
         try {
-            // Verificar callback OAuth
-            const urlParams = this.parseUrlFragment();
-            if (urlParams) {
-                console.log("🔐 Procesando callback OAuth");
-                this.cleanupUrl();
-                
-                const { error } = await this.supabase.auth.setSession(urlParams);
-                if (error) throw error;
-                
-                const { data: { user } } = await this.supabase.auth.getUser();
-                if (user) {
-                    await this.onLoginSuccess(user);
-                    return;
-                }
+            // Verificar elementos DOM
+            if (this.elements.teacherRoleBtn) {
+                this.elements.teacherRoleBtn.addEventListener('click', () => this.selectRole('teacher'));
             }
-            
-            // Verificar sesión existente
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session?.user) {
-                console.log("✅ Sesión existente encontrada");
-                await this.onLoginSuccess(session.user);
-                return;
+            if (this.elements.parentRoleBtn) {
+                this.elements.parentRoleBtn.addEventListener('click', () => this.selectRole('parent'));
             }
-            
-            // Mostrar login
-            this.showLoader(false);
-            console.log("ℹ️ Mostrando login");
-            
         } catch (error) {
             console.warn("⚠️ Error en verificación:", error.message);
             this.showLoader(false);

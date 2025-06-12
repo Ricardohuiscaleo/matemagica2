@@ -49,6 +49,10 @@
         .badge-new {
             animation: pulse 2s infinite;
         }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
     </style>
 </head>
 <body>
@@ -195,6 +199,68 @@
                 </div>
             </div>
         </div>
+
+        <!-- Sección YouTube-style: Suscríbete y Likes -->
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6 border-2 border-red-200">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                <!-- Canal Info -->
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-graduation-cap text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="title-font text-xl font-bold text-gray-800">Presentaciones Gaby</h4>
+                        <p class="text-sm text-gray-600">Canal Educativo • <span id="suscriptores-count">1,337</span> suscriptores</p>
+                        <p class="text-xs text-gray-500">Contenido educativo para primaria</p>
+                    </div>
+                </div>
+
+                <!-- Botón Suscribirse -->
+                <div class="flex items-center space-x-3">
+                    <button 
+                        id="btn-suscribirse" 
+                        onclick="toggleSuscripcion()"
+                        class="suscribir-btn bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 flex items-center space-x-2">
+                        <i class="fas fa-bell" id="icon-suscripcion"></i>
+                        <span id="texto-suscripcion">SUSCRIBIRSE</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Barra de acciones tipo YouTube -->
+            <div class="mt-6 flex flex-wrap items-center justify-between border-t pt-4">
+                <!-- Likes y acciones -->
+                <div class="flex items-center space-x-3">
+                    <button 
+                        id="btn-like-historia" 
+                        onclick="toggleLike('historia-celular')"
+                        class="like-btn flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition-all duration-300">
+                        <i class="far fa-thumbs-up" id="icon-like-historia"></i>
+                        <span id="count-like-historia">0</span>
+                    </button>
+                    
+                    <button 
+                        onclick="compartirPresentacion('historia-celular', 'copy_link')"
+                        class="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition-all duration-300">
+                        <i class="fas fa-share"></i>
+                        <span>Compartir</span>
+                    </button>
+                    
+                    <button 
+                        onclick="descargarPresentacion('historia-celular')"
+                        class="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition-all duration-300">
+                        <i class="fas fa-download"></i>
+                        <span>Descargar</span>
+                    </button>
+                </div>
+
+                <!-- Stats rápidas -->
+                <div class="flex items-center space-x-4 text-sm text-gray-600">
+                    <span><i class="fas fa-eye mr-1"></i><span id="vistas-rapidas">0</span> vistas</span>
+                    <span><i class="fas fa-calendar mr-1"></i>12 jun 2025</span>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Modal para Presentaciones -->
@@ -242,13 +308,50 @@
         </div>
     </footer>
 
-    <script src="js/presentation-stats-service.js"></script>
+    <script src="js/config-service.js"></script>
+    <script src="js/real-analytics-service.js"></script>
     <script>
-        // Función para obtener estadísticas de visualizaciones (ahora híbrido)
+        // 🔧 SISTEMA DE ANALYTICS REALES
+        console.log('🌍 Iniciando sistema de analytics reales...');
+        
+        // Verificar si el servicio de analytics reales se cargó
+        setTimeout(() => {
+            if (window.RealAnalyticsService) {
+                console.log('✅ RealAnalyticsService cargado - capturando visitantes reales');
+                console.log('📊 Datos del visitante actual:', window.RealAnalyticsService.visitorData);
+            } else {
+                console.warn('❌ RealAnalyticsService NO se cargó - usando fallback');
+            }
+        }, 2000); // Aumentar tiempo para que ConfigService se cargue primero
+
+        // Función para obtener estadísticas reales
         async function obtenerEstadisticasVisualizaciones() {
-            if (window.PresentationStatsService) {
-                // Usar servicio híbrido (Supabase + LocalStorage)
-                return await window.PresentationStatsService.obtenerEstadisticasCombinadas();
+            if (window.RealAnalyticsService) {
+                // Usar analytics reales
+                const estadisticasReales = await window.RealAnalyticsService.obtenerEstadisticasReales();
+                
+                // Convertir al formato esperado
+                const resultado = {
+                    'historia-celular': 0,
+                    'ciencias-naturales': 0,
+                    'literatura': 0,
+                    total: 0,
+                    isOnline: window.RealAnalyticsService.isOnline,
+                    realData: estadisticasReales
+                };
+
+                // Mapear datos reales
+                estadisticasReales.forEach(stat => {
+                    if (resultado[stat.presentacion_id] !== undefined) {
+                        resultado[stat.presentacion_id] = stat.total_visualizaciones;
+                    }
+                });
+
+                resultado.total = resultado['historia-celular'] + 
+                               resultado['ciencias-naturales'] + 
+                               resultado['literatura'];
+
+                return resultado;
             } else {
                 // Fallback: solo LocalStorage
                 const estadisticas = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
@@ -262,15 +365,13 @@
             }
         }
 
-        // Función para incrementar contador de visualizaciones (ahora híbrido)
+        // Función para registrar visualización REAL
         async function incrementarVisualizacion(presentacionId, titulo) {
-            if (window.PresentationStatsService) {
-                // Registrar en Supabase + LocalStorage
-                await window.PresentationStatsService.registrarVisualizacion(
-                    presentacionId, 
-                    titulo,
-                    null // duración se calculará en la presentación
-                );
+            console.log(`🎬 Registrando visitante REAL para: ${presentacionId}`);
+            
+            if (window.RealAnalyticsService) {
+                // Usar analytics reales - captura IP, ubicación, etc.
+                await window.RealAnalyticsService.registrarVisualizacionReal(presentacionId, titulo);
             } else {
                 // Fallback: solo LocalStorage
                 const estadisticas = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
@@ -282,7 +383,7 @@
             await actualizarEstadisticasUI();
         }
 
-        // Función para actualizar UI de estadísticas (mejorada)
+        // Función para actualizar UI de estadísticas (mejorada para datos reales)
         async function actualizarEstadisticasUI() {
             const stats = await obtenerEstadisticasVisualizaciones();
             
@@ -291,7 +392,7 @@
             if (contadorVistas) {
                 contadorVistas.textContent = stats.total;
                 
-                // Añadir indicador de estado online/offline
+                // Añadir indicador de datos reales
                 const estadoIndicador = contadorVistas.parentElement.querySelector('.estado-indicator');
                 if (estadoIndicador) {
                     estadoIndicador.remove();
@@ -299,9 +400,17 @@
                 
                 const indicator = document.createElement('div');
                 indicator.className = 'estado-indicator text-xs mt-1';
-                indicator.innerHTML = stats.isOnline 
-                    ? '<span class="text-green-600">🌐 En línea</span>'
-                    : '<span class="text-orange-600">📱 Offline</span>';
+                
+                if (window.RealAnalyticsService) {
+                    const visitorData = window.RealAnalyticsService.visitorData;
+                    const ipInfo = visitorData?.ip?.ip || 'Obteniendo...';
+                    indicator.innerHTML = stats.isOnline 
+                        ? `<span class="text-green-600">🌍 Visitantes reales (IP: ${ipInfo})</span>`
+                        : '<span class="text-orange-600">📱 Modo offline</span>';
+                } else {
+                    indicator.innerHTML = '<span class="text-gray-600">💾 Solo local</span>';
+                }
+                
                 contadorVistas.parentElement.appendChild(indicator);
             }
 
@@ -358,6 +467,11 @@
             if (stats.online && stats.online.length > 0) {
                 mostrarEstadisticasAdicionales(stats.online);
             }
+
+            // Mostrar información adicional de visitantes reales
+            if (stats.realData && stats.realData.length > 0) {
+                mostrarDatosVisitantesReales(stats.realData);
+            }
         }
 
         // Mostrar estadísticas adicionales cuando hay datos online
@@ -396,6 +510,416 @@
             `;
         }
 
+        // Mostrar información de visitantes reales
+        function mostrarDatosVisitantesReales(datosReales) {
+            let infoReales = document.getElementById('info-visitantes-reales');
+            if (!infoReales) {
+                infoReales = document.createElement('div');
+                infoReales.id = 'info-visitantes-reales';
+                infoReales.className = 'mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-200';
+                
+                const statsContainer = document.querySelector('.mt-12.bg-white.rounded-xl');
+                if (statsContainer) {
+                    statsContainer.appendChild(infoReales);
+                }
+            }
+
+            const totalVisitantes = datosReales.reduce((sum, stat) => sum + stat.total_visualizaciones, 0);
+            
+            // Obtener datos del visitante actual de forma más robusta
+            const visitorData = window.RealAnalyticsService?.visitorData;
+            const paisActual = visitorData?.ip?.country || 'Detectando...';
+            const ciudadActual = visitorData?.ip?.city || 'Detectando...';
+            const regionActual = visitorData?.ip?.region || 'Detectando...';
+            const dispositivoActual = visitorData?.deviceType || 'Detectando...';
+            const navegadorActual = visitorData?.browserInfo?.browser || 'Detectando...';
+            const ipActual = visitorData?.ip?.ip || 'Detectando...';
+            
+            infoReales.innerHTML = `
+                <div class="text-center">
+                    <h4 class="font-bold text-blue-800 mb-3">🌍 Analytics de Visitantes Reales</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm mb-4">
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <div class="text-xl font-bold text-blue-600">${totalVisitantes}</div>
+                            <div class="text-gray-600">Visitantes únicos</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <div class="text-xl font-bold text-green-600">${paisActual}</div>
+                            <div class="text-gray-600">País</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <div class="text-xl font-bold text-purple-600">${ciudadActual}</div>
+                            <div class="text-gray-600">Ciudad</div>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow">
+                            <div class="text-xl font-bold text-orange-600">${dispositivoActual}</div>
+                            <div class="text-gray-600">Dispositivo</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 bg-white p-3 rounded-lg">
+                        <div><strong>🌍 Región:</strong> ${regionActual}</div>
+                        <div><strong>🌐 IP:</strong> ${ipActual}</div>
+                        <div><strong>💻 Navegador:</strong> ${navegadorActual}</div>
+                    </div>
+                    <div class="mt-3 text-xs text-green-600 font-semibold">
+                        ✅ Sistema capturando: IP real, geolocalización, tipo de dispositivo, navegador, ISP
+                    </div>
+                </div>
+            `;
+        }
+
+        // FUNCIONES TIPO YOUTUBE: LIKES Y SUSCRIPCIÓN
+
+        // Función para toggle de suscripción
+        function toggleSuscripcion() {
+            if (!window.RealAnalyticsService) {
+                alert('🔧 Servicio no disponible');
+                return;
+            }
+
+            const btnSuscribirse = document.getElementById('btn-suscribirse');
+            const iconSuscripcion = document.getElementById('icon-suscripcion');
+            const textoSuscripcion = document.getElementById('texto-suscripcion');
+            const suscriptoresCount = document.getElementById('suscriptores-count');
+
+            const estaSuscrito = window.RealAnalyticsService.estaSuscrito();
+
+            if (!estaSuscrito) {
+                // Suscribirse
+                window.RealAnalyticsService.registrarSuscripcion();
+                
+                // Actualizar UI
+                btnSuscribirse.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btnSuscribirse.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                iconSuscripcion.classList.remove('fas', 'fa-bell');
+                iconSuscripcion.classList.add('fas', 'fa-bell-slash');
+                textoSuscripcion.textContent = 'SUSCRITO';
+                
+                // Incrementar contador de suscriptores
+                const currentCount = parseInt(suscriptoresCount.textContent.replace(/,/g, ''));
+                suscriptoresCount.textContent = (currentCount + 1).toLocaleString();
+                
+                // Animación de éxito
+                btnSuscribirse.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    btnSuscribirse.style.transform = 'scale(1)';
+                }, 200);
+                
+                // Mostrar notificación
+                mostrarNotificacion('🔔 ¡Te has suscrito a Presentaciones Gaby!', 'success');
+                
+            } else {
+                // Desuscribirse
+                localStorage.removeItem('gaby-suscripcion');
+                
+                // Actualizar UI
+                btnSuscribirse.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                btnSuscribirse.classList.add('bg-red-600', 'hover:bg-red-700');
+                iconSuscripcion.classList.remove('fas', 'fa-bell-slash');
+                iconSuscripcion.classList.add('fas', 'fa-bell');
+                textoSuscripcion.textContent = 'SUSCRIBIRSE';
+                
+                // Decrementar contador de suscriptores
+                const currentCount = parseInt(suscriptoresCount.textContent.replace(/,/g, ''));
+                suscriptoresCount.textContent = Math.max(1337, currentCount - 1).toLocaleString();
+                
+                mostrarNotificacion('😢 Te has desuscrito de Presentaciones Gaby', 'info');
+            }
+        }
+
+        // Función para toggle de like
+        async function toggleLike(presentacionId) {
+            if (!window.RealAnalyticsService) {
+                mostrarNotificacion('🔧 Servicio no disponible', 'error');
+                return;
+            }
+
+            // Mapear presentacion_id a elementos específicos del DOM
+            let elementSuffix;
+            switch(presentacionId) {
+                case 'historia-celular':
+                    elementSuffix = 'historia';
+                    break;
+                case 'ciencias-naturales':
+                    elementSuffix = 'ciencias';
+                    break;
+                case 'literatura':
+                    elementSuffix = 'literatura';
+                    break;
+                default:
+                    console.warn('Presentación no reconocida:', presentacionId);
+                    return;
+            }
+
+            const btnLike = document.getElementById(`btn-like-${elementSuffix}`);
+            const iconLike = document.getElementById(`icon-like-${elementSuffix}`);
+            const countLike = document.getElementById(`count-like-${elementSuffix}`);
+
+            // Verificar que los elementos existen
+            if (!btnLike || !iconLike || !countLike) {
+                console.warn('Elementos de like no encontrados para:', elementSuffix);
+                mostrarNotificacion('Error: Elementos de interfaz no encontrados', 'error');
+                return;
+            }
+
+            // CORREGIDO: Obtener likes de forma segura para evitar NaN
+            const likesData = window.RealAnalyticsService.obtenerLikes(presentacionId);
+            console.log('📊 Datos de likes obtenidos:', likesData);
+            
+            // Asegurar valores numéricos válidos
+            const currentTotal = parseInt(likesData.total) || 0;
+            const yaLeDioLike = likesData.userLiked === true;
+
+            try {
+                if (!yaLeDioLike) {
+                    // Dar like
+                    await window.RealAnalyticsService.registrarLike(presentacionId, 'like');
+                    
+                    // Actualizar UI con valor seguro
+                    iconLike.classList.remove('far');
+                    iconLike.classList.add('fas', 'text-blue-600');
+                    btnLike.classList.add('bg-blue-100', 'border-blue-300');
+                    
+                    // Animación del like
+                    iconLike.style.transform = 'scale(1.3)';
+                    iconLike.style.color = '#3B82F6';
+                    setTimeout(() => {
+                        iconLike.style.transform = 'scale(1)';
+                    }, 300);
+                    
+                    // CORREGIDO: Actualizar contador de forma segura
+                    const newCount = currentTotal + 1;
+                    countLike.textContent = newCount;
+                    countLike.style.color = '#3B82F6';
+                    countLike.style.fontWeight = 'bold';
+                    
+                    // NUEVO: Mensaje de agradecimiento personalizado
+                    mostrarNotificacion('Gracias ❤️', 'success');
+                    
+                } else {
+                    // Quitar like
+                    await window.RealAnalyticsService.registrarLike(presentacionId, 'unlike');
+                    
+                    // Actualizar UI
+                    iconLike.classList.remove('fas', 'text-blue-600');
+                    iconLike.classList.add('far');
+                    btnLike.classList.remove('bg-blue-100', 'border-blue-300');
+                    
+                    // CORREGIDO: Actualizar contador de forma segura
+                    const newCount = Math.max(0, currentTotal - 1);
+                    countLike.textContent = newCount;
+                    countLike.style.color = '';
+                    countLike.style.fontWeight = '';
+                    
+                    mostrarNotificacion('👎 Like removido', 'info');
+                }
+
+                // Actualizar las estadísticas generales
+                await actualizarEstadisticasUI();
+                
+            } catch (error) {
+                console.error('Error en toggleLike:', error);
+                mostrarNotificacion('Error al procesar like', 'error');
+            }
+        }
+
+        // Función para compartir presentación (NUEVA)
+        async function compartirPresentacion(presentacionId, tipoCompartir = 'copy_link') {
+            if (!window.RealAnalyticsService) {
+                mostrarNotificacion('🔧 Servicio no disponible', 'error');
+                return;
+            }
+
+            try {
+                // Registrar el compartir
+                await window.RealAnalyticsService.registrarCompartir(presentacionId, tipoCompartir);
+                
+                const urlPresentacion = `${window.location.origin}/${presentacionId}.html`;
+                
+                switch(tipoCompartir) {
+                    case 'copy_link':
+                        // Copiar al portapapeles
+                        if (navigator.clipboard) {
+                            await navigator.clipboard.writeText(urlPresentacion);
+                            mostrarNotificacion('🔗 ¡Link copiado al portapapeles!', 'success');
+                        } else {
+                            // Fallback para navegadores antiguos
+                            const textArea = document.createElement('textarea');
+                            textArea.value = urlPresentacion;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            mostrarNotificacion('🔗 ¡Link copiado al portapapeles!', 'success');
+                        }
+                        break;
+                        
+                    case 'whatsapp':
+                        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`¡Mira esta presentación educativa! ${urlPresentacion}`)}`;
+                        window.open(whatsappUrl, '_blank');
+                        mostrarNotificacion('📱 Compartiendo en WhatsApp', 'info');
+                        break;
+                        
+                    case 'facebook':
+                        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlPresentacion)}`;
+                        window.open(facebookUrl, '_blank', 'width=600,height=400');
+                        mostrarNotificacion('📘 Compartiendo en Facebook', 'info');
+                        break;
+                        
+                    case 'twitter':
+                        const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(urlPresentacion)}&text=${encodeURIComponent('¡Mira esta presentación educativa!')}`;
+                        window.open(twitterUrl, '_blank', 'width=600,height=400');
+                        mostrarNotificacion('🐦 Compartiendo en Twitter', 'info');
+                        break;
+                        
+                    case 'email':
+                        const emailUrl = `mailto:?subject=${encodeURIComponent('Presentación Educativa')}&body=${encodeURIComponent(`Te comparto esta presentación: ${urlPresentacion}`)}`;
+                        window.location.href = emailUrl;
+                        mostrarNotificacion('📧 Abriendo cliente de email', 'info');
+                        break;
+                }
+                
+                // Actualizar estadísticas
+                await actualizarEstadisticasUI();
+                
+            } catch (error) {
+                console.error('Error compartiendo:', error);
+                mostrarNotificacion('❌ Error al compartir', 'error');
+            }
+        }
+
+        // Función para descargar presentación (NUEVA)
+        async function descargarPresentacion(presentacionId) {
+            if (!window.RealAnalyticsService) {
+                mostrarNotificacion('🔧 Servicio no disponible', 'error');
+                return;
+            }
+
+            try {
+                // Registrar la descarga como compartir tipo 'download'
+                await window.RealAnalyticsService.registrarCompartir(presentacionId, 'download');
+                
+                // Abrir presentación en nueva pestaña
+                window.open(`${presentacionId}.html`, '_blank');
+                mostrarNotificacion('📱 Presentación abierta en nueva pestaña', 'success');
+                
+                // Actualizar estadísticas
+                await actualizarEstadisticasUI();
+                
+            } catch (error) {
+                console.error('Error descargando:', error);
+                mostrarNotificacion('❌ Error al descargar', 'error');
+            }
+        }
+
+        // Mostrar menú de descarga (NUEVA)
+        function mostrarMenuDescarga(opciones) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+                
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h3 class="text-lg font-bold mb-4 text-center">📥 Opciones de Descarga</h3>
+                        <div class="space-y-2">
+                            ${opciones.map((opcion, index) => `
+                                <button 
+                                    onclick="selectOption(${index})"
+                                    class="w-full p-3 text-left bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300">
+                                    ${opcion}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <button 
+                            onclick="closeModal()"
+                            class="w-full mt-4 p-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                            Cancelar
+                        </button>
+                    </div>
+                `;
+                
+                // Funciones del modal
+                window.selectOption = (index) => {
+                    document.body.removeChild(modal);
+                    delete window.selectOption;
+                    delete window.closeModal;
+                    resolve(index);
+                };
+                
+                window.closeModal = () => {
+                    document.body.removeChild(modal);
+                    delete window.selectOption;
+                    delete window.closeModal;
+                    resolve(-1); // Cancelado
+                };
+                
+                document.body.appendChild(modal);
+            });
+        }
+
+        // Actualizar función de contadores YouTube para incluir compartidos
+        function actualizarContadoresYoutube() {
+            if (!window.RealAnalyticsService) return;
+
+            // Actualizar estado de suscripción
+            const estaSuscrito = window.RealAnalyticsService.estaSuscrito();
+            const btnSuscribirse = document.getElementById('btn-suscribirse');
+            const iconSuscripcion = document.getElementById('icon-suscripcion');
+            const textoSuscripcion = document.getElementById('texto-suscripcion');
+
+            if (estaSuscrito) {
+                btnSuscribirse.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btnSuscribirse.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                iconSuscripcion.classList.remove('fas', 'fa-bell');
+                iconSuscripcion.classList.add('fas', 'fa-bell-slash');
+                textoSuscribirse.textContent = 'SUSCRITO';
+            }
+
+            // Actualizar likes de Historia del Celular
+            const likesHistoria = window.RealAnalyticsService.obtenerLikes('historia-celular');
+            const countLikeHistoria = document.getElementById('count-like-historia');
+            const iconLikeHistoria = document.getElementById('icon-like-historia');
+            const btnLikeHistoria = document.getElementById('btn-like-historia');
+
+            if (countLikeHistoria) {
+                countLikeHistoria.textContent = likesHistoria.total;
+                
+                if (likesHistoria.userLiked) {
+                    iconLikeHistoria.classList.remove('far');
+                    iconLikeHistoria.classList.add('fas', 'text-blue-600');
+                    btnLikeHistoria.classList.add('bg-blue-100', 'border-blue-300');
+                    countLikeHistoria.style.color = '#3B82F6';
+                    countLikeHistoria.style.fontWeight = 'bold';
+                }
+            }
+
+            // Actualizar vistas rápidas
+            const vistasRapidas = document.getElementById('vistas-rapidas');
+            if (vistasRapidas) {
+                const stats = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
+                const totalVistas = Object.values(stats).reduce((sum, val) => sum + val, 0);
+                vistasRapidas.textContent = totalVistas.toLocaleString();
+            }
+
+            // Mostrar estadísticas de compartidos si existen
+            const compartidos = JSON.parse(localStorage.getItem('gaby-compartidos') || '{}');
+            if (Object.keys(compartidos).length > 0) {
+                const totalCompartidos = Object.values(compartidos).reduce((sum, c) => sum + c.total, 0);
+                const statsCompartidos = document.getElementById('stats-compartidos');
+                if (!statsCompartidos) {
+                    const statsRapidas = document.querySelector('.flex.items-center.space-x-4.text-sm.text-gray-600');
+                    if (statsRapidas) {
+                        const compartidosSpan = document.createElement('span');
+                        compartidosSpan.id = 'stats-compartidos';
+                        compartidosSpan.innerHTML = `<i class="fas fa-share mr-1"></i><span>${totalCompartidos}</span> compartidos`;
+                        statsRapidas.appendChild(compartidosSpan);
+                    }
+                } else {
+                    statsCompartidos.innerHTML = `<i class="fas fa-share mr-1"></i><span>${totalCompartidos}</span> compartidos`;
+                }
+            }
+        }
+
         // Función para abrir presentación (actualizada)
         async function openPresentation(presentationId) {
             if (presentationId === 'historia-celular') {
@@ -420,7 +944,7 @@
 
         // Función para mostrar "próximamente"
         function showComingSoon() {
-            alert('🚧 Esta presentación estará disponible próximamente.\n\n✨ ¡Mantente atento a las nuevas actualizaciones!');
+            mostrarNotificacion('🚧 Esta presentación estará disponible próximamente.\n\n✨ ¡Mantente atento a las nuevas actualizaciones!', 'info');
         }
 
         // Cerrar modal al hacer clic fuera
@@ -438,7 +962,7 @@
         });
 
         // Animación de entrada para las tarjetas
-        document.addEventListener('DOMContentLoaded', function() {
+        function mostrarPresentaciones() {
             const cards = document.querySelectorAll('.presentation-card');
             cards.forEach((card, index) => {
                 setTimeout(() => {
@@ -446,7 +970,7 @@
                     card.style.opacity = '1';
                 }, index * 200);
             });
-        });
+        }
 
         // Inicializar las tarjetas ocultas para la animación
         document.addEventListener('DOMContentLoaded', function() {
@@ -457,9 +981,62 @@
                 card.style.transition = 'all 0.5s ease';
             });
             
+            // Mostrar las presentaciones con animación
+            setTimeout(() => {
+                mostrarPresentaciones();
+            }, 500);
+            
             // Inicializar estadísticas al cargar la página
             actualizarEstadisticasUI();
+            
+            // Inicializar contadores YouTube
+            setTimeout(() => {
+                actualizarContadoresYoutube();
+            }, 1000);
         });
+
+        // Función para mostrar notificaciones estilo YouTube
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const notificacion = document.createElement('div');
+            notificacion.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300`;
+            
+            switch(tipo) {
+                case 'success':
+                    notificacion.classList.add('bg-green-500', 'text-white');
+                    break;
+                case 'error':
+                    notificacion.classList.add('bg-red-500', 'text-white');
+                    break;
+                default:
+                    notificacion.classList.add('bg-blue-500', 'text-white');
+            }
+            
+            notificacion.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span>${mensaje}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2 hover:opacity-75">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notificacion);
+            
+            // Animación de entrada
+            setTimeout(() => {
+                notificacion.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto-remover después de 4 segundos
+            setTimeout(() => {
+                notificacion.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notificacion.parentElement) {
+                        notificacion.remove();
+                    }
+                }, 300);
+            }, 4000);
+        }
     </script>
 </body>
 </html>

@@ -6,8 +6,9 @@
 
 class PresentationStatsService {
     constructor() {
-        this.supabaseUrl = null;
-        this.supabaseKey = null;
+        // Configuración de Supabase actualizada
+        this.supabaseUrl = 'https://uznvakpuuxnpdhoejrog.supabase.co';
+        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg';
         this.isOnline = navigator.onLine;
         this.sessionId = this.generateSessionId();
         this.initializeSupabase();
@@ -17,14 +18,24 @@ class PresentationStatsService {
     // Inicializar configuración de Supabase
     async initializeSupabase() {
         try {
-            // Cargar configuración desde config service existente
+            // Intentar cargar configuración desde config service existente
             if (window.ConfigService) {
-                const config = await window.ConfigService.getConfig();
-                this.supabaseUrl = config.supabase?.url;
-                this.supabaseKey = config.supabase?.anonKey;
+                const config = await window.ConfigService.loadConfig();
+                if (config.supabase?.url) {
+                    this.supabaseUrl = config.supabase.url;
+                    this.supabaseKey = config.supabase.anonKey;
+                    console.log('✅ Configuración Supabase cargada desde ConfigService');
+                }
+            }
+            
+            // Verificar que tenemos configuración válida
+            if (this.supabaseUrl && this.supabaseKey && !this.supabaseUrl.includes('tu-proyecto')) {
+                console.log('✅ Configuración Supabase válida encontrada');
+            } else {
+                console.warn('⚠️ Usando configuración hardcoded de Supabase');
             }
         } catch (error) {
-            console.warn('⚠️ No se pudo cargar configuración de Supabase:', error);
+            console.warn('⚠️ No se pudo cargar configuración de Supabase, usando valores por defecto:', error);
         }
     }
 
@@ -110,14 +121,8 @@ class PresentationStatsService {
                 'Authorization': `Bearer ${this.supabaseKey}`
             },
             body: JSON.stringify({
-                p_presentacion_id: datos.presentacion_id,
-                p_titulo: datos.titulo,
-                p_session_id: datos.session_id,
-                p_ip_hash: datos.ip_hash,
-                p_user_agent_hash: datos.user_agent_hash,
-                p_duracion_segundos: datos.duracion_segundos,
-                p_dispositivo: datos.dispositivo,
-                p_referrer: datos.referrer
+                presentacion_id_param: datos.presentacion_id,
+                titulo_param: datos.titulo
             })
         });
 
