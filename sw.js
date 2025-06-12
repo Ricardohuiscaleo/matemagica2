@@ -8,7 +8,6 @@ const urlsToCache = [
     '/index.html',
     '/dashboard.html',
     '/js/auth.js',
-    '/js/config-service.js',
     '/js/dashboard.js',
     '/js/dashboard-auth.js',
     '/js/pdf-generator.js',
