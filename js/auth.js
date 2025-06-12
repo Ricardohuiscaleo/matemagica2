@@ -98,25 +98,88 @@ class LoginSystem {
 
     async init() {
         try {
-            console.log("🔧 Inicializando cliente Supabase...");
+            console.log("🔧 Inicializando LoginSystem...");
+            
+            // 1. Cargar configuración primero
+            await this.initializeConfig();
             
             if (!window.supabase) {
                 throw new Error("Librería Supabase no disponible");
             }
             
-            // Crear cliente Supabase
+            // 2. Crear cliente Supabase
             this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
             console.log("✅ Cliente Supabase inicializado");
             
-            // Configurar elementos DOM
+            // 3. Configurar elementos DOM
             this.setupDOMElements();
             this.setupEventListeners();
             
-            // Manejar carga inicial
+            // 4. Manejar carga inicial
             await this.handleInitialLoad();
             
         } catch (error) {
             console.error("❌ Error en init:", error);
+            this.showLoader(false);
+        }
+    }
+
+    // 🆕 NUEVO: Método handleInitialLoad que estaba faltando
+    async handleInitialLoad() {
+        try {
+            console.log("🔄 Manejando carga inicial...");
+            
+            // Verificar si hay tokens OAuth en la URL
+            const oauthTokens = this.parseUrlFragment();
+            if (oauthTokens) {
+                console.log("🔐 Tokens OAuth encontrados en URL");
+                this.showLoader(true);
+                
+                try {
+                    // Configurar sesión con tokens OAuth
+                    const { data, error } = await this.supabase.auth.setSession({
+                        access_token: oauthTokens.access_token,
+                        refresh_token: oauthTokens.refresh_token
+                    });
+                    
+                    if (error) {
+                        console.error("❌ Error estableciendo sesión OAuth:", error);
+                        throw error;
+                    }
+                    
+                    if (data.session?.user) {
+                        console.log("✅ Sesión OAuth establecida:", data.session.user.email);
+                        
+                        // Limpiar URL después de procesar tokens
+                        this.cleanupUrl();
+                        
+                        // Procesar login exitoso
+                        await this.onLoginSuccess(data.session.user);
+                        return;
+                    }
+                } catch (oauthError) {
+                    console.error("❌ Error procesando tokens OAuth:", oauthError);
+                    this.cleanupUrl(); // Limpiar URL incluso si falla
+                    this.showError("general");
+                    this.showLoader(false);
+                    return;
+                }
+            }
+            
+            // Verificar sesión existente (sin tokens OAuth en URL)
+            const { data: { session }, error } = await this.supabase.auth.getSession();
+            if (session?.user && !error) {
+                console.log("✅ Sesión existente encontrada:", session.user.email);
+                await this.onLoginSuccess(session.user);
+                return;
+            }
+            
+            // No hay sesión - mostrar pantalla de login
+            console.log("ℹ️ No hay sesión activa - mostrando login");
+            this.showLoader(false);
+            
+        } catch (error) {
+            console.error("❌ Error en handleInitialLoad:", error);
             this.showLoader(false);
         }
     }
