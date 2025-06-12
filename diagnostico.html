@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Diagnóstico SSL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+        .success { background: rgba(0,255,0,0.3); }
+        .error { background: rgba(255,0,0,0.3); }
+        .warning { background: rgba(255,255,0,0.3); color: black; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Matemágica - Diagnóstico de Conectividad</h1>
+    
+    <div class="card">
+        <h2>📊 Estado de la Conexión</h2>
+        <div id="protocolStatus" class="status"></div>
+        <div id="hostStatus" class="status"></div>
+        <div id="portStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h2>🔧 Pruebas de Recursos</h2>
+        <div id="manifestTest" class="status">Probando manifest.json...</div>
+        <div id="stylesTest" class="status">Probando styles.css...</div>
+        <div id="configTest" class="status">Probando config-service.js...</div>
+        <div id="authTest" class="status">Probando auth.js...</div>
+    </div>
+
+    <div class="card">
+        <h2>🌐 Información del Navegador</h2>
+        <div id="browserInfo" class="status"></div>
+        <div id="sslInfo" class="status"></div>
+    </div>
+
+    <div class="card">
+        <button onclick="runTests()">🔄 Ejecutar Pruebas</button>
+        <button onclick="clearBrowserData()">🧹 Limpiar Cache</button>
+        <button onclick="goToApp()">🚀 Ir a la App</button>
+    </div>
+
+    <script>
+        // Mostrar información inicial
+        function showInitialInfo() {
+            const protocol = window.location.protocol;
+            const host = window.location.hostname;
+            const port = window.location.port;
+            
+            document.getElementById('protocolStatus').innerHTML = 
+                `Protocolo: <strong>${protocol}</strong> ${protocol === 'http:' ? '✅' : '⚠️ Debería ser http:'}`;
+            document.getElementById('protocolStatus').className = 
+                `status ${protocol === 'http:' ? 'success' : 'warning'}`;
+                
+            document.getElementById('hostStatus').innerHTML = 
+                `Host: <strong>${host}</strong> ✅`;
+            document.getElementById('hostStatus').className = 'status success';
+                
+            document.getElementById('portStatus').innerHTML = 
+                `Puerto: <strong>${port}</strong> ${port === '3001' ? '✅' : '⚠️ Debería ser 3001'}`;
+            document.getElementById('portStatus').className = 
+                `status ${port === '3001' ? 'success' : 'warning'}`;
+                
+            // Información del navegador
+            document.getElementById('browserInfo').innerHTML = 
+                `Navegador: <strong>${navigator.userAgent.includes('Chrome') ? 'Chrome' : 
+                navigator.userAgent.includes('Firefox') ? 'Firefox' : 
+                navigator.userAgent.includes('Safari') ? 'Safari' : 'Otro'}</strong>`;
+                
+            document.getElementById('sslInfo').innerHTML = 
+                `Conexión segura: <strong>${window.location.protocol === 'https:' ? 'SÍ (puede causar problemas)' : 'NO (correcto para desarrollo)'}</strong>`;
+        }
+
+        // Probar carga de recursos
+        async function testResource(url, elementId, name) {
+            try {
+                const response = await fetch(url, { 
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    document.getElementById(elementId).innerHTML = `${name}: ✅ OK (${response.status})`;
+                    document.getElementById(elementId).className = 'status success';
+                } else {
+                    document.getElementById(elementId).innerHTML = `${name}: ❌ Error ${response.status}`;
+                    document.getElementById(elementId).className = 'status error';
+                }
+            } catch (error) {
+                document.getElementById(elementId).innerHTML = `${name}: ❌ ${error.message}`;
+                document.getElementById(elementId).className = 'status error';
+            }
+        }
+
+        async function runTests() {
+            document.getElementById('manifestTest').innerHTML = 'Probando manifest.json...';
+            document.getElementById('stylesTest').innerHTML = 'Probando styles.css...';
+            document.getElementById('configTest').innerHTML = 'Probando config-service.js...';
+            document.getElementById('authTest').innerHTML = 'Probando auth.js...';
+            
+            await testResource('/manifest.json', 'manifestTest', 'Manifest');
+            await testResource('/styles.css', 'stylesTest', 'Styles');
+            await testResource('/js/config-service.js', 'configTest', 'Config Service');
+            await testResource('/js/auth.js', 'authTest', 'Auth Service');
+        }
+
+        function clearBrowserData() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+            }
+            
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            
+            alert('🧹 Cache y datos del navegador limpiados. Recarga la página.');
+        }
+
+        function goToApp() {
+            window.location.href = '/index.html';
+        }
+
+        // Ejecutar al cargar
+        showInitialInfo();
+        runTests();
+    </script>
+</body>
+</html>

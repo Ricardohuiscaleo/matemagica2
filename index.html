@@ -71,11 +71,31 @@
             margin: 0;
             padding: 0;
             font-family: 'Fredoka', sans-serif;
+            /* NORMALIZAR PESO DE FUENTE */
+            font-weight: 300; /* Peso normal por defecto */
+            font-variation-settings: normal;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             /* NUEVO FONDO OPTIMIZADO PARA NIÑOS */
             background: var(--bg-kids-animated);
             background-size: 300% 300%;
             animation: fondo-magico 15s ease-in-out infinite;
             overflow-x: hidden;
+        }
+        
+        /* NORMALIZAR FUENTES GLOBALMENTE */
+        *, *::before, *::after {
+            font-weight: inherit; /* Heredar peso normal */
+        }
+        
+        /* Asegurar que elementos específicos mantengan peso normal */
+        p, span, div, button, a, input, textarea, label {
+            font-weight: 400; /* Peso normal */
+        }
+        
+        /* Solo elementos específicos tendrán peso más grueso */
+        h1, h2, h3, .font-bold, .font-semibold, .font-medium {
+            /* Estos SÍ pueden tener peso mayor */
         }
         
         h1, h2, h3 { 
@@ -724,6 +744,10 @@
     </div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- 🚀 SISTEMA DE AUTENTICACIÓN SIMPLE - auth.js solamente -->
+    <script src="js/auth.js"></script>
+
     <script>
         // 🔄 Funciones para controlar el flip de la tarjeta
         function flipTarjeta(mostrarReverso = true) {
@@ -877,6 +901,5 @@
             }
         }
     </script>
-    <script src="js/auth.js"></script>
 </body>
 </html>

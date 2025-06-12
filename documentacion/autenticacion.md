@@ -21,7 +21,7 @@ class LoginSystem {
     constructor() {
         this.config = {
             url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+            anon_key: "***CONFIGURADO_VIA_BACKEND_SEGURO***"
         };
         this.supabase = null;
         this.elements = {};
@@ -355,7 +355,7 @@ function iniciarAutenticacion() {
 ### Supabase (FUNCIONANDO)
 ```javascript
 URL: "https://uznvakpuuxnpdhoejrog.supabase.co"
-anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9zZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+anon_key: "***CONFIGURADO_VIA_BACKEND_SEGURO***"
 
 // OAuth configurado con:
 provider: 'google'
@@ -916,9 +916,10 @@ class DashboardApp {
             // [RESTO DE ACHIEVEMENTS]
         ];
         
-        // API de Google Gemini para IA
-        this.API_KEY = "AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI";
-        this.API_URL_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.API_KEY}`;
+        // API de Google Gemini para IA - CONFIGURADA VÍA BACKEND
+        // Las credenciales se cargan de forma segura desde el servidor
+        this.API_KEY = null; // Se obtiene via backend seguro
+        this.API_URL_GENERATE = null; // Se configura dinámicamente
         
         document.addEventListener('DOMContentLoaded', () => this.init());
     }
@@ -1025,10 +1026,8 @@ class DashboardApp {
     
     async callGemini(prompt) {
         try {
-            const apiKey = 'AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI';
-            const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-            
-            const response = await fetch(`${baseUrl}?key=${apiKey}`, {
+            // Llamada segura a Gemini API via backend
+            const response = await fetch('/api/gemini/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -1,75 +1,72 @@
-// Matemágica PWA - Servicio de IA con Google Gemini
-// Mecánicas de IA efectivas rescatadas del respaldo original
+// Matemágica PWA - Servicio de IA con Google Gemini - VERSIÓN SEGURA
+// Este servicio ahora usa el backend para proteger las API keys
 
 class GeminiAIService {
     constructor() {
-        this.apiKey = '';
-        // ✅ CAMBIO: Usar modelo estable en lugar del experimental
-        this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        // ✅ CORREGIDO: URL específica del backend en puerto 3001
+        this.backendUrl = 'http://localhost:3001'; // Siempre apuntar al backend
         this.configured = false;
         this.hasKey = false;
         
-        // ✅ Auto-configurar si hay API key disponible
-        this.tryAutoConfig();
+        // ✅ Auto-verificar configuración al inicializar
+        this.checkConfiguration();
     }
 
-    // ✅ Intentar auto-configuración
-    tryAutoConfig() {
-        // Buscar API key en variables de entorno del navegador
-        const possibleKeys = [
-            window.GEMINI_API_KEY,
-            localStorage.getItem('gemini_api_key'),
-            // ✅ API key de Google Gemini configurada
-            'AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI'
-        ];
-
-        for (const key of possibleKeys) {
-            if (key && key.startsWith('AIzaSy')) {
-                this.configure(key);
-                break;
+    // 🔐 Verificar configuración de forma segura
+    async checkConfiguration() {
+        try {
+            // Verificar si el backend tiene Gemini configurado
+            if (window.configService) {
+                await window.configService.loadConfig();
+                this.configured = window.configService.isGeminiConfigured;
+                this.hasKey = this.configured;
             }
+            
+            console.log('🤖 Gemini AI Service (Seguro):', {
+                configured: this.configured,
+                backendUrl: this.backendUrl + '/api/gemini/generate'
+            });
+            
+            if (this.configured) {
+                console.log('✅ Gemini AI activado - Generación inteligente disponible (vía backend seguro)');
+            } else {
+                console.log('📚 Modo offline - Usando ejercicios de respaldo');
+            }
+        } catch (error) {
+            console.error('❌ Error verificando configuración de Gemini:', error);
+            this.configured = false;
+            this.hasKey = false;
         }
     }
 
-    // ✅ Configuración mejorada
+    // 🔐 Configuración manual (para compatibilidad)
     configure(apiKey) {
-        this.apiKey = apiKey;
-        this.hasKey = !!apiKey;
-        this.configured = this.hasKey && apiKey.startsWith('AIzaSy');
+        // En la versión segura, las API keys se manejan en el backend
+        console.warn('⚠️ configure() deprecated - Las API keys ahora se manejan en el backend');
+        console.log('🔐 Para configurar Gemini, agrega GEMINI_API_KEY al archivo .env del servidor');
         
-        console.log('🤖 Gemini AI Service configurado:', {
-            configured: this.configured,
-            hasValidKey: this.hasKey && apiKey.startsWith('AIzaSy'),
-            apiUrl: this.baseUrl.split('/').slice(0, 4).join('/') + '/...' // Ocultar detalles
-        });
-        
-        if (this.configured) {
-            console.log('✅ Gemini AI activado - Generación inteligente disponible');
-        } else {
-            console.log('📚 Modo offline - Usando ejercicios de respaldo');
-        }
+        // Verificar configuración actual
+        this.checkConfiguration();
+    }
+
+    // ✅ Intentar auto-configuración (deprecated pero mantenido para compatibilidad)
+    tryAutoConfig() {
+        this.checkConfiguration();
     }
 
     // Generación directa con esquemas JSON - Sumas
     async generateAdditions(level, quantity = 50) {
-        // ✅ DEBUG: Log detallado para identificar el problema
-        console.log(`🔍 DEBUG generateAdditions - PARÁMETROS RECIBIDOS:`);
-        console.log(`   → Level: ${level} (tipo: ${typeof level})`);
-        console.log(`   → Quantity: ${quantity} (tipo: ${typeof quantity})`);
-        console.log(`   → Arguments.length: ${arguments.length}`);
-        console.log(`   → Todos los argumentos:`, Array.from(arguments));
-        
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Gemini AI - Nivel: ${level}`);
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Gemini AI (backend seguro) - Nivel: ${level}`);
         
         if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado, usando fallback');
+            console.log('⚠️ Gemini AI no configurado en backend, usando fallback');
             return this.getFallbackAdditions(level, quantity);
         }
 
         try {
             const levelInstructions = this.getLevelInstructions(level, 'addition');
             
-            const prompt = `Genera exactamente ${quantity} problemas de suma de dos dígitos para un niño de 7-8 años. 
+            const prompt = `Genera exactamente ${quantity} problemas de suma de dos dígitos para un niño de 7-8 años.
             
             REGLAS ESPECÍFICAS:
             ${levelInstructions}
@@ -103,7 +100,7 @@ class GeminiAIService {
                 required: ["exercises"]
             };
 
-            console.log(`🔄 Llamando a Gemini API para ${quantity} sumas...`);
+            console.log(`🔄 Llamando a backend seguro para ${quantity} sumas...`);
             const result = await this.callGeminiWithSchema(prompt, schema);
             console.log('✅ Respuesta de Gemini recibida:', result);
             
@@ -134,10 +131,10 @@ class GeminiAIService {
 
     // Generación directa con esquemas JSON - Restas
     async generateSubtractions(level, quantity = 50) {
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Gemini AI - Nivel: ${level}`);
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Gemini AI (backend seguro) - Nivel: ${level}`);
         
         if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado, usando fallback');
+            console.log('⚠️ Gemini AI no configurado en backend, usando fallback');
             return this.getFallbackSubtractions(level, quantity);
         }
 
@@ -180,7 +177,7 @@ class GeminiAIService {
                 required: ["exercises"]
             };
 
-            console.log(`🔄 Llamando a Gemini API para ${quantity} restas...`);
+            console.log(`🔄 Llamando a backend seguro para ${quantity} restas...`);
             const result = await this.callGeminiWithSchema(prompt, schema);
             console.log('✅ Respuesta de Gemini recibida:', result);
             
@@ -230,7 +227,7 @@ class GeminiAIService {
 
     // ✅ FUNCIÓN RENOVADA: Generar ayuda pedagógica con terminología unificada
     async generateHelpForExercise(num1, num2, operation) {
-        console.log(`🎯 Generando ayuda pedagógica con IA para: ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
+        console.log(`🎯 Generando ayuda pedagógica con IA (backend seguro) para: ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
         
         if (!this.configured) {
             return this.getFallbackHelp(num1, num2, operation);
@@ -245,28 +242,18 @@ class GeminiAIService {
             OPERACIÓN: ${num1} ${operationSymbol} ${num2}
 
             INSTRUCCIONES:
-            - USA TERMINOLOGÍA PEDAGÓGICA CHILENA ESTÁNDAR:
-              * Para suma: "llevar a la siguiente columna" cuando sumes más de 10
-              * Para resta: "pedir prestado de las decenas" cuando necesites más unidades
-            - Explica paso a paso cómo resolver usando técnicas apropiadas para su edad
-            - Usa ejemplos con objetos familiares (manzanas, juguetes, caramelos, etc.)
-            - Menciona si necesita "${operation === 'addition' ? 'llevar números' : 'pedir prestado'}" según corresponda
-            - Incluye emojis divertidos y motivadores
-            - Máximo 4-5 oraciones cortas
-            - NO REVELES LA RESPUESTA FINAL
-            - Usa un lenguaje simple y cariñoso
-            - Da tips específicos para esta operación
-
-            Ejemplo de estructura para suma:
-            "🍎 Imagina que tienes ${num1} manzanas y tu amigo te regala ${num2} más. Puedes contar todas juntitas o usar la técnica de llevar a la siguiente columna si las unidades suman más de 10..."
-
-            Ejemplo de estructura para resta:
-            "🧸 Si tienes ${num1} juguetes y guardas ${num2} en la caja, puedes contar los que quedan o usar la técnica de pedir prestado de las decenas si necesitas más unidades..."
+            - NO reveles la respuesta final
+            - Usa emojis divertidos y apropiados para niños
+            - Explica paso a paso el proceso de ${operationText}
+            - Usa vocabulario simple y claro
+            - Incluye técnicas visuales (como contar con dedos)
+            - Motiva al estudiante
+            - Máximo 3-4 oraciones cortas
 
             Responde SOLO con la ayuda pedagógica.`;
 
             const result = await this.callGemini(prompt);
-            console.log('✅ Ayuda pedagógica generada con IA');
+            console.log('✅ Ayuda pedagógica generada con IA (backend seguro)');
             return result;
 
         } catch (error) {
@@ -275,94 +262,18 @@ class GeminiAIService {
         }
     }
 
-    // ✅ FUNCIÓN MEJORADA: Generar ayuda con prompt personalizado
-    async generateHelp(customPrompt) {
-        console.log('🎯 Generando ayuda pedagógica personalizada con IA...');
-        
-        if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado, usando ayuda de fallback');
-            return this.getFallbackCustomHelp();
-        }
-
-        try {
-            const result = await this.callGemini(customPrompt);
-            console.log('✅ Ayuda pedagógica personalizada generada con IA exitosamente');
-            return result;
-
-        } catch (error) {
-            console.error('❌ Error generando ayuda personalizada:', error);
-            return this.getFallbackCustomHelp();
-        }
-    }
-
-    // ✅ FUNCIÓN LEGACY: Mantener compatibilidad con generateStory
-    async generateStory(customPrompt) {
-        // Redirigir a la nueva función de ayuda
-        return this.generateHelp(customPrompt);
-    }
-
-    // ✅ FUNCIÓN LEGACY: Mantener compatibilidad con generateStoryFromExercise
-    async generateStoryFromExercise(num1, num2, operation) {
-        // Redirigir a la nueva función de ayuda
-        return this.generateHelpForExercise(num1, num2, operation);
-    }
-
-    // Feedback inteligente personalizado
-    async generateFeedback(userAnswer, correctAnswer, isCorrect) {
-        console.log(`🤖 Generando feedback personalizado - Correcto: ${isCorrect}, Respuesta: ${userAnswer}/${correctAnswer}`);
-        
-        if (!this.configured) {
-            return this.getFallbackFeedback(isCorrect, correctAnswer);
-        }
-
-        try {
-            const studentName = this.getStudentName();
-            
-            const prompt = `Eres un profesor amigable y motivador para un niño de 7-8 años llamado ${studentName}.
-
-            SITUACIÓN:
-            - Respuesta correcta: ${correctAnswer}
-            - Respuesta del estudiante: ${userAnswer}
-            - ¿Es correcta? ${isCorrect ? 'SÍ' : 'NO'}
-
-            INSTRUCCIONES:
-            ${isCorrect ? 
-                `- Felicita calurosamente a ${studentName}
-                - Usa emojis positivos
-                - Menciona lo bien que lo hizo
-                - Anímale a seguir` 
-                : 
-                `- Anima a ${studentName} de forma positiva
-                - NO reveles la respuesta correcta
-                - Da una pista útil sin dar la solución
-                - Motívale a intentar de nuevo
-                - Usa emojis de apoyo`
-            }
-
-            Responde en 1-2 oraciones máximo, de forma cálida y motivadora.`;
-
-            const result = await this.callGemini(prompt);
-            console.log('✅ Feedback personalizado generado con IA');
-            return result;
-
-        } catch (error) {
-            console.error('❌ Error generando feedback:', error);
-            return this.getFallbackFeedback(isCorrect, correctAnswer);
-        }
-    }
-
     // ✅ FUNCIÓN FALTANTE: generateContent (para compatibilidad con el módulo)
     async generateContent(prompt) {
-        console.log('🤖 Llamando generateContent con prompt:', prompt.substring(0, 100) + '...');
+        console.log('🤖 Llamando generateContent con backend seguro:', prompt.substring(0, 100) + '...');
         
         if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado, usando ayuda de fallback');
+            console.log('⚠️ Gemini AI no configurado en backend, usando ayuda de fallback');
             return this.getFallbackCustomHelp();
         }
 
         try {
             const result = await this.callGemini(prompt);
-            console.log('✅ generateContent ejecutado exitosamente');
+            console.log('✅ generateContent ejecutado exitosamente (backend seguro)');
             return result;
 
         } catch (error) {
@@ -371,66 +282,55 @@ class GeminiAIService {
         }
     }
 
-    // Llamada a Gemini con esquema JSON
+    // 🔐 Llamada a Gemini con esquema JSON (vía backend seguro)
     async callGeminiWithSchema(prompt, schema) {
-        const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+        const response = await fetch(`${this.backendUrl}/api/gemini/generate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                contents: [{
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    responseMimeType: 'application/json',
-                    responseSchema: schema,
-                    temperature: 0.7,
-                    maxOutputTokens: 2048
-                }
+                prompt: prompt,
+                schema: schema
             })
         });
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+            throw new Error(`Backend Error: ${response.status} - ${response.statusText}`);
         }
 
         const data = await response.json();
-        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (!content) {
-            throw new Error('No content in API response');
+        if (!data.success) {
+            throw new Error(data.error || 'Error en backend');
         }
 
-        return JSON.parse(content);
+        return data.content;
     }
 
-    // Llamada simple a Gemini
+    // 🔐 Llamada simple a Gemini (vía backend seguro)
     async callGemini(prompt) {
-        const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+        const response = await fetch(`${this.backendUrl}/api/gemini/generate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                contents: [{
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.8,
-                    maxOutputTokens: 1024
-                }
+                prompt: prompt
             })
         });
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+            throw new Error(`Backend Error: ${response.status} - ${response.statusText}`);
         }
 
         const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Error generando contenido';
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Error en backend');
+        }
+
+        return data.content;
     }
 
     // Ejercicios de fallback offline

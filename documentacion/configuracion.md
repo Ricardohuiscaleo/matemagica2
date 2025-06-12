@@ -7,6 +7,7 @@
 URL: https://uznvakpuuxnpdhoejrog.supabase.co
 Proyecto: matemagica-pwa
 Estado: ✅ OPERATIVO
+ANON_KEY: Configurada vía backend seguro
 ```
 
 ### Google OAuth

@@ -767,7 +767,7 @@
             initializeDashboardSystem();
             setupSidebarNavigation();
             setupModalEventListeners();
-            initializeRoleCustomization(); // ✅ NUEVO: Inicializar sistema de customización de roles
+            // initializeRoleCustomization(); // ✅ REMOVIDO: Se llamará después de definir la función
         });
 
         // ✅ Inicializar sistema del dashboard
@@ -1150,6 +1150,300 @@
                         window.location.reload(true);
                     }, 100);
                 }, 500);
+            }
+        }
+
+        // ✅ DETECCIÓN AUTOMÁTICA DEL ROL DE USUARIO
+        let currentUserRole = 'parent'; // Default
+        let currentUserProfile = {};
+        
+        // Detectar rol desde la autenticación de Supabase
+        function detectUserRole() {
+            try {
+                const userProfileString = localStorage.getItem('matemagica-user-profile');
+                if (userProfileString) {
+                    currentUserProfile = JSON.parse(userProfileString);
+                    currentUserRole = currentUserProfile.user_role || 'parent';
+                    
+                    console.log(`🎯 Rol detectado automáticamente: ${currentUserRole}`);
+                    
+                    // Actualizar interfaz según el rol
+                    updateDashboardForRole(currentUserRole);
+                } else {
+                    console.log('ℹ️ No hay perfil de usuario, usando rol por defecto');
+                }
+            } catch (error) {
+                console.error('Error detectando rol:', error);
+            }
+        }
+        
+        // Adaptar dashboard según el rol detectado
+        function updateDashboardForRole(role) {
+            const roleText = document.getElementById('user-role-text');
+            const roleIcon = document.getElementById('role-icon');
+            const roleIndicator = document.getElementById('role-indicator');
+            
+            if (role === 'teacher') {
+                // Configuración para PROFESOR
+                if (roleText) roleText.textContent = 'Profesor';
+                if (roleIcon) {
+                    roleIcon.className = 'fas fa-chalkboard-teacher text-gray-500 text-xs';
+                }
+                if (roleIndicator) {
+                    roleIndicator.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+                    roleIndicator.classList.add('bg-blue-100', 'hover:bg-blue-200');
+                }
+                
+                console.log('👩‍🏫 Dashboard configurado para PROFESOR');
+                
+            } else {
+                // Configuración para APODERADO
+                if (roleText) roleText.textContent = 'Apoderado';
+                if (roleIcon) {
+                    roleIcon.className = 'fas fa-home text-gray-500 text-xs';
+                }
+                if (roleIndicator) {
+                    roleIndicator.classList.remove('bg-blue-100', 'hover:bg-blue-200');
+                    roleIndicator.classList.add('bg-gray-100', 'hover:bg-gray-200');
+                }
+                
+                console.log('👨‍👩‍👧‍👦 Dashboard configurado para APODERADO');
+            }
+        }
+        
+        // Ejecutar detección al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Iniciando detección automática de rol...');
+            detectUserRole();
+            
+            // También aplicar customización guardada
+            applyRoleCustomizationOnLoad();
+            
+            // Inicializar sistema de customización
+            initializeRoleCustomization();
+        });
+        
+        // ✅ NUEVO: Sistema de customización de roles
+        function initializeRoleCustomization() {
+            console.log('🎨 Inicializando sistema de customización de roles...');
+            
+            const customizeBtn = document.getElementById('customize-role-btn');
+            const modal = document.getElementById('role-customization-modal');
+            const closeBtn = document.getElementById('close-role-modal');
+            const cancelBtn = document.getElementById('cancel-role-customization');
+            const saveBtn = document.getElementById('save-role-customization');
+            
+            // Verificar que los elementos existen antes de agregar listeners
+            if (customizeBtn) {
+                customizeBtn.addEventListener('click', function() {
+                    openRoleCustomizationModal();
+                });
+            }
+            
+            // Cerrar modal
+            [closeBtn, cancelBtn].forEach(btn => {
+                if (btn) {
+                    btn.addEventListener('click', function() {
+                        closeRoleCustomizationModal();
+                    });
+                }
+            });
+            
+            // Guardar customización
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function() {
+                    saveRoleCustomization();
+                });
+            }
+            
+            // Mostrar/ocultar campos específicos según el tipo
+            document.querySelectorAll('input[name="user-type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    toggleRoleSpecificFields(this.value);
+                });
+            });
+            
+            console.log('✅ Sistema de customización de roles inicializado');
+        }
+        
+        function openRoleCustomizationModal() {
+            const modal = document.getElementById('role-customization-modal');
+            if (!modal) {
+                console.warn('⚠️ Modal de customización no encontrado en el DOM');
+                return;
+            }
+            
+            // Cargar configuración actual
+            loadCurrentRoleCustomization();
+            
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+        
+        function closeRoleCustomizationModal() {
+            const modal = document.getElementById('role-customization-modal');
+            if (!modal) return;
+            
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+        
+        function loadCurrentRoleCustomization() {
+            try {
+                // Cargar rol actual desde el perfil
+                const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+                const currentRole = userProfile.user_role || 'parent';
+                
+                // Marcar el radio correspondiente
+                const roleRadio = document.querySelector(`input[name="user-type"][value="${currentRole}"]`);
+                if (roleRadio) {
+                    roleRadio.checked = true;
+                    toggleRoleSpecificFields(currentRole);
+                }
+                
+                // Cargar customizaciones guardadas
+                const customization = JSON.parse(localStorage.getItem('matemagica-role-customization') || '{}');
+                
+                // Aplicar título personalizado si existe
+                if (customization.title) {
+                    const titleRadio = document.querySelector(`input[name="${currentRole}-title"][value="${customization.title}"]`);
+                    if (titleRadio) {
+                        titleRadio.checked = true;
+                    }
+                }
+                
+                // Aplicar nombre personalizado
+                const customNameInput = document.getElementById('custom-display-name');
+                if (customNameInput && customization.displayName) {
+                    customNameInput.value = customization.displayName;
+                }
+                
+            } catch (error) {
+                console.error('Error cargando customización:', error);
+            }
+        }
+        
+        function toggleRoleSpecificFields(roleType) {
+            const teacherCustomization = document.getElementById('teacher-customization');
+            const parentCustomization = document.getElementById('parent-customization');
+            
+            if (roleType === 'teacher') {
+                if (teacherCustomization) teacherCustomization.classList.remove('hidden');
+                if (parentCustomization) parentCustomization.classList.add('hidden');
+            } else {
+                if (teacherCustomization) teacherCustomization.classList.add('hidden');
+                if (parentCustomization) parentCustomization.classList.remove('hidden');
+            }
+        }
+        
+        function saveRoleCustomization() {
+            try {
+                // Obtener valores del formulario
+                const selectedRole = document.querySelector('input[name="user-type"]:checked')?.value;
+                const selectedTitle = document.querySelector(`input[name="${selectedRole}-title"]:checked`)?.value;
+                const customDisplayName = document.getElementById('custom-display-name')?.value.trim();
+                
+                if (!selectedRole) {
+                    showErrorToast('Por favor selecciona un tipo de usuario');
+                    return;
+                }
+                
+                // Crear objeto de customización
+                const customization = {
+                    role: selectedRole,
+                    title: selectedTitle,
+                    displayName: customDisplayName,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Guardar en localStorage
+                localStorage.setItem('matemagica-role-customization', JSON.stringify(customization));
+                
+                // Actualizar perfil de usuario si es necesario
+                const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+                if (userProfile.user_role !== selectedRole) {
+                    userProfile.user_role = selectedRole;
+                    localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
+                }
+                
+                // Aplicar cambios inmediatamente
+                updateDashboardForRole(selectedRole);
+                updateRoleDisplay(customization);
+                
+                // Cerrar modal y mostrar confirmación
+                closeRoleCustomizationModal();
+                showSuccessToast('✅ Personalización guardada correctamente');
+                
+                console.log('✅ Customización de rol guardada:', customization);
+                
+            } catch (error) {
+                console.error('Error guardando customización:', error);
+                showErrorToast('Error al guardar la personalización');
+            }
+        }
+        
+        function updateRoleDisplay(customization) {
+            const roleText = document.getElementById('user-role-text');
+            if (!roleText) return;
+            
+            // Determinar qué mostrar
+            let displayText = '';
+            
+            if (customization.displayName) {
+                displayText = customization.displayName;
+            } else if (customization.title) {
+                // Convertir códigos a texto legible
+                const titleMap = {
+                    // Profesor
+                    'profesor': 'Profesor',
+                    'profesora': 'Profesora',
+                    'tia': 'Tía/o',
+                    'docente': 'Docente',
+                    // Apoderado
+                    'papa': 'Papá',
+                    'mama': 'Mamá',
+                    'ambos': 'Papás',
+                    'abuelo': 'Abuelo/a',
+                    'tutor': 'Tutor/a',
+                    'familiar': 'Familiar'
+                };
+                displayText = titleMap[customization.title] || customization.title;
+            } else {
+                displayText = customization.role === 'teacher' ? 'Profesor' : 'Apoderado';
+            }
+            
+            roleText.textContent = displayText;
+        }
+        
+        // Aplicar customización al cargar la página
+        function applyRoleCustomizationOnLoad() {
+            try {
+                const customization = JSON.parse(localStorage.getItem('matemagica-role-customization') || '{}');
+                if (Object.keys(customization).length > 0) {
+                    updateRoleDisplay(customization);
+                    console.log('✅ Customización de rol aplicada al cargar');
+                }
+            } catch (error) {
+                console.error('Error aplicando customización al cargar:', error);
+            }
+        }
+        
+        // Funciones de toast/notification (fallback si no existen)
+        function showSuccessToast(message) {
+            if (typeof showToast === 'function') {
+                showToast(message, 'success');
+            } else {
+                console.log('✅ ' + message);
+                alert(message); // Fallback básico
+            }
+        }
+        
+        function showErrorToast(message) {
+            if (typeof showToast === 'function') {
+                showToast(message, 'error');
+            } else {
+                console.error('❌ ' + message);
+                alert(message); // Fallback básico
             }
         }
     </script>

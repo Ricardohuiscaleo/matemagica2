@@ -104,7 +104,7 @@
 ```javascript
 // Supabase
 SUPABASE_URL: 'https://uznvakpuuxnpdhoejrog.supabase.co'
-SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIs...' // Token válido
+SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIs...' // Token configurado vía backend seguro
 
 // Google OAuth
 GOOGLE_CLIENT_ID: '531902921465-4j3o9nhpsaqd4lkq453jfvg1so52pa2l.apps.googleusercontent.com'

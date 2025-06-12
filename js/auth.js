@@ -1,158 +1,110 @@
-// js/auth.js - Sistema de Autenticación v18.0 - Funcional como producción
-console.log("🚀 Auth System v18.0 - Versión de producción");
+// js/auth.js - Sistema de Autenticación v20.0 - Sistema simplificado sin config-service
+console.log("🚀 Auth System v20.0 - Sistema simplificado sin config-service");
 
-class LoginSystem {
+class AuthenticationSystem {
     constructor() {
-        this.config = {
-            url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
-        };
         this.supabase = null;
-        this.elements = {};
         this.selectedRole = null;
         
-        // Mensajes amigables para niños
-        this.friendlyMessages = {
-            loading: [
-                "🧮 ¡Preparando tu aventura matemática!",
-                "✨ Buscando números mágicos...",
-                "🎯 Organizando ejercicios divertidos...",
-                "🌟 Casi listo para empezar..."
-            ],
-            success: [
-                "🎉 ¡Perfecto! Entrando a tu aventura matemática...",
-                "✨ ¡Genial! Preparando tu espacio de aprendizaje...",
-                "🌟 ¡Excelente! Tu cuenta está lista...",
-                "🚀 ¡Fantástico! Iniciando tu experiencia matemática..."
-            ],
-            errors: {
-                session: "😊 ¡Ups! Necesitamos verificar que eres tú. ¡Intentémoslo de nuevo!",
-                auth: "🤔 Algo salió mal al conectarte. ¡No te preocupes, podemos intentarlo otra vez!",
-                general: "🔧 ¡Oops! Algo no funcionó como esperábamos. ¡Vamos a intentarlo de nuevo!",
-                network: "📡 Parece que no hay internet. ¡Revisa tu conexión y vuelve a intentar!",
-                role: "🎭 ¡Primero elige si eres profesor o apoderado!"
-            }
+        // Configuración directa - SIMPLE
+        this.config = {
+            supabaseUrl: 'https://uznvakpuuxnpdhoejrog.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM2MzQ0MzYsImV4cCI6MjA0OTIxMDQzNn0.Q9zxJVGbfTuKK1zokYcGIZhfCVhcqCHi2UGLzjBqO0w'
         };
         
-        // Bind métodos al contexto
-        Object.getOwnPropertyNames(Object.getPrototypeOf(this))
-            .filter(prop => typeof this[prop] === 'function' && prop !== 'constructor')
-            .forEach(prop => { this[prop] = this[prop].bind(this); });
-
-        // Hacer disponible globalmente para el HTML
-        window.loginSystem = this;
-        window.addEventListener('load', this.init);
+        this.init();
     }
 
     async init() {
-        try {
-            if (!window.supabase) throw new Error("Librería Supabase no disponible.");
-            this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
-            console.log("✅ Cliente Supabase inicializado.");
-            this.setupDOMElements();
-            this.setupEventListeners();
-            await this.handleInitialLoad();
-        } catch (error) {
-            console.error("❌ Error en init auth:", error);
-            this.handleAuthError("general");
-        }
+        console.log("🔍 Modo detectado: DESARROLLO LOCAL");
+        console.log("🏠 Cargando configuración directa...");
+        
+        // Inicializar Supabase directamente
+        this.supabase = window.supabase.createClient(
+            this.config.supabaseUrl,
+            this.config.supabaseAnonKey
+        );
+        
+        console.log("✅ Cliente Supabase inicializado directamente");
+        
+        // Configurar elementos y manejar carga inicial
+        this.setupElements();
+        await this.handleInitialLoad();
     }
 
-    setupDOMElements() {
-        this.elements = {
-            cardFlipper: document.getElementById('card-flipper'),
-            loadingOverlay: document.getElementById('loading-overlay'),
-            errorDisplay: document.getElementById('error-display'),
-            teacherRoleBtn: document.getElementById('teacher-role-btn'),
-            parentRoleBtn: document.getElementById('parent-role-btn'),
-            googleAuthBtn: document.getElementById('google-auth-btn'),
-            backBtn: document.getElementById('back-to-welcome-btn')
-        };
-        
+    setupElements() {
         console.log("🔧 Elementos de auth configurados");
-    }
-
-    setupEventListeners() {
-        // Integrar con las funciones del HTML - NO duplicar eventos
         console.log("✅ Auth.js integrado con funciones HTML existentes");
-        
-        // Solo agregar efectos hover visuales adicionales
-        [this.elements.teacherRoleBtn, this.elements.parentRoleBtn].forEach(btn => {
-            if (btn) {
-                btn.addEventListener('mouseenter', () => {
-                    btn.style.transform = 'translateY(-8px) scale(1.05)';
-                });
-                btn.addEventListener('mouseleave', () => {
-                    btn.style.transform = 'translateY(0) scale(1)';
-                });
-            }
-        });
     }
 
-    async handleInitialLoad() {
-        this.showLoader(true, "loading");
-        
-        try {
-            // Verificar parámetros OAuth en URL primero
-            const urlParams = this.parseUrlFragment();
-            if (urlParams) {
-                console.log("🔐 Procesando callback OAuth...");
-                this.cleanupUrl();
-                const { error } = await this.supabase.auth.setSession(urlParams);
-                if (error) throw error;
-                
-                const { data: { user } } = await this.supabase.auth.getUser();
-                if (user) {
-                    await this.onLoginSuccess(user);
-                    return;
-                }
-            }
-            
-            // Verificar sesión existente
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session && session.user) {
-                console.log("✅ Sesión existente encontrada, redirigiendo...");
-                await this.onLoginSuccess(session.user);
-                return;
-            }
-            
-            // No hay sesión, mostrar interfaz de login
-            this.showLoader(false);
-            console.log("ℹ️ No hay sesión activa, mostrando login");
-            
-        } catch (error) {
-            console.warn("⚠️ Error en verificación de sesión:", error.message);
-            this.showLoader(false);
-            console.log("ℹ️ Mostrando login después de error en verificación");
-        }
-    }
-
-    // Método llamado desde el HTML
+    // Método para seleccionar rol desde HTML
     selectRole(role) {
-        console.log('👤 Rol seleccionado desde auth.js:', role);
         this.selectedRole = role;
         localStorage.setItem('matemagica_selected_role', role);
-        return true;
+        console.log(`🎭 Rol seleccionado: ${role}`);
     }
 
     // Método principal de autenticación llamado desde HTML
     async signInWithGoogle() {
         if (!this.selectedRole) {
-            this.showError("role");
-            return false;
+            this.selectedRole = localStorage.getItem('matemagica_selected_role');
+            if (!this.selectedRole) {
+                this.showError("role");
+                return false;
+            }
         }
         
         this.showLoader(true, "loading");
         
         try {
             console.log("🔐 Iniciando OAuth con Google...");
+            
+            // ✅ DETECCIÓN MEJORADA DE ENTORNO
+            const isLocalDev = window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1' ||
+                              window.location.port === '8001' ||
+                              window.location.port === '8000' ||
+                              window.location.port === '3000';
+            
+            const currentOrigin = window.location.origin;
+            const redirectUrl = `${currentOrigin}/dashboard.html`;
+            
+            console.log(`🔍 Entorno detectado: ${isLocalDev ? 'DESARROLLO LOCAL' : 'PRODUCCIÓN'}`);
+            console.log(`🏠 Dominio actual: ${currentOrigin}`);
+            console.log(`🔄 URL de redirección solicitada: ${redirectUrl}`);
+            
+            // ⚠️ ADVERTENCIA para desarrollo local
+            if (isLocalDev) {
+                console.warn(`
+🚨 DESARROLLO LOCAL DETECTADO
+📋 Para que OAuth funcione correctamente:
+1. Ve a Supabase Dashboard → Authentication → Settings
+2. Agrega a "Additional Redirect URLs": ${currentOrigin}/**
+3. O cambia temporalmente "Site URL" a: ${currentOrigin}
+4. Sin esto, siempre redirigirá a producción
+                `);
+            }
+            
             const { error } = await this.supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
-                options: { redirectTo: window.location.origin } 
+                options: { 
+                    redirectTo: redirectUrl
+                } 
             });
             
             if (error) {
                 console.error("❌ Error en OAuth:", error);
+                
+                // ✅ Mensaje específico para desarrollo local
+                if (isLocalDev) {
+                    console.error(`
+🔧 SOLUCIÓN PARA DESARROLLO LOCAL:
+1. Ve a https://supabase.com/dashboard
+2. Tu proyecto → Authentication → Settings
+3. Agrega: ${currentOrigin}/** a "Additional Redirect URLs"
+                    `);
+                }
+                
                 this.handleAuthError("network");
                 return false;
             }
@@ -166,110 +118,173 @@ class LoginSystem {
         }
     }
 
-    async onLoginSuccess(user) {
-        const role = localStorage.getItem('matemagica_selected_role') || 'parent';
-        const userProfile = {
-            user_id: user.id, 
-            email: user.email,
-            full_name: user.user_metadata?.full_name,
-            avatar_url: user.user_metadata?.avatar_url,
-            user_role: role
-        };
+    async handleInitialLoad() {
+        this.showLoader(true, "loading");
         
         try {
-            console.log("💾 Guardando perfil en Supabase...", userProfile);
-            await this.supabase.from('math_profiles').upsert(userProfile);
-            localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
-            localStorage.removeItem('matemagica_selected_role');
+            console.log("🔍 === INICIANDO DETECCIÓN DE SESIÓN ===");
             
-            // Mostrar mensaje de éxito y redirigir
-            this.showLoader(true, "success");
-            setTimeout(() => {
-                this.redirectUser();
-            }, 2000);
+            // Verificar parámetros OAuth en URL primero
+            const urlParams = this.parseUrlFragment();
+            console.log("🔗 Parámetros OAuth en URL:", urlParams ? "✅ ENCONTRADOS" : "❌ NO ENCONTRADOS");
+            
+            if (urlParams) {
+                console.log("🔐 Procesando callback OAuth...");
+                console.log("🧹 Limpiando URL...");
+                this.cleanupUrl();
+                
+                console.log("🔑 Estableciendo sesión con tokens...");
+                const { error } = await this.supabase.auth.setSession(urlParams);
+                if (error) {
+                    console.error("❌ Error estableciendo sesión:", error);
+                    throw error;
+                }
+                
+                console.log("👤 Obteniendo datos del usuario...");
+                const { data: { user } } = await this.supabase.auth.getUser();
+                console.log("📋 Usuario obtenido:", user ? `✅ ${user.email}` : "❌ NO ENCONTRADO");
+                
+                if (user) {
+                    console.log("🎉 ¡CALLBACK OAUTH EXITOSO! Procesando login...");
+                    await this.onLoginSuccess(user);
+                    return;
+                } else {
+                    console.error("❌ PROBLEMA: Sesión establecida pero no se puede obtener usuario");
+                }
+            }
+            
+            // Verificar sesión existente
+            console.log("🔍 Verificando sesión existente...");
+            const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+            console.log("📊 Resultado de getSession():", {
+                hasSession: !!session,
+                hasUser: !!(session?.user),
+                error: sessionError ? sessionError.message : "ninguno"
+            });
+            
+            if (session && session.user) {
+                console.log("✅ Sesión existente encontrada, redirigiendo...");
+                await this.onLoginSuccess(session.user);
+                return;
+            }
+            
+            // No hay sesión, mostrar interfaz de login
+            console.log("ℹ️ No hay sesión activa, mostrando pantalla de bienvenida");
+            this.showInterface();
             
         } catch (error) {
-            console.error("❌ Error guardando perfil:", error);
-            this.handleAuthError("general");
-        }
-    }
-
-    redirectUser() {
-        console.log("🔄 Redirigiendo al dashboard...");
-        window.location.assign('dashboard.html');
-    }
-
-    showLoader(show, type = "loading") {
-        if (this.elements.loadingOverlay) {
-            if (show) {
-                this.elements.loadingOverlay.classList.remove('hidden-screen');
-                this.elements.loadingOverlay.style.display = 'flex';
-                
-                const loadingText = this.elements.loadingOverlay.querySelector('.loading-text');
-                if (loadingText && this.friendlyMessages[type]) {
-                    const messages = Array.isArray(this.friendlyMessages[type]) 
-                        ? this.friendlyMessages[type] 
-                        : [this.friendlyMessages[type]];
-                    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-                    loadingText.textContent = randomMessage;
-                }
-            } else {
-                this.elements.loadingOverlay.classList.add('hidden-screen');
-                this.elements.loadingOverlay.style.display = 'none';
-                console.log("✅ Loading overlay ocultado, interfaz de login visible");
-            }
-        }
-    }
-
-    showError(errorType) {
-        const message = this.friendlyMessages.errors[errorType] || this.friendlyMessages.errors.general;
-        if (this.elements.errorDisplay) {
-            this.elements.errorDisplay.textContent = message;
-            this.elements.errorDisplay.style.display = 'block';
-            
-            // Animación de entrada
-            this.elements.errorDisplay.style.animation = 'none';
-            setTimeout(() => {
-                this.elements.errorDisplay.style.animation = 'bounce 0.5s ease-out';
-            }, 10);
-            
-            setTimeout(() => { 
-                this.elements.errorDisplay.style.display = 'none'; 
-            }, 5000);
-        }
-    }
-
-    handleAuthError(errorType) {
-        console.error("❌ ERROR AUTH:", errorType);
-        this.showError(errorType);
-        this.showLoader(false);
-        
-        // Volver a la cara frontal si hay error
-        if (this.elements.cardFlipper) {
-            this.elements.cardFlipper.classList.remove('flipped');
+            console.error("❌ Error en carga inicial:", error);
+            console.error("📋 Detalles del error:", {
+                message: error.message,
+                stack: error.stack
+            });
+            this.handleAuthError("session");
         }
     }
 
     parseUrlFragment() {
-        try {
-            const params = new URLSearchParams(window.location.hash.substring(1));
-            const accessToken = params.get('access_token');
-            if (accessToken) return { 
-                access_token: accessToken, 
-                refresh_token: params.get('refresh_token') 
+        const fragment = window.location.hash.substring(1);
+        if (!fragment) return null;
+        
+        const params = new URLSearchParams(fragment);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+            return {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_in: params.get('expires_in'),
+                token_type: params.get('token_type') || 'bearer'
             };
-        } catch (e) { 
-            console.log("No hay parámetros OAuth en URL");
         }
+        
         return null;
     }
 
     cleanupUrl() {
-        if (window.location.hash) {
-            window.history.replaceState(null, '', window.location.pathname);
+        const url = new URL(window.location);
+        url.hash = '';
+        window.history.replaceState({}, document.title, url.toString());
+    }
+
+    async onLoginSuccess(user) {
+        console.log("🎉 Login exitoso para:", user.email);
+        
+        try {
+            // Guardar información del usuario
+            localStorage.setItem('matemagica_user', JSON.stringify({
+                id: user.id,
+                email: user.email,
+                name: user.user_metadata?.full_name || user.email,
+                role: this.selectedRole
+            }));
+            
+            console.log("💾 Datos de usuario guardados");
+            console.log("🔄 Redirigiendo al dashboard...");
+            
+            // Redirección inmediata
+            window.location.href = '/dashboard.html';
+            
+        } catch (error) {
+            console.error("❌ Error en onLoginSuccess:", error);
+            this.handleAuthError("processing");
         }
+    }
+
+    showInterface() {
+        this.showLoader(false);
+        console.log("🎨 Interfaz de bienvenida mostrada");
+    }
+
+    showLoader(show, type = "loading") {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            if (show) {
+                overlay.classList.remove('hidden-screen');
+            } else {
+                overlay.classList.add('hidden-screen');
+            }
+        }
+        
+        // También llamar a la función global si existe
+        if (window.mostrarCargando) {
+            window.mostrarCargando(show);
+        }
+    }
+
+    showError(type) {
+        let mensaje = "";
+        switch(type) {
+            case "role":
+                mensaje = "🎭 ¡Primero elige si eres profesor o apoderado!";
+                break;
+            case "network":
+                mensaje = "🌐 Error de conexión. ¡Inténtalo de nuevo!";
+                break;
+            case "session":
+                mensaje = "🔑 Error de sesión. ¡Recarga la página!";
+                break;
+            case "processing":
+                mensaje = "⚙️ Error procesando datos. ¡Inténtalo de nuevo!";
+                break;
+            default:
+                mensaje = "❌ Error inesperado. ¡Inténtalo de nuevo!";
+        }
+        
+        console.error("⚠️ Error:", mensaje);
+        
+        // Llamar a la función global si existe
+        if (window.mostrarError) {
+            window.mostrarError(mensaje);
+        }
+    }
+
+    handleAuthError(type) {
+        this.showLoader(false);
+        this.showError(type);
     }
 }
 
-// Inicialización simple
-new LoginSystem();
+// 🌍 Crear instancia global
+window.loginSystem = new AuthenticationSystem();

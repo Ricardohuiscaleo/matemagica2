@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Limpieza de Cache</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .danger {
+            background: #f44336;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>🧹 Matemágica - Limpieza SSL y Cache</h1>
+    
+    <div class="card">
+        <h2>🌐 Información actual</h2>
+        <div id="protocolInfo" class="status"></div>
+        <div id="portInfo" class="status"></div>
+        <div id="sslInfo" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h2>🧹 Acciones de limpieza</h2>
+        <button onclick="limpiarCacheCompleto()">🗑️ Limpiar TODO el cache</button>
+        <button onclick="desregistrarServiceWorkers()" class="danger">🔄 Desregistrar Service Workers</button>
+        <button onclick="forzarRecarga()" class="danger">⚡ Forzar recarga HTTP</button>
+        <button onclick="irALaApp()">🚀 Ir a la App (HTTP)</button>
+    </div>
+
+    <div class="card">
+        <h2>📊 Estado de limpieza</h2>
+        <div id="estadoLimpieza" class="status">Listo para limpiar...</div>
+    </div>
+
+    <script>
+        // Mostrar información actual
+        function mostrarInfoActual() {
+            const protocol = window.location.protocol;
+            const port = window.location.port;
+            const host = window.location.hostname;
+            
+            document.getElementById('protocolInfo').innerHTML = 
+                `Protocolo: <strong>${protocol}</strong> ${protocol === 'http:' ? '✅ Correcto' : '❌ Debería ser http:'}`;
+            
+            document.getElementById('portInfo').innerHTML = 
+                `Puerto: <strong>${port || 'default'}</strong> ${port === '8080' ? '✅ Correcto' : '⚠️ Debería ser 8080'}`;
+                
+            document.getElementById('sslInfo').innerHTML = 
+                `SSL: <strong>${protocol === 'https:' ? 'ACTIVADO (problemático)' : 'DESACTIVADO (correcto)'}</strong>`;
+        }
+
+        // Limpiar cache completo
+        async function limpiarCacheCompleto() {
+            document.getElementById('estadoLimpieza').innerHTML = '🧹 Limpiando cache...';
+            
+            try {
+                // 1. Limpiar localStorage
+                localStorage.clear();
+                console.log('✅ localStorage limpiado');
+                
+                // 2. Limpiar sessionStorage
+                sessionStorage.clear();
+                console.log('✅ sessionStorage limpiado');
+                
+                // 3. Limpiar Cache API
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(name => caches.delete(name))
+                    );
+                    console.log('✅ Cache API limpiado');
+                }
+                
+                document.getElementById('estadoLimpieza').innerHTML = '✅ Cache limpiado completamente';
+                
+            } catch (error) {
+                console.error('Error limpiando cache:', error);
+                document.getElementById('estadoLimpieza').innerHTML = '❌ Error limpiando cache';
+            }
+        }
+
+        // Desregistrar Service Workers
+        async function desregistrarServiceWorkers() {
+            document.getElementById('estadoLimpieza').innerHTML = '🔄 Desregistrando Service Workers...';
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('✅ Service Worker desregistrado:', registration.scope);
+                    }
+                    
+                    document.getElementById('estadoLimpieza').innerHTML = 
+                        `✅ ${registrations.length} Service Workers desregistrados`;
+                } else {
+                    document.getElementById('estadoLimpieza').innerHTML = '⚠️ Service Workers no soportados';
+                }
+                
+            } catch (error) {
+                console.error('Error desregistrando Service Workers:', error);
+                document.getElementById('estadoLimpieza').innerHTML = '❌ Error desregistrando Service Workers';
+            }
+        }
+
+        // Forzar recarga con HTTP
+        function forzarRecarga() {
+            const httpUrl = `http://${window.location.hostname}:8080/limpieza.html`;
+            window.location.replace(httpUrl);
+        }
+
+        // Ir a la aplicación principal
+        function irALaApp() {
+            const httpUrl = `http://${window.location.hostname}:8080/index.html`;
+            window.location.href = httpUrl;
+        }
+
+        // Ejecutar al cargar
+        mostrarInfoActual();
+        
+        // Auto-limpiar si detectamos HTTPS
+        if (window.location.protocol === 'https:') {
+            alert('⚠️ Detectado HTTPS! Se procederá a limpiar automáticamente y redirigir a HTTP.');
+            limpiarCacheCompleto().then(() => {
+                desregistrarServiceWorkers().then(() => {
+                    setTimeout(forzarRecarga, 2000);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
