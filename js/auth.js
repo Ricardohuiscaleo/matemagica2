@@ -95,18 +95,55 @@ class LoginSystem {
                 return;
             }
 
-            // 🏭 MODO PRODUCCIÓN - Backend requerido
-            if (!window.configService) {
-                throw new Error("ConfigService no disponible en producción");
+            // 🏭 MODO PRODUCCIÓN - Cargar DIRECTAMENTE desde backend
+            console.log('🏭 Cargando configuración desde backend...');
+            
+            try {
+                // ✅ NUEVA LÓGICA: Llamar directamente al endpoint del backend
+                const response = await fetch('/api/config', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Backend error: ${response.status}`);
+                }
+
+                const config = await response.json();
+                
+                if (!config.supabase || !config.supabase.url || !config.supabase.anonKey) {
+                    throw new Error('Configuración incompleta del backend');
+                }
+
+                this.config = {
+                    url: config.supabase.url,
+                    anon_key: config.supabase.anonKey
+                };
+
+                console.log("🔐 Configuración cargada DIRECTAMENTE desde backend seguro");
+                return;
+
+            } catch (backendError) {
+                console.error("❌ Error cargando desde backend:", backendError);
+                
+                // ✅ FALLBACK: Intentar con gemini-ai.js si el backend no responde
+                console.log('🔄 Intentando fallback con gemini-ai.js...');
+                
+                if (window.CONFIG && window.CONFIG.supabase) {
+                    this.config = {
+                        url: window.CONFIG.supabase.url,
+                        anon_key: window.CONFIG.supabase.anonKey
+                    };
+                    console.log("✅ Configuración cargada desde CONFIG global");
+                    return;
+                }
+                
+                throw new Error('No se pudo cargar configuración de ninguna fuente');
             }
-
-            const config = await window.configService.loadConfig();
-            this.config = {
-                url: config.supabase.url,
-                anon_key: config.supabase.anonKey
-            };
-
-            console.log("🔐 Configuración cargada desde backend seguro");
 
         } catch (error) {
             console.error("❌ Error cargando configuración:", error);
