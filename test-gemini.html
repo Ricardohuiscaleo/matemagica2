@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test Gemini AI - Matemágica</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-center mb-6">🧪 Test de Gemini AI</h1>
+        
+        <div class="space-y-4">
+            <button id="test-gemini" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">
+                🤖 Probar Generación con Gemini AI
+            </button>
+            
+            <div id="loading" class="hidden text-center text-blue-600">
+                <div class="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent rounded-full"></div>
+                <span class="ml-2">Generando ejercicios con IA...</span>
+            </div>
+            
+            <div id="results" class="hidden">
+                <h3 class="font-bold text-green-600 mb-2">✅ Resultado:</h3>
+                <pre id="json-output" class="bg-gray-100 p-4 rounded-lg overflow-auto text-sm"></pre>
+            </div>
+            
+            <div id="error" class="hidden">
+                <h3 class="font-bold text-red-600 mb-2">❌ Error:</h3>
+                <pre id="error-output" class="bg-red-100 p-4 rounded-lg overflow-auto text-sm text-red-800"></pre>
+            </div>
+        </div>
+        
+        <div class="mt-6 text-sm text-gray-600">
+            <h4 class="font-semibold mb-2">📋 Estado del Sistema:</h4>
+            <ul class="space-y-1">
+                <li id="config-status">🔧 Verificando configuración...</li>
+                <li id="auth-status">🔐 Verificando autenticación...</li>
+                <li id="api-status">🤖 Verificando API...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Configuración de Supabase -->
+    <script>
+        // Configuración inmediata
+        window.SUPABASE_CONFIG = {
+            url: "https://uznvakpuuxnpdhoejrog.supabase.co",
+            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NzQ4NDQsImV4cCI6MjA0OTE1MDg0NH0.FELDriHpfy0xHwxJQGDXCi0Gd8vJWm4L9MLu3DWGZh8",
+            configured: true
+        };
+    </script>
+
+    <script>
+        // Función de prueba de Gemini AI
+        async function testGeminiAI() {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            const jsonOutput = document.getElementById('json-output');
+            const errorOutput = document.getElementById('error-output');
+            
+            // Mostrar loading
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+            
+            try {
+                console.log('🧪 Iniciando test de Gemini AI...');
+                
+                const prompt = `Genera exactamente 3 ejercicios de suma de dos dígitos para niños de 7-8 años.
+                
+                REGLAS:
+                - Números entre 10 y 99
+                - Sin reserva (suma de unidades menor a 10)
+                - Ejemplo: 23 + 34 = 57
+                
+                Devuelve SOLO un objeto JSON:
+                {
+                    "exercises": [
+                        {"num1": 23, "num2": 34, "operation": "addition"},
+                        {"num1": 15, "num2": 32, "operation": "addition"},
+                        {"num1": 41, "num2": 26, "operation": "addition"}
+                    ]
+                }`;
+
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        exercises: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    num1: { type: "INTEGER" },
+                                    num2: { type: "INTEGER" },
+                                    operation: { type: "STRING" }
+                                },
+                                required: ["num1", "num2", "operation"]
+                            }
+                        }
+                    },
+                    required: ["exercises"]
+                };
+
+                const response = await fetch(`${window.SUPABASE_CONFIG.url}/functions/v1/gemini-ai`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${window.SUPABASE_CONFIG.anon_key}`
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        schema: schema,
+                        temperature: 0.5
+                    })
+                });
+
+                console.log('📡 Respuesta recibida:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('✅ Datos recibidos:', data);
+
+                if (data.success) {
+                    // Mostrar resultado exitoso
+                    jsonOutput.textContent = JSON.stringify(data.content, null, 2);
+                    results.classList.remove('hidden');
+                    
+                    // Actualizar estado
+                    document.getElementById('api-status').innerHTML = '🤖 <span class="text-green-600">API funcionando ✅</span>';
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+
+            } catch (err) {
+                console.error('❌ Error en test:', err);
+                errorOutput.textContent = `${err.name}: ${err.message}`;
+                error.classList.remove('hidden');
+                
+                // Actualizar estado
+                document.getElementById('api-status').innerHTML = '🤖 <span class="text-red-600">API con errores ❌</span>';
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Verificar estado del sistema
+        function checkSystemStatus() {
+            // Verificar configuración
+            if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
+                document.getElementById('config-status').innerHTML = '🔧 <span class="text-green-600">Configuración OK ✅</span>';
+            } else {
+                document.getElementById('config-status').innerHTML = '🔧 <span class="text-red-600">Configuración faltante ❌</span>';
+            }
+
+            // Verificar autenticación (simplificado)
+            const hasAuth = localStorage.getItem('matemagica-user-profile');
+            if (hasAuth) {
+                document.getElementById('auth-status').innerHTML = '🔐 <span class="text-green-600">Usuario autenticado ✅</span>';
+            } else {
+                document.getElementById('auth-status').innerHTML = '🔐 <span class="text-yellow-600">Sin autenticación (modo test) ⚠️</span>';
+            }
+
+            // Estado inicial de API
+            document.getElementById('api-status').innerHTML = '🤖 <span class="text-gray-600">Pendiente de prueba...</span>';
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+            
+            document.getElementById('test-gemini').addEventListener('click', testGeminiAI);
+        });
+    </script>
+</body>
+</html>

@@ -484,6 +484,18 @@ async function generateExercises() {
         // Mostrar ejercicios
         displayExercises(exercises);
         
+        // ✅ MENSAJE CORREGIDO: Especificar el origen real de los ejercicios
+        const aiGeneratedCount = exercises.filter(ex => ex.generatedWith === 'gemini-ai').length;
+        const localGeneratedCount = exercises.filter(ex => ex.generatedWith === 'local').length;
+        
+        if (aiGeneratedCount > 0 && localGeneratedCount > 0) {
+            console.log(`✅ ${exercises.length} ejercicios generados: ${aiGeneratedCount} con Gemini AI + ${localGeneratedCount} offline`);
+        } else if (aiGeneratedCount > 0) {
+            console.log(`✅ ${exercises.length} ejercicios generados COMPLETAMENTE con Gemini AI`);
+        } else {
+            console.log(`✅ ${exercises.length} ejercicios generados en modo offline (sin IA)`);
+        }
+        
         console.log(`✅ ${exercises.length} ejercicios generados correctamente`);
         
     } catch (error) {
@@ -1066,7 +1078,7 @@ function createExerciseCard(exercise, index) {
     return card;
 }
 
-// ✅ VERIFICACIÓN DE RESPUESTAS (actualizada para sistema vertical)
+// ✅ VERIFICAR RESPUESTA
 async function checkAnswer(exerciseId) {
     const exercise = DASHBOARD_CONFIG.exerciseSession.exercises.find(ex => ex.id === exerciseId);
     if (!exercise || exercise.completed) return;

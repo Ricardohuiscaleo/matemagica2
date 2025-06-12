@@ -51,6 +51,9 @@ class LoginSystem {
             this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
             console.log("✅ Cliente Supabase inicializado con configuración segura.");
             
+            // ✅ NUEVO: Exponer configuración para otros módulos (como gemini-ai.js)
+            this.exposeConfigurationGlobally();
+            
             this.setupDOMElements();
             this.setupEventListeners();
             await this.handleInitialLoad();
@@ -60,7 +63,30 @@ class LoginSystem {
         }
     }
 
-    // 🔐 Cargar configuración segura - SIN EXPONER KEYS
+    // ✅ NUEVA FUNCIÓN: Hacer configuración accesible globalmente
+    exposeConfigurationGlobally() {
+        if (this.config) {
+            // Configuración para gemini-ai.js y otros módulos
+            window.SUPABASE_CONFIG = {
+                url: this.config.url,
+                anon_key: this.config.anon_key,
+                client: this.supabase,
+                configured: true
+            };
+            
+            // También exponer en window.loginSystem para compatibilidad
+            this.configExposed = true;
+            
+            console.log('🔗 Configuración de Supabase expuesta globalmente para módulos IA');
+            
+            // Notificar a gemini-ai.js que la configuración está lista
+            if (window.geminiAI && typeof window.geminiAI.onConfigurationReady === 'function') {
+                window.geminiAI.onConfigurationReady();
+            }
+        }
+    }
+
+    // 🔐 DIAGNÓSTICO MEJORADO: Cargar configuración segura - SIN EXPONER KEYS
     async loadSecureConfig() {
         try {
             const isLocalDevelopment = window.location.hostname === 'localhost' || 
@@ -70,10 +96,9 @@ class LoginSystem {
             console.log(`🔍 Modo detectado: ${isLocalDevelopment ? 'DESARROLLO LOCAL' : 'PRODUCCIÓN'}`);
 
             if (isLocalDevelopment) {
-                // ✅ MODO DESARROLLO LOCAL - Buscar keys en variables de entorno o archivo local
+                // ✅ MODO DESARROLLO LOCAL - Cargar directamente desde config.local.json
                 console.log('🏠 Cargando configuración local segura...');
                 
-                // 1. Intentar cargar desde archivo .env.local (que NO se commitea)
                 const localConfig = await this.loadLocalConfig();
                 if (localConfig) {
                     this.config = localConfig;
@@ -81,7 +106,7 @@ class LoginSystem {
                     return;
                 }
                 
-                // 2. Intentar cargar desde prompt al usuario
+                // Si no hay config.local.json, solicitar al usuario
                 const userConfig = await this.promptUserForConfig();
                 if (userConfig) {
                     this.config = userConfig;
@@ -89,17 +114,13 @@ class LoginSystem {
                     return;
                 }
                 
-                // 3. Último recurso: Modo demo offline
-                console.log('🎮 Usando modo DEMO offline (sin Supabase)');
-                this.config = { demo: true };
-                return;
+                throw new Error('No se pudo cargar configuración local');
             }
 
-            // 🏭 MODO PRODUCCIÓN - Cargar DIRECTAMENTE desde backend
+            // 🏭 MODO PRODUCCIÓN - Cargar desde backend o variables globales
             console.log('🏭 Cargando configuración desde backend...');
             
             try {
-                // ✅ NUEVA LÓGICA: Llamar directamente al endpoint del backend
                 const response = await fetch('/api/config', {
                     method: 'GET',
                     headers: {
@@ -130,9 +151,6 @@ class LoginSystem {
             } catch (backendError) {
                 console.error("❌ Error cargando desde backend:", backendError);
                 
-                // ✅ FALLBACK: Intentar con gemini-ai.js si el backend no responde
-                console.log('🔄 Intentando fallback con gemini-ai.js...');
-                
                 if (window.CONFIG && window.CONFIG.supabase) {
                     this.config = {
                         url: window.CONFIG.supabase.url,
@@ -147,14 +165,6 @@ class LoginSystem {
 
         } catch (error) {
             console.error("❌ Error cargando configuración:", error);
-            
-            // Fallback a modo demo si estamos en localhost
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log('🎮 Fallback a modo DEMO offline');
-                this.config = { demo: true };
-                return;
-            }
-            
             throw new Error('🔒 No se pudo cargar configuración segura');
         }
     }
@@ -304,35 +314,93 @@ class LoginSystem {
         this.showLoader(true, "loading");
         
         try {
-            // Verificar parámetros OAuth en URL primero
+            // ✅ MEJORADO: Limpiar URL de parámetros OAuth problemáticos INMEDIATAMENTE
             const urlParams = this.parseUrlFragment();
             if (urlParams) {
-                console.log("🔐 Procesando callback OAuth...");
-                this.cleanupUrl();
-                const { error } = await this.supabase.auth.setSession(urlParams);
-                if (error) throw error;
+                console.log("🔐 Detectados parámetros OAuth en URL, limpiando...");
+                this.cleanupUrl(); // Limpiar URL ANTES de procesar
                 
-                const { data: { user } } = await this.supabase.auth.getUser();
-                if (user) {
-                    await this.onLoginSuccess(user);
-                    return;
+                // ✅ NUEVO: Verificar si los parámetros OAuth son válidos antes de usar
+                if (this.isValidOAuthToken(urlParams.access_token)) {
+                    try {
+                        const { error } = await this.supabase.auth.setSession(urlParams);
+                        if (error) {
+                            console.warn('⚠️ Error en OAuth, continuando sin autenticación:', error.message);
+                            throw new Error('OAUTH_FAILED');
+                        }
+                        
+                        const { data: { user } } = await this.supabase.auth.getUser();
+                        if (user) {
+                            await this.onLoginSuccess(user);
+                            return;
+                        }
+                    } catch (oauthError) {
+                        console.warn('⚠️ OAuth falló, limpiando y continuando:', oauthError.message);
+                        localStorage.clear(); // Limpiar tokens corruptos
+                        sessionStorage.clear();
+                    }
+                } else {
+                    console.log('🧹 Token OAuth inválido detectado, ignorando...');
                 }
             }
             
-            // Verificar sesión existente
-            const { data: { session } } = await this.supabase.auth.getSession();
-            if (session && session.user) {
-                console.log("✅ Sesión existente encontrada, redirigiendo...");
-                await this.onLoginSuccess(session.user);
-                return;
+            // ✅ MEJORADO: Intentar sesión existente solo si es seguro
+            try {
+                const { data: { session }, error } = await this.supabase.auth.getSession();
+                if (error) {
+                    console.warn('⚠️ Error obteniendo sesión:', error.message);
+                    throw new Error('SESSION_ERROR');
+                }
+                
+                if (session && session.user) {
+                    console.log("✅ Sesión existente válida encontrada, redirigiendo...");
+                    await this.onLoginSuccess(session.user);
+                    return;
+                }
+            } catch (sessionError) {
+                console.warn('⚠️ Error en sesión existente, limpiando:', sessionError.message);
+                localStorage.clear();
+                sessionStorage.clear();
             }
             
-            // No hay sesión, mostrar interfaz de login
+            // ✅ Todo limpio, mostrar interfaz de login
+            console.log("🎯 No hay sesión válida, mostrando interfaz de autenticación");
             this.showInterface();
             
         } catch (error) {
             console.error("❌ Error en carga inicial:", error);
-            this.handleAuthError("session");
+            
+            // Limpiar todo en caso de error grave
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            this.showInterface();
+            console.log("🔄 Interfaz de autenticación mostrada después de error");
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Validar token OAuth básico
+    isValidOAuthToken(token) {
+        if (!token || typeof token !== 'string') return false;
+        
+        // Verificar formato JWT básico (3 partes separadas por puntos)
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+        
+        try {
+            // Intentar decodificar el payload del JWT
+            const payload = JSON.parse(atob(parts[1]));
+            
+            // Verificar que no esté expirado
+            if (payload.exp && payload.exp * 1000 < Date.now()) {
+                console.log('🕒 Token OAuth expirado');
+                return false;
+            }
+            
+            return true;
+        } catch (e) {
+            console.log('❌ Token OAuth malformado');
+            return false;
         }
     }
 
@@ -508,24 +576,54 @@ class LoginSystem {
         }
     }
 
-    // 💬 Mostrar mensaje temporal
-    showTemporaryMessage(message) {
-        // Crear elemento de mensaje si no existe
-        let messageEl = document.getElementById('temp-message');
-        if (!messageEl) {
-            messageEl = document.createElement('div');
-            messageEl.id = 'temp-message';
-            messageEl.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 z-50';
-            document.body.appendChild(messageEl);
+    // 🧪 NUEVA FUNCIÓN: Validar credenciales de Supabase
+    async validateSupabaseCredentials(config) {
+        try {
+            console.log('🧪 Validando credenciales de Supabase...');
+            
+            // Crear cliente temporal para probar
+            const testClient = window.supabase.createClient(config.url, config.anon_key);
+            
+            // ✅ CORREGIDO: Usar auth.getUser() en lugar de acceder a tablas
+            // Esta operación siempre funciona si las credenciales son válidas
+            const { data, error } = await testClient.auth.getUser();
+            
+            if (error) {
+                console.error('❌ Error validando credenciales:', error.message);
+                
+                // Verificar si es un error de credenciales específicamente
+                if (error.message.includes('Invalid API key') || 
+                    error.message.includes('JWT expired') ||
+                    error.message.includes('invalid_api_key') ||
+                    error.status === 401) {
+                    return false;
+                }
+                
+                // Si el error es que no hay usuario autenticado, las credenciales están bien
+                if (error.message.includes('not authenticated') || error.message.includes('No user found')) {
+                    console.log('✅ Credenciales válidas (sin usuario autenticado)');
+                    return true;
+                }
+                
+                // Otros errores podrían indicar problema de conectividad, no de credenciales
+                console.log('⚠️ Las credenciales parecen válidas, posible problema de red');
+                return true;
+            }
+            
+            console.log('✅ Credenciales de Supabase validadas correctamente');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error durante validación de credenciales:', error);
+            
+            // Si hay error de red, asumir que las credenciales podrían estar bien
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                console.log('⚠️ Error de red, asumiendo credenciales válidas');
+                return true;
+            }
+            
+            return false;
         }
-        
-        messageEl.textContent = message;
-        messageEl.classList.remove('translate-x-full');
-        
-        // Ocultar después de 3 segundos
-        setTimeout(() => {
-            messageEl.classList.add('translate-x-full');
-        }, 3000);
     }
 
     async onLoginSuccess(user) {
@@ -606,6 +704,45 @@ class LoginSystem {
         }, 5000);
     }
 
+    // 🔑 Nueva función para mostrar error específico de API key
+    showApiKeyError() {
+        const errorElement = this.elements.authError;
+        if (!errorElement) return;
+        
+        const message = "🔑 Las credenciales han expirado. Por favor, actualiza tu API key de Supabase en config.local.json";
+        errorElement.querySelector('.error-message').textContent = message;
+        errorElement.classList.remove('hidden');
+        
+        // Mostrar por más tiempo para que el usuario pueda leer
+        setTimeout(() => {
+            errorElement.classList.add('hidden');
+        }, 10000);
+    }
+
+    // 💡 Función para mostrar mensajes temporales
+    showTemporaryMessage(message) {
+        const tempMessage = document.createElement('div');
+        tempMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+        tempMessage.textContent = message;
+        
+        document.body.appendChild(tempMessage);
+        
+        // Animación de entrada
+        setTimeout(() => {
+            tempMessage.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Eliminar después de 3 segundos
+        setTimeout(() => {
+            tempMessage.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (document.body.contains(tempMessage)) {
+                    document.body.removeChild(tempMessage);
+                }
+            }, 300);
+        }, 3000);
+    }
+
     handleAuthError(type) {
         console.error(`❌ Error de autenticación: ${type}`);
         this.showLoader(false);
@@ -616,10 +753,13 @@ class LoginSystem {
         try {
             const params = new URLSearchParams(window.location.hash.substring(1));
             const accessToken = params.get('access_token');
-            if (accessToken) return { 
-                access_token: accessToken, 
-                refresh_token: params.get('refresh_token') 
-            };
+            if (accessToken) {
+                console.log('🔍 Detectados parámetros OAuth en URL');
+                return { 
+                    access_token: accessToken, 
+                    refresh_token: params.get('refresh_token') 
+                };
+            }
         } catch (e) { 
             console.log("No hay parámetros OAuth en URL");
         }
@@ -627,8 +767,24 @@ class LoginSystem {
     }
 
     cleanupUrl() {
+        // ✅ MEJORADO: Limpiar TODOS los fragmentos OAuth y parámetros problemáticos
         if (window.location.hash) {
-            window.history.replaceState(null, '', window.location.pathname);
+            console.log('🧹 Limpiando URL de parámetros OAuth...');
+            
+            // Limpiar hash OAuth completo
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            
+            // También limpiar cualquier parámetro de error en la URL
+            const url = new URL(window.location);
+            url.searchParams.delete('error');
+            url.searchParams.delete('error_description');
+            url.searchParams.delete('error_code');
+            
+            if (url.search !== window.location.search) {
+                window.history.replaceState(null, '', url.pathname + url.search);
+            }
+            
+            console.log('✅ URL limpiada completamente');
         }
     }
 }

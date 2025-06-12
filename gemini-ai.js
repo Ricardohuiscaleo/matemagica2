@@ -1,65 +1,276 @@
-// Matemágica PWA - Servicio de IA con Google Gemini - VERSIÓN SEGURA
-// Este servicio ahora usa el backend para proteger las API keys
+// Matemágica PWA - Servicio de IA con Google Gemini - VERSIÓN SUPABASE EDGE FUNCTIONS
+// Este servicio ahora usa Supabase Edge Functions para proteger las API keys
 
 class GeminiAIService {
     constructor() {
-        // ✅ CORREGIDO: URL específica del backend en puerto 3001
-        this.backendUrl = 'http://localhost:3001'; // Siempre apuntar al backend
+        this.supabaseUrl = null;
         this.configured = false;
         this.hasKey = false;
+        this.initAttempts = 0;
+        this.maxAttempts = 15; // Aumentar intentos
+        this.initDelay = 1000; // Empezar con 1 segundo
         
-        // ✅ Auto-verificar configuración al inicializar
-        this.checkConfiguration();
-    }
-
-    // 🔐 Verificar configuración de forma segura
-    async checkConfiguration() {
-        try {
-            // Verificar si el backend tiene Gemini configurado
-            if (window.configService) {
-                await window.configService.loadConfig();
-                this.configured = window.configService.isGeminiConfigured;
-                this.hasKey = this.configured;
-            }
-            
-            console.log('🤖 Gemini AI Service (Seguro):', {
-                configured: this.configured,
-                backendUrl: this.backendUrl + '/api/gemini/generate'
+        // ✅ ARREGLO: Múltiples métodos de inicialización
+        this.setupConfigurationListeners();
+        
+        // ✅ Verificar configuración inmediatamente
+        this.checkImmediateConfiguration();
+        
+        // ✅ Esperar a que se cargue la página si es necesario
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => this.initializeSupabaseConnection(), 500);
             });
-            
-            if (this.configured) {
-                console.log('✅ Gemini AI activado - Generación inteligente disponible (vía backend seguro)');
-            } else {
-                console.log('📚 Modo offline - Usando ejercicios de respaldo');
-            }
-        } catch (error) {
-            console.error('❌ Error verificando configuración de Gemini:', error);
-            this.configured = false;
-            this.hasKey = false;
+        } else {
+            setTimeout(() => this.initializeSupabaseConnection(), 500);
         }
     }
 
-    // 🔐 Configuración manual (para compatibilidad)
-    configure(apiKey) {
-        // En la versión segura, las API keys se manejan en el backend
-        console.warn('⚠️ configure() deprecated - Las API keys ahora se manejan en el backend');
-        console.log('🔐 Para configurar Gemini, agrega GEMINI_API_KEY al archivo .env del servidor');
+    // ✅ NUEVA FUNCIÓN: Configurar listeners para múltiples eventos
+    setupConfigurationListeners() {
+        // Escuchar evento personalizado de dashboard.html
+        window.addEventListener('supabaseConfigReady', (event) => {
+            console.log('🔔 Evento supabaseConfigReady recibido');
+            this.onConfigurationReady();
+        });
         
-        // Verificar configuración actual
-        this.checkConfiguration();
+        // También escuchar cambios en window.SUPABASE_CONFIG
+        let checkCount = 0;
+        const configChecker = () => {
+            if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
+                console.log('🔔 window.SUPABASE_CONFIG detectado');
+                this.onConfigurationReady();
+                return;
+            }
+            
+            checkCount++;
+            if (checkCount < 5) { // Solo verificar 5 veces
+                setTimeout(configChecker, 200);
+            }
+        };
+        
+        setTimeout(configChecker, 100);
     }
 
-    // ✅ Intentar auto-configuración (deprecated pero mantenido para compatibilidad)
-    tryAutoConfig() {
-        this.checkConfiguration();
+    // ✅ NUEVA FUNCIÓN: Verificar configuración inmediatamente
+    checkImmediateConfiguration() {
+        if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
+            console.log('🔔 Configuración inmediata encontrada');
+            this.onConfigurationReady();
+            return true;
+        }
+        return false;
+    }
+
+    // ✅ NUEVA FUNCIÓN: Callback cuando auth.js notifica que la configuración está lista
+    onConfigurationReady() {
+        console.log('🔔 Configuración de Supabase lista - Iniciando IA inmediatamente');
+        this.initAttempts = 0; // Resetear intentos
+        this.initializeSupabaseConnection();
+    }
+
+    // ✅ NUEVA FUNCIÓN: Verificar si la IA realmente funciona
+    async verifyAIConnection() {
+        console.log('🧪 Verificando conexión real con Gemini AI...');
+        
+        try {
+            const config = this.getSupabaseConfig();
+            if (!config) {
+                console.log('❌ No hay configuración de Supabase disponible');
+                return false;
+            }
+
+            // Hacer una llamada de prueba simple
+            const testResponse = await fetch(`${config.url}/functions/v1/gemini-ai`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${config.anon_key}`
+                },
+                body: JSON.stringify({
+                    prompt: "Responde solo con: OK",
+                    temperature: 0.1
+                })
+            });
+
+            if (testResponse.ok) {
+                const data = await testResponse.json();
+                if (data.success) {
+                    console.log('✅ Verificación exitosa: Gemini AI está funcionando correctamente');
+                    return true;
+                } else {
+                    console.log('❌ Error en Edge Function:', data.error);
+                    return false;
+                }
+            } else {
+                console.log(`❌ Error HTTP ${testResponse.status}: ${testResponse.statusText}`);
+                return false;
+            }
+        } catch (error) {
+            console.log(`❌ Error verificando conexión: ${error.message}`);
+            return false;
+        }
+    }
+
+    async initializeSupabaseConnection() {
+        this.initAttempts++;
+        
+        // ✅ ARREGLO: Múltiples fuentes de configuración y límite de intentos
+        try {
+            // 1. Verificar configuración global de auth.js (MÁS ESPECÍFICO)
+            if (window.loginSystem?.config?.url && window.loginSystem?.config?.anon_key) {
+                this.supabaseUrl = window.loginSystem.config.url;
+                this.cachedAnonKey = window.loginSystem.config.anon_key;
+                this.configured = true;
+                console.log('✅ Gemini AI configurado desde LoginSystem');
+                return;
+            }
+            
+            // 2. Verificar SUPABASE_CONFIG global (para compatibilidad)
+            if (window.SUPABASE_CONFIG?.url && window.SUPABASE_CONFIG?.anon_key) {
+                this.supabaseUrl = window.SUPABASE_CONFIG.url;
+                this.cachedAnonKey = window.SUPABASE_CONFIG.anon_key;
+                
+                // ✅ NUEVO: Verificar que realmente funciona antes de marcar como configurado
+                console.log('🧪 Configuración encontrada, verificando funcionamiento real...');
+                const isWorking = await this.verifyAIConnection();
+                this.configured = isWorking;
+                
+                if (isWorking) {
+                    console.log('✅ Gemini AI configurado y FUNCIONANDO con SUPABASE_CONFIG global');
+                } else {
+                    console.log('⚠️ Configuración existe pero Gemini AI NO está funcionando (API Key faltante en Supabase)');
+                }
+                return;
+            }
+            
+            // 3. Verificar configuración desde ConfigService
+            if (window.configService) {
+                try {
+                    const config = await window.configService.loadConfig();
+                    if (config?.supabase?.url && config?.supabase?.anonKey) {
+                        this.supabaseUrl = config.supabase.url;
+                        this.cachedAnonKey = config.supabase.anonKey;
+                        this.configured = true;
+                        console.log('✅ Gemini AI configurado desde ConfigService');
+                        return;
+                    }
+                } catch (configError) {
+                    console.log('⚠️ Error cargando desde ConfigService:', configError.message);
+                }
+            }
+            
+            // 4. Verificar si hay usuario autenticado (método indirecto)
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                const userProfile = localStorage.getItem('matemagica-user-profile');
+                if (userProfile) {
+                    // Si hay usuario autenticado, asumir que Supabase está configurado
+                    this.configured = true;
+                    console.log('✅ Gemini AI: Supabase detectado via usuario autenticado');
+                    return;
+                }
+            }
+            
+            // 5. Si no se ha configurado y no hemos alcanzado el límite de intentos
+            if (this.initAttempts < this.maxAttempts) {
+                // ✅ MEJORADO: Backoff exponencial para no saturar logs
+                const delay = Math.min(this.initDelay * Math.pow(1.5, this.initAttempts - 1), 5000);
+                console.log(`⏳ Intento ${this.initAttempts}/${this.maxAttempts} - Esperando configuración de Supabase... (reintento en ${delay}ms)`);
+                setTimeout(() => this.initializeSupabaseConnection(), delay);
+                return;
+            }
+            
+            // 6. Si se alcanzó el límite, usar modo offline
+            console.log('📱 Configuración de Supabase no disponible - Activando modo offline permanente');
+            this.configured = false; // Usar fallbacks
+            
+        } catch (error) {
+            console.warn('⚠️ Error inicializando Gemini AI:', error);
+            this.configured = false;
+        }
+    }
+
+    // 🚀 Llamada universal usando Supabase Edge Functions
+    async generateContent(prompt, schema = null) {
+        console.log('🤖 Generando contenido...');
+        
+        if (!this.configured) {
+            console.log('📱 Modo offline activo, usando contenido de respaldo');
+            return this.getFallbackCustomHelp();
+        }
+
+        try {
+            // ✅ MEJORADO: Obtener configuración dinámicamente
+            const config = this.getSupabaseConfig();
+            if (!config) {
+                throw new Error('Configuración no disponible');
+            }
+
+            const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${config.anon_key}`
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    schema: schema
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Supabase Edge Function Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Error en Edge Function');
+            }
+
+            return data.content;
+
+        } catch (error) {
+            console.error('❌ Error en Supabase Edge Function:', error);
+            return this.getFallbackCustomHelp();
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Obtener configuración dinámicamente
+    getSupabaseConfig() {
+        // 1. Desde LoginSystem (más confiable)
+        if (window.loginSystem?.config) {
+            return {
+                url: window.loginSystem.config.url,
+                anon_key: window.loginSystem.config.anon_key
+            };
+        }
+        
+        // 2. Desde configuración global
+        if (window.SUPABASE_CONFIG) {
+            return {
+                url: window.SUPABASE_CONFIG.url,
+                anon_key: window.SUPABASE_CONFIG.anon_key || window.SUPABASE_CONFIG.anonKey
+            };
+        }
+        
+        // 3. Desde configuración cacheada
+        if (this.supabaseUrl) {
+            return {
+                url: this.supabaseUrl,
+                anon_key: this.cachedAnonKey || 'fallback-key'
+            };
+        }
+        
+        return null;
     }
 
     // Generación directa con esquemas JSON - Sumas
     async generateAdditions(level, quantity = 50) {
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Gemini AI (backend seguro) - Nivel: ${level}`);
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Supabase Edge Functions - Nivel: ${level}`);
         
         if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado en backend, usando fallback');
+            console.log('⚠️ Supabase no configurado, usando fallback');
             return this.getFallbackAdditions(level, quantity);
         }
 
@@ -74,8 +285,8 @@ class GeminiAIService {
             Devuelve SOLO un objeto JSON con el formato exacto:
             {
                 "exercises": [
-                    {"num1": número, "num2": número, "operation": "addition"},
-                    ...
+                    {"num1": 25, "num2": 34, "operation": "addition"},
+                    {"num1": 18, "num2": 27, "operation": "addition"}
                 ]
             }
             
@@ -100,13 +311,13 @@ class GeminiAIService {
                 required: ["exercises"]
             };
 
-            console.log(`🔄 Llamando a backend seguro para ${quantity} sumas...`);
-            const result = await this.callGeminiWithSchema(prompt, schema);
+            console.log(`🔄 Llamando a Supabase Edge Function para ${quantity} sumas...`);
+            const result = await this.callSupabaseFunction(prompt, schema);
             console.log('✅ Respuesta de Gemini recibida:', result);
             
             const exercises = result.exercises || [];
             
-            // Validar y tomar solo la cantidad exacta
+            // Validar y tomar cantidad exacta
             const validExercises = exercises
                 .filter(ex => ex.num1 && ex.num2 && ex.num1 > 0 && ex.num2 > 0)
                 .map(ex => ({ ...ex, operation: 'addition' }))
@@ -114,27 +325,25 @@ class GeminiAIService {
 
             // Si no tenemos suficientes, completar con fallback
             if (validExercises.length < quantity) {
-                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos de IA, completando con fallback`);
+                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos, completando con fallback...`);
                 const fallbackExercises = this.getFallbackAdditions(level, quantity - validExercises.length);
-                validExercises.push(...fallbackExercises);
+                return [...validExercises, ...fallbackExercises];
             }
 
-            console.log(`✅ ${validExercises.length} sumas generadas con IA exitosamente`);
-            return validExercises.slice(0, quantity);
+            return validExercises;
 
         } catch (error) {
-            console.error('❌ Error específico generando sumas con IA:', error);
-            console.log(`🔄 Fallback: Usando ${quantity} ejercicios offline de respaldo`);
+            console.error('❌ Error generando sumas con Supabase:', error);
             return this.getFallbackAdditions(level, quantity);
         }
     }
 
     // Generación directa con esquemas JSON - Restas
     async generateSubtractions(level, quantity = 50) {
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Gemini AI (backend seguro) - Nivel: ${level}`);
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Supabase Edge Functions - Nivel: ${level}`);
         
         if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado en backend, usando fallback');
+            console.log('⚠️ Supabase no configurado, usando fallback');
             return this.getFallbackSubtractions(level, quantity);
         }
 
@@ -151,8 +360,8 @@ class GeminiAIService {
             Devuelve SOLO un objeto JSON con el formato exacto:
             {
                 "exercises": [
-                    {"num1": número, "num2": número, "operation": "subtraction"},
-                    ...
+                    {"num1": 54, "num2": 27, "operation": "subtraction"},
+                    {"num1": 43, "num2": 18, "operation": "subtraction"}
                 ]
             }
             
@@ -177,8 +386,8 @@ class GeminiAIService {
                 required: ["exercises"]
             };
 
-            console.log(`🔄 Llamando a backend seguro para ${quantity} restas...`);
-            const result = await this.callGeminiWithSchema(prompt, schema);
+            console.log(`🔄 Llamando a Supabase Edge Function para ${quantity} restas...`);
+            const result = await this.callSupabaseFunction(prompt, schema);
             console.log('✅ Respuesta de Gemini recibida:', result);
             
             const exercises = result.exercises || [];
@@ -191,103 +400,32 @@ class GeminiAIService {
 
             // Si no tenemos suficientes, completar con fallback
             if (validExercises.length < quantity) {
-                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos de IA, completando con fallback`);
+                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos, completando con fallback...`);
                 const fallbackExercises = this.getFallbackSubtractions(level, quantity - validExercises.length);
-                validExercises.push(...fallbackExercises);
+                return [...validExercises, ...fallbackExercises];
             }
 
-            console.log(`✅ ${validExercises.length} restas generadas con IA exitosamente`);
-            return validExercises.slice(0, quantity);
+            return validExercises;
 
         } catch (error) {
-            console.error('❌ Error específico generando restas con IA:', error);
-            console.log(`🔄 Fallback: Usando ${quantity} ejercicios offline de respaldo`);
+            console.error('❌ Error generando restas con Supabase:', error);
             return this.getFallbackSubtractions(level, quantity);
         }
     }
 
-    // 3 niveles bien definidos con lógica de reserva
-    getLevelInstructions(level, operation) {
-        const operationName = operation === 'addition' ? 'suma' : 'resta';
-        
-        switch (level) {
-            case 1:
-                return `Nivel 1 (Fácil): ${operationName}s SIN reserva. Números de 10-99, donde ${operation === 'addition' ? 'no se necesita llevar números a la siguiente columna' : 'no se necesita pedir prestado de las decenas'}.`;
-                
-            case 2:
-                return `Nivel 2 (Medio): ${operationName}s CON reserva. Números de 10-99, donde ${operation === 'addition' ? 'se necesita llevar números a la siguiente columna' : 'se necesita pedir prestado de las decenas'}. Todos los ejercicios deben requerir reserva.`;
-                
-            case 3:
-                return `Nivel 3 (Difícil): Mezcla equilibrada de ${operationName}s. 25 ejercicios SIN reserva y 25 ejercicios CON reserva. Números de 10-99. Alternar entre ${operation === 'addition' ? 'sumas simples y sumas que requieren llevar' : 'restas simples y restas que requieren préstamo'}.`;
-                
-            default:
-                return `${operationName}s básicas de dos dígitos.`;
-        }
-    }
-
-    // ✅ FUNCIÓN RENOVADA: Generar ayuda pedagógica con terminología unificada
-    async generateHelpForExercise(num1, num2, operation) {
-        console.log(`🎯 Generando ayuda pedagógica con IA (backend seguro) para: ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
-        
-        if (!this.configured) {
-            return this.getFallbackHelp(num1, num2, operation);
+    // 🔐 Llamada a Supabase Edge Function
+    async callSupabaseFunction(prompt, schema = null) {
+        // ✅ MEJORADO: Usar configuración dinámica
+        const config = this.getSupabaseConfig();
+        if (!config) {
+            throw new Error('Configuración de Supabase no disponible');
         }
 
-        try {
-            const operationText = operation === 'addition' ? 'suma con reserva' : 'resta con préstamo';
-            const operationSymbol = operation === 'addition' ? '+' : '-';
-            
-            const prompt = `Eres un profesor de matemáticas muy amigable para un niño de 7-8 años. Ayúdalo a resolver esta operación SIN dar la respuesta:
-
-            OPERACIÓN: ${num1} ${operationSymbol} ${num2}
-
-            INSTRUCCIONES:
-            - NO reveles la respuesta final
-            - Usa emojis divertidos y apropiados para niños
-            - Explica paso a paso el proceso de ${operationText}
-            - Usa vocabulario simple y claro
-            - Incluye técnicas visuales (como contar con dedos)
-            - Motiva al estudiante
-            - Máximo 3-4 oraciones cortas
-
-            Responde SOLO con la ayuda pedagógica.`;
-
-            const result = await this.callGemini(prompt);
-            console.log('✅ Ayuda pedagógica generada con IA (backend seguro)');
-            return result;
-
-        } catch (error) {
-            console.error('❌ Error generando ayuda:', error);
-            return this.getFallbackHelp(num1, num2, operation);
-        }
-    }
-
-    // ✅ FUNCIÓN FALTANTE: generateContent (para compatibilidad con el módulo)
-    async generateContent(prompt) {
-        console.log('🤖 Llamando generateContent con backend seguro:', prompt.substring(0, 100) + '...');
-        
-        if (!this.configured) {
-            console.log('⚠️ Gemini AI no configurado en backend, usando ayuda de fallback');
-            return this.getFallbackCustomHelp();
-        }
-
-        try {
-            const result = await this.callGemini(prompt);
-            console.log('✅ generateContent ejecutado exitosamente (backend seguro)');
-            return result;
-
-        } catch (error) {
-            console.error('❌ Error en generateContent:', error);
-            return this.getFallbackCustomHelp();
-        }
-    }
-
-    // 🔐 Llamada a Gemini con esquema JSON (vía backend seguro)
-    async callGeminiWithSchema(prompt, schema) {
-        const response = await fetch(`${this.backendUrl}/api/gemini/generate`, {
+        const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.anon_key}`
             },
             body: JSON.stringify({
                 prompt: prompt,
@@ -296,41 +434,79 @@ class GeminiAIService {
         });
 
         if (!response.ok) {
-            throw new Error(`Backend Error: ${response.status} - ${response.statusText}`);
+            throw new Error(`Supabase Edge Function Error: ${response.status} - ${response.statusText}`);
         }
 
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Error en backend');
+            throw new Error(data.error || 'Error en Edge Function');
         }
 
         return data.content;
     }
 
-    // 🔐 Llamada simple a Gemini (vía backend seguro)
-    async callGemini(prompt) {
-        const response = await fetch(`${this.backendUrl}/api/gemini/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                prompt: prompt
-            })
-        });
+    // 3 niveles bien definidos con lógica de reserva
+    getLevelInstructions(level, operation) {
+        const baseInstructions = operation === 'addition' ? 
+            "Todos los números deben ser de dos dígitos (entre 10 y 99)." :
+            "Todos los números deben ser de dos dígitos (entre 10 y 99). El primer número SIEMPRE debe ser mayor que el segundo.";
 
-        if (!response.ok) {
-            throw new Error(`Backend Error: ${response.status} - ${response.statusText}`);
+        switch (level) {
+            case 1:
+                return operation === 'addition' ?
+                    `${baseInstructions} SIN RESERVA: La suma de las unidades debe ser menor a 10. Ejemplo: 23 + 34 = 57` :
+                    `${baseInstructions} SIN PRÉSTAMO: Las unidades del primer número deben ser mayores o iguales que las del segundo. Ejemplo: 47 - 23 = 24`;
+            
+            case 2:
+                return operation === 'addition' ?
+                    `${baseInstructions} CON RESERVA: La suma de las unidades debe ser 10 o mayor. Ejemplo: 28 + 35 = 63` :
+                    `${baseInstructions} CON PRÉSTAMO: Las unidades del primer número deben ser menores que las del segundo. Ejemplo: 52 - 28 = 24`;
+            
+            case 3:
+                return `${baseInstructions} MIXTO: Mezcla ejercicios con y sin ${operation === 'addition' ? 'reserva' : 'préstamo'}.`;
+            
+            default:
+                return baseInstructions;
         }
+    }
 
-        const data = await response.json();
+    // ✅ Generar ayuda pedagógica con terminología unificada
+    async generateHelpForExercise(num1, num2, operation) {
+        console.log(`🤖 Generando ayuda pedagógica para ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
         
-        if (!data.success) {
-            throw new Error(data.error || 'Error en backend');
+        if (!this.configured) {
+            return this.getFallbackHelp(num1, num2, operation);
         }
 
-        return data.content;
+        const studentName = this.getStudentName();
+        const operationText = operation === 'addition' ? 'suma' : 'resta';
+        const symbol = operation === 'addition' ? '+' : '-';
+
+        const prompt = `Genera una explicación pedagógica paso a paso para resolver este ejercicio de ${operationText}: ${num1} ${symbol} ${num2}
+
+        CONTEXTO:
+        - Estudiante: ${studentName} (7-8 años, segundo básico)
+        - Ejercicio: ${num1} ${symbol} ${num2}
+        - Método: Algoritmo tradicional (vertical)
+
+        INSTRUCCIONES:
+        - Usa un lenguaje simple y amigable apropiado para la edad
+        - Explica paso a paso el proceso ${operation === 'addition' ? 'de suma con o sin reserva' : 'de resta con o sin préstamo'}
+        - Incluye consejos visuales ("imagina que tienes...")
+        - Máximo 150 palabras
+        - Usa emojis apropiados para matemáticas
+
+        FORMATO:
+        Responde SOLO con la explicación, sin metadatos adicionales.`;
+
+        try {
+            const result = await this.callSupabaseFunction(prompt);
+            return result || this.getFallbackHelp(num1, num2, operation);
+        } catch (error) {
+            console.error('❌ Error generando ayuda:', error);
+            return this.getFallbackHelp(num1, num2, operation);
+        }
     }
 
     // Ejercicios de fallback offline
