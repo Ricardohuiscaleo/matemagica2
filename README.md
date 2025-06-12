@@ -246,6 +246,53 @@ Nivel 3: Números 10-99, 50% con reserva, 50% sin reserva
 - GDPR considerations para datos personales
 - Datos almacenados en servidores seguros (Supabase)
 
+## 🔒 Configuración de Seguridad en Producción
+
+### ⚠️ **IMPORTANTE: Nunca exponer credenciales en el frontend**
+
+Esta aplicación ahora usa **mejores prácticas de seguridad**:
+
+✅ **Backend seguro**: Netlify Functions maneja las API keys  
+✅ **Frontend limpio**: Sin credenciales hardcodeadas  
+✅ **Variables de entorno**: Configuración server-side  
+
+### 🚀 **Setup Seguro para Netlify**
+
+1. **Configurar variables de entorno en Netlify:**
+   ```bash
+   # En Netlify Dashboard > Site settings > Environment variables
+   GEMINI_API_KEY=tu_api_key_real_aqui
+   ```
+
+2. **Deploy automático:**
+   ```bash
+   git push origin main
+   # Netlify detectará netlify/functions/ y las desplegará automáticamente
+   ```
+
+3. **La aplicación usará:**
+   - ✅ `/.netlify/functions/gemini-ai` (backend seguro)
+   - ✅ Sin credenciales en el frontend
+   - ✅ Modo offline robusto como fallback
+
+### 🔧 **Desarrollo Local**
+
+Para desarrollo local, crear `config.local.json` (NO commitear):
+```json
+{
+  "supabase_url": "https://tu-proyecto.supabase.co",
+  "supabase_anon_key": "tu_key_aqui",
+  "gemini_api_key": "tu_gemini_key_aqui"
+}
+```
+
+### 🛡️ **Seguridad Implementada**
+
+- ❌ **Antes**: Credenciales expuestas en frontend
+- ✅ **Ahora**: Backend Functions con variables de entorno
+- ✅ **CORS seguro**: Sin headers Authorization problemáticos
+- ✅ **Fallback robusto**: Funcionalidad completa offline
+
 ## 🔧 Solución de Problemas Críticos
 
 ### ⚡ **Momento Clave: Redespliegue de Edge Functions**

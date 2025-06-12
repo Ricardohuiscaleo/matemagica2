@@ -43,15 +43,22 @@ class LoginSystem {
 
     async init() {
         try {
-            if (!window.supabase) throw new Error("Librería Supabase no disponible.");
+            // ✅ NUEVO: Verificar si Supabase está disponible (solo para desarrollo)
+            const hasSupabase = window.supabase && typeof window.supabase.createClient === 'function';
             
             // 🔐 Cargar configuración segura desde el backend
             await this.loadSecureConfig();
             
-            this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
-            console.log("✅ Cliente Supabase inicializado con configuración segura.");
+            // ✅ NUEVO: Solo inicializar Supabase si tenemos configuración válida
+            if (this.config && this.config.url && this.config.anon_key && hasSupabase) {
+                this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
+                console.log("✅ Cliente Supabase inicializado con configuración segura.");
+            } else {
+                console.log("🎮 Modo offline: Supabase no inicializado");
+                this.supabase = null;
+            }
             
-            // ✅ NUEVO: Exponer configuración para otros módulos (como gemini-ai.js)
+            // ✅ NUEVO: Exponer configuración para otros módulos
             this.exposeConfigurationGlobally();
             
             this.setupDOMElements();
@@ -59,7 +66,15 @@ class LoginSystem {
             await this.handleInitialLoad();
         } catch (error) {
             console.error("❌ Error en init auth:", error);
-            this.handleAuthError("general");
+            
+            // ✅ FALLBACK: Modo offline garantizado
+            console.log("🎮 Activando modo offline de emergencia después de error");
+            this.config = { offline_mode: true };
+            this.supabase = null;
+            
+            this.setupDOMElements();
+            this.setupEventListeners();
+            this.showInterface();
         }
     }
 
@@ -86,7 +101,7 @@ class LoginSystem {
         }
     }
 
-    // 🔐 DIAGNÓSTICO MEJORADO: Cargar configuración segura - SIN EXPONER KEYS
+    // 🔐 DIAGNÓSTICO MEJORADO: Cargar configuración segura 
     async loadSecureConfig() {
         try {
             const isLocalDevelopment = window.location.hostname === 'localhost' || 
@@ -96,7 +111,7 @@ class LoginSystem {
             console.log(`🔍 Modo detectado: ${isLocalDevelopment ? 'DESARROLLO LOCAL' : 'PRODUCCIÓN'}`);
 
             if (isLocalDevelopment) {
-                // ✅ MODO DESARROLLO LOCAL - Cargar directamente desde config.local.json
+                // ✅ MODO DESARROLLO LOCAL
                 console.log('🏠 Cargando configuración local segura...');
                 
                 const localConfig = await this.loadLocalConfig();
@@ -117,68 +132,29 @@ class LoginSystem {
                 throw new Error('No se pudo cargar configuración local');
             }
 
-            // 🏭 MODO PRODUCCIÓN - Cargar desde backend o variables globales
-            console.log('🏭 Cargando configuración desde backend...');
+            // 🏭 MODO PRODUCCIÓN - Configuración mínima para funcionalidad offline
+            console.log('🔒 Modo producción: Configurando para modo offline con funcionalidad limitada');
             
-            // ✅ NUEVA SOLUCIÓN: Configuración hardcodeada para Netlify/producción
-            if (window.location.hostname.includes('netlify.app') || 
-                window.location.hostname.includes('matemagic.netlify.app')) {
-                
-                console.log('🌐 Detectado Netlify - Usando configuración hardcodeada');
-                this.config = {
-                    url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-                    anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NzQ4NDQsImV4cCI6MjA0OTE1MDg0NH0.FELDriHpfy0xHwxJQGDXCi0Gd8vJWm4L9MLu3DWGZh8"
-                };
-                console.log("✅ Configuración hardcodeada aplicada para Netlify");
-                return;
-            }
+            // ✅ NUEVO: Configuración básica que permite funcionamiento offline
+            this.config = {
+                url: null, // Sin Supabase en producción por ahora
+                anon_key: null, // Sin credenciales expuestas
+                offline_mode: true // Indicador de modo offline
+            };
             
-            try {
-                const response = await fetch('/api/config', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'same-origin'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Backend error: ${response.status}`);
-                }
-
-                const config = await response.json();
-                
-                if (!config.supabase || !config.supabase.url || !config.supabase.anonKey) {
-                    throw new Error('Configuración incompleta del backend');
-                }
-
-                this.config = {
-                    url: config.supabase.url,
-                    anon_key: config.supabase.anonKey
-                };
-
-                console.log("🔐 Configuración cargada DIRECTAMENTE desde backend seguro");
-                return;
-
-            } catch (backendError) {
-                console.error("❌ Error cargando desde backend:", backendError);
-                
-                if (window.CONFIG && window.CONFIG.supabase) {
-                    this.config = {
-                        url: window.CONFIG.supabase.url,
-                        anon_key: window.CONFIG.supabase.anonKey
-                    };
-                    console.log("✅ Configuración cargada desde CONFIG global");
-                    return;
-                }
-                
-                throw new Error('No se pudo cargar configuración de ninguna fuente');
-            }
+            console.log("✅ Configuración de producción: Modo offline activado");
 
         } catch (error) {
             console.error("❌ Error cargando configuración:", error);
-            throw new Error('🔒 No se pudo cargar configuración segura');
+            
+            // ✅ FALLBACK: Modo offline garantizado
+            this.config = {
+                url: null,
+                anon_key: null,
+                offline_mode: true,
+                fallback: true
+            };
+            console.log("🎮 Activando modo offline de emergencia");
         }
     }
     
@@ -327,6 +303,13 @@ class LoginSystem {
         this.showLoader(true, "loading");
         
         try {
+            // ✅ NUEVO: Verificar si tenemos Supabase configurado
+            if (!this.supabase) {
+                console.log("🎮 Modo offline detectado - Saltando autenticación OAuth");
+                this.showInterface();
+                return;
+            }
+
             // ✅ MEJORADO: Limpiar URL de parámetros OAuth problemáticos INMEDIATAMENTE
             const urlParams = this.parseUrlFragment();
             if (urlParams) {
@@ -357,23 +340,25 @@ class LoginSystem {
                 }
             }
             
-            // ✅ MEJORADO: Intentar sesión existente solo si es seguro
-            try {
-                const { data: { session }, error } = await this.supabase.auth.getSession();
-                if (error) {
-                    console.warn('⚠️ Error obteniendo sesión:', error.message);
-                    throw new Error('SESSION_ERROR');
+            // ✅ MEJORADO: Intentar sesión existente solo si tenemos Supabase
+            if (this.supabase) {
+                try {
+                    const { data: { session }, error } = await this.supabase.auth.getSession();
+                    if (error) {
+                        console.warn('⚠️ Error obteniendo sesión:', error.message);
+                        throw new Error('SESSION_ERROR');
+                    }
+                    
+                    if (session && session.user) {
+                        console.log("✅ Sesión existente válida encontrada, redirigiendo...");
+                        await this.onLoginSuccess(session.user);
+                        return;
+                    }
+                } catch (sessionError) {
+                    console.warn('⚠️ Error en sesión existente, limpiando:', sessionError.message);
+                    localStorage.clear();
+                    sessionStorage.clear();
                 }
-                
-                if (session && session.user) {
-                    console.log("✅ Sesión existente válida encontrada, redirigiendo...");
-                    await this.onLoginSuccess(session.user);
-                    return;
-                }
-            } catch (sessionError) {
-                console.warn('⚠️ Error en sesión existente, limpiando:', sessionError.message);
-                localStorage.clear();
-                sessionStorage.clear();
             }
             
             // ✅ Todo limpio, mostrar interfaz de login

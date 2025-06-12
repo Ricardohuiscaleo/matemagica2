@@ -3,604 +3,108 @@
 
 class GeminiAIService {
     constructor() {
-        this.supabaseUrl = null;
         this.configured = false;
-        this.hasKey = false;
-        this.initAttempts = 0;
-        this.maxAttempts = 15; // Aumentar intentos
-        this.initDelay = 1000; // Empezar con 1 segundo
+        this.isNetlify = window.location.hostname.includes('netlify.app');
+        this.apiEndpoint = this.isNetlify ? 
+            '/.netlify/functions/gemini-ai' : // ✅ Netlify Function segura
+            '/api/gemini-ai'; // Para otros deployments
         
-        // ✅ ARREGLO: Múltiples métodos de inicialización
-        this.setupConfigurationListeners();
-        
-        // ✅ Verificar configuración inmediatamente
-        this.checkImmediateConfiguration();
-        
-        // ✅ Esperar a que se cargue la página si es necesario
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => this.initializeSupabaseConnection(), 500);
-            });
-        } else {
-            setTimeout(() => this.initializeSupabaseConnection(), 500);
-        }
+        // ✅ SIN CREDENCIALES HARDCODEADAS
+        console.log(`🔒 Servicio IA configurado en modo seguro: ${this.isNetlify ? 'Netlify' : 'Estándar'}`);
+        this.initializeSecureConnection();
     }
 
-    // ✅ NUEVA FUNCIÓN: Configurar listeners para múltiples eventos
-    setupConfigurationListeners() {
-        // Escuchar evento personalizado de dashboard.html
-        window.addEventListener('supabaseConfigReady', (event) => {
-            console.log('🔔 Evento supabaseConfigReady recibido');
-            this.onConfigurationReady();
-        });
-        
-        // También escuchar cambios en window.SUPABASE_CONFIG
-        let checkCount = 0;
-        const configChecker = () => {
-            if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
-                console.log('🔔 window.SUPABASE_CONFIG detectado');
-                this.onConfigurationReady();
-                return;
-            }
-            
-            checkCount++;
-            if (checkCount < 5) { // Solo verificar 5 veces
-                setTimeout(configChecker, 200);
-            }
-        };
-        
-        setTimeout(configChecker, 100);
-    }
-
-    // ✅ NUEVA FUNCIÓN: Verificar configuración inmediatamente
-    checkImmediateConfiguration() {
-        if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
-            console.log('🔔 Configuración inmediata encontrada');
-            this.onConfigurationReady();
-            return true;
-        }
-        return false;
-    }
-
-    // ✅ NUEVA FUNCIÓN: Callback cuando auth.js notifica que la configuración está lista
-    onConfigurationReady() {
-        console.log('🔔 Configuración de Supabase lista - Iniciando IA inmediatamente');
-        this.initAttempts = 0; // Resetear intentos
-        this.initializeSupabaseConnection();
-    }
-
-    // ✅ FUNCIÓN CORREGIDA: Verificar si la IA realmente funciona con método dual
-    async verifyAIConnection() {
-        console.log('🧪 Verificando conexión real con Gemini AI...');
-        
-        const config = this.getSupabaseConfig();
-        if (!config) {
-            console.log('❌ No hay configuración de Supabase disponible');
-            return false;
-        }
-
+    async initializeSecureConnection() {
         try {
-            // ✅ MÉTODO 1: Intentar primero con método simplificado
-            console.log('🔄 Intentando método simplificado (sin Authorization header)...');
-            const testResponse = await this.makeAIRequestSimplified(config, {
-                prompt: "Responde solo con: OK",
-                temperature: 0.1
-            });
-
-            if (testResponse && testResponse.success) {
-                console.log('✅ Verificación exitosa: Gemini AI funcionando con método simplificado');
-                this.corsMode = 'simplified';
-                return true;
-            }
-
-        } catch (error) {
-            console.log(`❌ Método simplificado falló: ${error.message}`);
-            
-            // ✅ MÉTODO 2: Fallback al método original (CORREGIDO: usar config definido arriba)
-            try {
-                console.log('🔄 Intentando método original con Authorization header...');
-                const testResponse = await this.makeAIRequest(config, {
-                    prompt: "Responde solo con: OK",
-                    temperature: 0.1
-                });
-
-                if (testResponse && testResponse.success) {
-                    console.log('✅ Verificación exitosa: Gemini AI funcionando con método original');
-                    this.corsMode = 'original';
-                    return true;
-                }
-
-            } catch (originalError) {
-                console.log(`❌ Método original también falló: ${originalError.message}`);
-                
-                // ✅ MÉTODO 3: Último intento con proxy directo
-                try {
-                    console.log('🔄 Intentando método de emergencia (proxy directo)...');
-                    const emergencyResponse = await this.makeEmergencyRequest(config);
-                    
-                    if (emergencyResponse) {
-                        console.log('✅ Verificación exitosa: Gemini AI funcionando con método de emergencia');
-                        this.corsMode = 'emergency';
-                        return true;
-                    }
-                    
-                } catch (emergencyError) {
-                    console.log(`❌ Método de emergencia también falló: ${emergencyError.message}`);
-                }
-                
-                // ✅ DETECTAR errores CORS específicos
-                if (error.message.includes('CORS') || 
-                    error.message.includes('access control') || 
-                    error.message.includes('Failed to fetch') ||
-                    error.message.includes('Load failed')) {
-                    
-                    console.log('🌐 Detectado error CORS persistente en TODOS los métodos');
-                    console.log('📋 Soluciones recomendadas:');
-                    console.log('   1. Edge Function redesplegada pero con restricciones CORS de Netlify');
-                    console.log('   2. GEMINI_API_KEY configurada pero bloqueada por política CORS');
-                    console.log('   3. Supabase puede tener restricciones adicionales para dominios externos');
-                    console.log('   4. Activando modo offline - Funcionalidad completa sin IA');
-                }
-            }
-        }
-        
-        return false;
-    }
-
-    // ✅ NUEVA FUNCIÓN: Método de emergencia usando técnica alternativa
-    async makeEmergencyRequest(config) {
-        console.log('🚨 Activando método de emergencia para CORS extremo...');
-        
-        try {
-            // Crear un elemento script dinámico como proxy
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Timeout en método de emergencia'));
-                }, 5000);
-
-                // Intentar con JSONP-like approach
-                const callbackName = 'geminiCallback_' + Date.now();
-                window[callbackName] = (data) => {
-                    clearTimeout(timeout);
-                    delete window[callbackName];
-                    resolve(data);
-                };
-
-                // Crear iframe oculto para evitar CORS
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                        clearTimeout(timeout);
-                        // Si llegamos aquí, al menos la conexión es posible
-                        resolve({ success: true, method: 'iframe-test' });
-                    }, 1000);
-                };
-                
-                iframe.onerror = () => {
-                    document.body.removeChild(iframe);
-                    clearTimeout(timeout);
-                    reject(new Error('Iframe method failed'));
-                };
-
-                // URL de prueba simplificada
-                iframe.src = `${config.url}/functions/v1/gemini-ai`;
-                document.body.appendChild(iframe);
-            });
-
-        } catch (error) {
-            console.log('❌ Método de emergencia falló:', error.message);
-            throw error;
-        }
-    }
-
-    // ✅ NUEVA FUNCIÓN: Configurar listeners para múltiples eventos
-    setupConfigurationListeners() {
-        // Escuchar evento personalizado de dashboard.html
-        window.addEventListener('supabaseConfigReady', (event) => {
-            console.log('🔔 Evento supabaseConfigReady recibido');
-            this.onConfigurationReady();
-        });
-        
-        // También escuchar cambios en window.SUPABASE_CONFIG
-        let checkCount = 0;
-        const configChecker = () => {
-            if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
-                console.log('🔔 window.SUPABASE_CONFIG detectado');
-                this.onConfigurationReady();
-                return;
-            }
-            
-            checkCount++;
-            if (checkCount < 5) { // Solo verificar 5 veces
-                setTimeout(configChecker, 200);
-            }
-        };
-        
-        setTimeout(configChecker, 100);
-    }
-
-    // ✅ NUEVA FUNCIÓN: Verificar configuración inmediatamente
-    checkImmediateConfiguration() {
-        if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
-            console.log('🔔 Configuración inmediata encontrada');
-            this.onConfigurationReady();
-            return true;
-        }
-        return false;
-    }
-
-    // ✅ NUEVA FUNCIÓN: Callback cuando auth.js notifica que la configuración está lista
-    onConfigurationReady() {
-        console.log('🔔 Configuración de Supabase lista - Iniciando IA inmediatamente');
-        this.initAttempts = 0; // Resetear intentos
-        this.initializeSupabaseConnection();
-    }
-
-    // ✅ NUEVA FUNCIÓN: Verificar si la IA realmente funciona con método simplificado
-    async verifyAIConnection() {
-        console.log('🧪 Verificando conexión real con Gemini AI...');
-        
-        const config = this.getSupabaseConfig();
-        if (!config) {
-            console.log('❌ No hay configuración de Supabase disponible');
-            return false;
-        }
-
-        try {
-            // ✅ NUEVO: Intentar primero con método simplificado
-            console.log('🔄 Intentando método simplificado (sin Authorization header)...');
-            const testResponse = await this.makeAIRequestSimplified(config, {
-                prompt: "Responde solo con: OK",
-                temperature: 0.1
-            });
-
-            if (testResponse && testResponse.success) {
-                console.log('✅ Verificación exitosa: Gemini AI funcionando con método simplificado');
-                this.corsMode = 'simplified'; // ✅ Recordar que funciona el método simplificado
-                return true;
-            }
-
-        } catch (error) {
-            console.log(`❌ Método simplificado falló: ${error.message}`);
-            
-            // ✅ Fallback al método original si el simplificado falla
-            try {
-                console.log('🔄 Intentando método original con Authorization header...');
-                const testResponse = await this.makeAIRequest(config, {
-                    prompt: "Responde solo con: OK",
-                    temperature: 0.1
-                });
-
-                if (testResponse && testResponse.success) {
-                    console.log('✅ Verificación exitosa: Gemini AI funcionando con método original');
-                    this.corsMode = 'original';
-                    return true;
-                }
-
-            } catch (originalError) {
-                console.log(`❌ Método original también falló: ${originalError.message}`);
-                
-                // ✅ DETECTAR errores CORS específicos
-                if (error.message.includes('CORS') || 
-                    error.message.includes('access control') || 
-                    error.message.includes('Failed to fetch') ||
-                    error.message.includes('Load failed')) {
-                    
-                    console.log('🌐 Detectado error CORS persistente - La Edge Function puede necesitar configuración adicional');
-                    console.log('📋 Soluciones recomendadas:');
-                    console.log('   1. Verificar que la Edge Function esté redesplegada correctamente');
-                    console.log('   2. Verificar que GEMINI_API_KEY esté configurada en Supabase');
-                    console.log('   3. Contactar soporte de Supabase sobre restricciones CORS en Netlify');
-                }
-            }
-        }
-        
-        return false;
-    }
-
-    // ✅ NUEVA FUNCIÓN: Hacer request con configuración CORS optimizada
-    async makeAIRequest(config, payload) {
-        const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.anon_key}`,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'Origin': window.location.origin // ✅ NUEVO: Origin explícito
-            },
-            mode: 'cors',
-            credentials: 'omit',
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    // ✅ NUEVA FUNCIÓN: Método alternativo para casos de CORS problemáticos
-    async makeAIRequestCORSFallback() {
-        console.log('🔄 Intentando método alternativo para CORS...');
-        
-        const config = this.getSupabaseConfig();
-        if (!config) return null;
-
-        // ✅ Estrategia alternativa: Request sin headers problemáticos
-        try {
-            const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
+            // ✅ Verificar conectividad con backend seguro
+            const testResponse = await fetch(this.apiEndpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                    // ✅ Sin Authorization header para evitar preflight complejo
-                },
-                mode: 'no-cors', // ✅ Modo no-cors como último recurso
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt: "Responde solo con: OK",
-                    temperature: 0.1,
-                    anon_key: config.anon_key // ✅ API key en el body en lugar del header
+                    prompt: "Test de conectividad - responde: OK"
                 })
             });
 
-            // En modo no-cors no podemos leer la respuesta, pero si llega aquí sin error, 
-            // significa que la conexión es posible
-            console.log('🔄 Request no-cors completado - asumiendo conectividad');
-            return { success: true, method: 'no-cors-fallback' };
-
-        } catch (error) {
-            console.log('❌ Método alternativo CORS falló:', error.message);
-            return null;
-        }
-    }
-
-    // ✅ NUEVA FUNCIÓN: Método simplificado sin headers problemáticos
-    async makeAIRequestSimplified(config, payload) {
-        const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-                // ✅ SIN Authorization header para evitar preflight CORS complejo
-            },
-            mode: 'cors',
-            body: JSON.stringify({
-                ...payload,
-                anon_key: config.anon_key // ✅ API key en el body en lugar del header
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    async initializeSupabaseConnection() {
-        this.initAttempts++;
-        
-        // ✅ ARREGLO: Múltiples fuentes de configuración y límite de intentos
-        try {
-            // 1. Verificar configuración global de auth.js (MÁS ESPECÍFICO)
-            if (window.loginSystem?.config?.url && window.loginSystem?.config?.anon_key) {
-                this.supabaseUrl = window.loginSystem.config.url;
-                this.cachedAnonKey = window.loginSystem.config.anon_key;
-                this.configured = true;
-                console.log('✅ Gemini AI configurado desde LoginSystem');
-                return;
-            }
-            
-            // 2. Verificar SUPABASE_CONFIG global (para compatibilidad)
-            if (window.SUPABASE_CONFIG?.url && window.SUPABASE_CONFIG?.anon_key) {
-                this.supabaseUrl = window.SUPABASE_CONFIG.url;
-                this.cachedAnonKey = window.SUPABASE_CONFIG.anon_key;
-                
-                // ✅ NUEVO: Verificar que realmente funciona antes de marcar como configurado
-                console.log('🧪 Configuración encontrada, verificando funcionamiento real...');
-                const isWorking = await this.verifyAIConnection();
-                this.configured = isWorking;
-                
-                if (isWorking) {
-                    console.log('✅ Gemini AI configurado y FUNCIONANDO con SUPABASE_CONFIG global');
-                } else {
-                    console.log('⚠️ Configuración existe pero Gemini AI NO está funcionando (API Key faltante en Supabase)');
-                }
-                return;
-            }
-            
-            // 3. Verificar configuración desde ConfigService
-            if (window.configService) {
-                try {
-                    const config = await window.configService.loadConfig();
-                    if (config?.supabase?.url && config?.supabase?.anonKey) {
-                        this.supabaseUrl = config.supabase.url;
-                        this.cachedAnonKey = config.supabase.anonKey;
-                        this.configured = true;
-                        console.log('✅ Gemini AI configurado desde ConfigService');
-                        return;
-                    }
-                } catch (configError) {
-                    console.log('⚠️ Error cargando desde ConfigService:', configError.message);
-                }
-            }
-            
-            // 4. Verificar si hay usuario autenticado (método indirecto)
-            if (window.supabase && typeof window.supabase.createClient === 'function') {
-                const userProfile = localStorage.getItem('matemagica-user-profile');
-                if (userProfile) {
-                    // Si hay usuario autenticado, asumir que Supabase está configurado
+            if (testResponse.ok) {
+                const data = await testResponse.json();
+                if (data.success) {
                     this.configured = true;
-                    console.log('✅ Gemini AI: Supabase detectado via usuario autenticado');
+                    console.log('✅ IA configurada correctamente con backend seguro');
                     return;
                 }
             }
             
-            // 5. Si no se ha configurado y no hemos alcanzado el límite de intentos
-            if (this.initAttempts < this.maxAttempts) {
-                // ✅ MEJORADO: Backoff exponencial para no saturar logs
-                const delay = Math.min(this.initDelay * Math.pow(1.5, this.initAttempts - 1), 5000);
-                console.log(`⏳ Intento ${this.initAttempts}/${this.maxAttempts} - Esperando configuración de Supabase... (reintento en ${delay}ms)`);
-                setTimeout(() => this.initializeSupabaseConnection(), delay);
-                return;
-            }
-            
-            // 6. Si se alcanzó el límite, usar modo offline
-            console.log('📱 Configuración de Supabase no disponible - Activando modo offline permanente');
-            this.configured = false; // Usar fallbacks
+            console.log('⚠️ Backend IA no disponible - modo offline activo');
+            this.configured = false;
             
         } catch (error) {
-            console.warn('⚠️ Error inicializando Gemini AI:', error);
+            console.log('📱 Conexión IA no disponible - modo offline activo');
             this.configured = false;
         }
     }
 
-    // 🚀 Llamada universal usando Supabase Edge Functions
+    // ✅ Llamada segura al backend
     async generateContent(prompt, schema = null) {
-        console.log('🤖 Generando contenido...');
+        console.log('🤖 Generando contenido con backend seguro...');
         
         if (!this.configured) {
-            console.log('📱 Modo offline activo, usando contenido de respaldo');
-            return this.getFallbackCustomHelp();
+            console.log('📱 Modo offline activo, usando contenido local');
+            return this.getFallbackContent();
         }
 
         try {
-            // ✅ MEJORADO: Obtener configuración dinámicamente
-            const config = this.getSupabaseConfig();
-            if (!config) {
-                throw new Error('Configuración no disponible');
-            }
-
-            const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
+            const response = await fetch(this.apiEndpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${config.anon_key}`
-                },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    schema: schema
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, schema })
             });
 
             if (!response.ok) {
-                throw new Error(`Supabase Edge Function Error: ${response.status}`);
+                throw new Error(`Backend Error: ${response.status}`);
             }
 
             const data = await response.json();
             
             if (!data.success) {
-                throw new Error(data.error || 'Error en Edge Function');
+                throw new Error(data.error || 'Error en backend');
             }
 
             return data.content;
 
         } catch (error) {
-            console.error('❌ Error en Supabase Edge Function:', error);
-            return this.getFallbackCustomHelp();
+            console.error('❌ Error en backend IA:', error);
+            return this.getFallbackContent();
         }
     }
 
-    // ✅ NUEVA FUNCIÓN: Obtener configuración dinámicamente
-    getSupabaseConfig() {
-        // 1. Desde LoginSystem (más confiable)
-        if (window.loginSystem?.config) {
-            return {
-                url: window.loginSystem.config.url,
-                anon_key: window.loginSystem.config.anon_key
-            };
-        }
-        
-        // 2. Desde configuración global
-        if (window.SUPABASE_CONFIG) {
-            return {
-                url: window.SUPABASE_CONFIG.url,
-                anon_key: window.SUPABASE_CONFIG.anon_key || window.SUPABASE_CONFIG.anonKey
-            };
-        }
-        
-        // 3. Desde configuración cacheada
-        if (this.supabaseUrl) {
-            return {
-                url: this.supabaseUrl,
-                anon_key: this.cachedAnonKey || 'fallback-key'
-            };
-        }
-        
-        return null;
-    }
-
-    // Generación directa con esquemas JSON - Sumas
+    // ✅ Generación segura de ejercicios
     async generateAdditions(level, quantity = 50) {
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Supabase Edge Functions - Nivel: ${level}`);
-        
         if (!this.configured) {
-            console.log('⚠️ Supabase no configurado, usando fallback');
             return this.getFallbackAdditions(level, quantity);
         }
 
-        try {
-            const levelInstructions = this.getLevelInstructions(level, 'addition');
-            
-            const prompt = `Genera exactamente ${quantity} problemas de suma de dos dígitos para un niño de 7-8 años.
-            
-            REGLAS ESPECÍFICAS:
-            ${levelInstructions}
-            
-            Devuelve SOLO un objeto JSON con el formato exacto:
-            {
-                "exercises": [
-                    {"num1": 25, "num2": 34, "operation": "addition"},
-                    {"num1": 18, "num2": 27, "operation": "addition"}
-                ]
-            }
-            
-            IMPORTANTE: Debe haber EXACTAMENTE ${quantity} ejercicios, ni más ni menos.`;
-
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    exercises: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                num1: { type: "INTEGER" },
-                                num2: { type: "INTEGER" },
-                                operation: { type: "STRING" }
-                            },
-                            required: ["num1", "num2", "operation"]
+        const prompt = `Genera exactamente ${quantity} sumas de 2 dígitos nivel ${level}...`;
+        const schema = {
+            type: "object",
+            properties: {
+                exercises: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            num1: { type: "number" },
+                            num2: { type: "number" },
+                            operation: { type: "string" }
                         }
                     }
-                },
-                required: ["exercises"]
-            };
-
-            console.log(`🔄 Llamando a Supabase Edge Function para ${quantity} sumas...`);
-            const result = await this.callSupabaseFunction(prompt, schema);
-            console.log('✅ Respuesta de Gemini recibida:', result);
-            
-            const exercises = result.exercises || [];
-            
-            // Validar y tomar cantidad exacta
-            const validExercises = exercises
-                .filter(ex => ex.num1 && ex.num2 && ex.num1 > 0 && ex.num2 > 0)
-                .map(ex => ({ ...ex, operation: 'addition' }))
-                .slice(0, quantity);
-
-            // Si no tenemos suficientes, completar con fallback
-            if (validExercises.length < quantity) {
-                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos, completando con fallback...`);
-                const fallbackExercises = this.getFallbackAdditions(level, quantity - validExercises.length);
-                return [...validExercises, ...fallbackExercises];
+                }
             }
+        };
 
-            return validExercises;
-
+        try {
+            const result = await this.generateContent(prompt, schema);
+            return result.exercises || this.getFallbackAdditions(level, quantity);
         } catch (error) {
-            console.error('❌ Error generando sumas con Supabase:', error);
             return this.getFallbackAdditions(level, quantity);
         }
     }
@@ -680,7 +184,7 @@ class GeminiAIService {
         }
     }
 
-    // 🔐 Llamada a Supabase Edge Function
+    // 🚀 Llamada universal usando Supabase Edge Functions
     async callSupabaseFunction(prompt, schema = null) {
         // ✅ MEJORADO: Usar configuración dinámica
         const config = this.getSupabaseConfig();
