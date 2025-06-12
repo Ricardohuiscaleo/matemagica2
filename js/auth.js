@@ -1,621 +1,168 @@
-// js/auth.js - Sistema de Autenticación v19.0 - VERSIÓN SEGURA
-console.log("🚀 Auth System v19.0 - Versión segura con backend");
+// js/auth.js - Sistema SIMPLE v18.0 - CORREGIDO
+console.log("🚀 Auth System v18.0 - Versión SIMPLE");
 
 class LoginSystem {
     constructor() {
-        this.config = null; // Se cargará desde el backend
+        this.config = {
+            url: "https://uznvakpuuxnpdhoejrog.supabase.co",
+            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+        };
         this.supabase = null;
         this.elements = {};
         this.selectedRole = null;
         
-        // Mensajes amigables para niños
+        // Mensajes simples
         this.friendlyMessages = {
-            loading: [
-                "🧮 ¡Preparando tu aventura matemática!",
-                "✨ Buscando números mágicos...",
-                "🎯 Organizando ejercicios divertidos...",
-                "🌟 Casi listo para empezar..."
-            ],
-            success: [
-                "🎉 ¡Perfecto! Entrando a tu aventura matemática...",
-                "✨ ¡Genial! Preparando tu espacio de aprendizaje...",
-                "🌟 ¡Excelente! Tu cuenta está lista...",
-                "🚀 ¡Fantástico! Iniciando tu experiencia matemática..."
-            ],
+            loading: ["🧮 ¡Preparando tu aventura matemática!"],
+            success: ["🎉 ¡Perfecto! Entrando a tu aventura matemática..."],
             errors: {
-                session: "😊 ¡Ups! Necesitamos verificar que eres tú. ¡Intentémoslo de nuevo!",
-                auth: "🤔 Algo salió mal al conectarte. ¡No te preocupes, podemos intentarlo otra vez!",
-                network: "📡 Parece que hay un problemita con la conexión. ¡Vamos a intentarlo de nuevo!",
-                role: "🎭 ¡Ups! Necesitas elegir si eres profesor o apoderado antes de continuar.",
-                general: "🌟 ¡No te preocupes! A veces pasan estas cositas. ¡Vamos a intentarlo otra vez!"
+                role: "🎭 ¡Primero elige si eres profesor o apoderado!",
+                general: "🔧 ¡Oops! Algo no funcionó. ¡Vamos a intentarlo de nuevo!"
             }
         };
-
-        // Vincular métodos para evitar problemas de contexto
-        Object.getOwnPropertyNames(Object.getPrototypeOf(this))
-            .filter(prop => typeof this[prop] === 'function' && prop !== 'constructor')
-            .forEach(prop => { this[prop] = this[prop].bind(this); });
-
-        // Hacer disponible globalmente para el HTML
+        
+        // Bind métodos correctamente
+        this.init = this.init.bind(this);
+        this.setupDOMElements = this.setupDOMElements.bind(this);
+        this.setupEventListeners = this.setupEventListeners.bind(this);
+        this.handleInitialLoad = this.handleInitialLoad.bind(this);
+        this.selectRole = this.selectRole.bind(this);
+        this.signInWithGoogle = this.signInWithGoogle.bind(this);
+        this.onLoginSuccess = this.onLoginSuccess.bind(this);
+        this.showLoader = this.showLoader.bind(this);
+        this.showError = this.showError.bind(this);
+        this.parseUrlFragment = this.parseUrlFragment.bind(this);
+        this.cleanupUrl = this.cleanupUrl.bind(this);
+        
+        // Hacer disponible globalmente
         window.loginSystem = this;
         window.addEventListener('load', this.init);
     }
 
     async init() {
         try {
-            // ✅ NUEVO: Verificar si Supabase está disponible (solo para desarrollo)
-            const hasSupabase = window.supabase && typeof window.supabase.createClient === 'function';
+            console.log("🔧 Inicializando cliente Supabase...");
             
-            // 🔐 Cargar configuración segura desde el backend
-            await this.loadSecureConfig();
-            
-            // ✅ NUEVO: Solo inicializar Supabase si tenemos configuración válida
-            if (this.config && this.config.url && this.config.anon_key && hasSupabase) {
-                this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
-                console.log("✅ Cliente Supabase inicializado con configuración segura.");
-            } else {
-                console.log("🎮 Modo offline: Supabase no inicializado");
-                this.supabase = null;
+            if (!window.supabase) {
+                throw new Error("Librería Supabase no disponible");
             }
             
-            // ✅ NUEVO: Exponer configuración para otros módulos
-            this.exposeConfigurationGlobally();
+            // Crear cliente Supabase
+            this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
+            console.log("✅ Cliente Supabase inicializado");
             
+            // Configurar elementos DOM
             this.setupDOMElements();
             this.setupEventListeners();
+            
+            // Manejar carga inicial
             await this.handleInitialLoad();
+            
         } catch (error) {
-            console.error("❌ Error en init auth:", error);
-            
-            // ✅ FALLBACK: Modo offline garantizado
-            console.log("🎮 Activando modo offline de emergencia después de error");
-            this.config = { offline_mode: true };
-            this.supabase = null;
-            
-            this.setupDOMElements();
-            this.setupEventListeners();
-            this.showInterface();
+            console.error("❌ Error en init:", error);
+            this.showLoader(false);
         }
-    }
-
-    // ✅ NUEVA FUNCIÓN: Hacer configuración accesible globalmente
-    exposeConfigurationGlobally() {
-        if (this.config) {
-            // Configuración para gemini-ai.js y otros módulos
-            window.SUPABASE_CONFIG = {
-                url: this.config.url,
-                anon_key: this.config.anon_key,
-                client: this.supabase,
-                configured: true
-            };
-            
-            // También exponer en window.loginSystem para compatibilidad
-            this.configExposed = true;
-            
-            console.log('🔗 Configuración de Supabase expuesta globalmente para módulos IA');
-            
-            // Notificar a gemini-ai.js que la configuración está lista
-            if (window.geminiAI && typeof window.geminiAI.onConfigurationReady === 'function') {
-                window.geminiAI.onConfigurationReady();
-            }
-        }
-    }
-
-    // 🔐 DIAGNÓSTICO MEJORADO: Cargar configuración segura 
-    async loadSecureConfig() {
-        try {
-            const isLocalDevelopment = window.location.hostname === 'localhost' || 
-                                     window.location.hostname === '127.0.0.1' ||
-                                     window.location.hostname === '';
-
-            console.log(`🔍 Modo detectado: ${isLocalDevelopment ? 'DESARROLLO LOCAL' : 'PRODUCCIÓN'}`);
-
-            if (isLocalDevelopment) {
-                // ✅ MODO DESARROLLO LOCAL
-                console.log('🏠 Cargando configuración local segura...');
-                
-                const localConfig = await this.loadLocalConfig();
-                if (localConfig) {
-                    this.config = localConfig;
-                    console.log("✅ Configuración cargada desde archivo local seguro");
-                    return;
-                }
-                
-                // Si no hay config.local.json, solicitar al usuario
-                const userConfig = await this.promptUserForConfig();
-                if (userConfig) {
-                    this.config = userConfig;
-                    console.log("✅ Configuración ingresada por el usuario");
-                    return;
-                }
-                
-                throw new Error('No se pudo cargar configuración local');
-            }
-
-            // 🏭 MODO PRODUCCIÓN - Configuración mínima para funcionalidad offline
-            console.log('🔒 Modo producción: Configurando para modo offline con funcionalidad limitada');
-            
-            // ✅ NUEVO: Configuración básica que permite funcionamiento offline
-            this.config = {
-                url: null, // Sin Supabase en producción por ahora
-                anon_key: null, // Sin credenciales expuestas
-                offline_mode: true // Indicador de modo offline
-            };
-            
-            console.log("✅ Configuración de producción: Modo offline activado");
-
-        } catch (error) {
-            console.error("❌ Error cargando configuración:", error);
-            
-            // ✅ FALLBACK: Modo offline garantizado
-            this.config = {
-                url: null,
-                anon_key: null,
-                offline_mode: true,
-                fallback: true
-            };
-            console.log("🎮 Activando modo offline de emergencia");
-        }
-    }
-    
-    // 📁 Cargar configuración desde archivo local (NO commiteado)
-    async loadLocalConfig() {
-        try {
-            // Intentar cargar archivo .env.local o config.local.json
-            const response = await fetch('./config.local.json');
-            if (response.ok) {
-                const config = await response.json();
-                console.log('📁 Configuración cargada desde config.local.json');
-                return {
-                    url: config.supabase_url,
-                    anon_key: config.supabase_anon_key
-                };
-            }
-        } catch (e) {
-            console.log('📁 No se encontró config.local.json');
-        }
-        
-        // Verificar si hay keys en localStorage (guardadas previamente)
-        const savedConfig = localStorage.getItem('matemagica_dev_config');
-        if (savedConfig) {
-            try {
-                const config = JSON.parse(savedConfig);
-                console.log('💾 Configuración cargada desde localStorage');
-                return config;
-            } catch (e) {
-                console.log('❌ Error parseando configuración guardada');
-            }
-        }
-        
-        return null;
-    }
-    
-    // 💬 Solicitar configuración al usuario (solo para desarrollo)
-    async promptUserForConfig() {
-        return new Promise((resolve) => {
-            // Crear modal simple para solicitar keys
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                    <h3 class="text-lg font-bold mb-4">🔐 Configuración de Desarrollo</h3>
-                    <p class="text-sm text-gray-600 mb-4">Para desarrollar localmente, necesitas ingresar las keys de Supabase:</p>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Supabase URL:</label>
-                            <input type="text" id="supabase-url" placeholder="https://your-project.supabase.co" 
-                                class="w-full px-3 py-2 border rounded-md">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Supabase Anon Key:</label>
-                            <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIs..." 
-                                class="w-full px-3 py-2 border rounded-md">
-                        </div>
-                        
-                        <div class="flex items-center">
-                            <input type="checkbox" id="save-config" class="mr-2">
-                            <label class="text-sm text-gray-600">Guardar en este navegador (solo para desarrollo)</label>
-                        </div>
-                    </div>
-                    
-                    <div class="flex space-x-3 mt-6">
-                        <button id="cancel-config" class="flex-1 bg-gray-300 py-2 px-4 rounded-md">
-                            🎮 Modo Demo
-                        </button>
-                        <button id="save-and-continue" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md">
-                            💾 Guardar
-                        </button>
-                    </div>
-                    
-                    <p class="text-xs text-gray-500 mt-3">
-                        💡 <strong>Tip:</strong> Crea un archivo <code>config.local.json</code> en la raíz del proyecto para automatizar esto.
-                    </p>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Event listeners
-            const urlInput = modal.querySelector('#supabase-url');
-            const keyInput = modal.querySelector('#supabase-key');
-            const saveCheckbox = modal.querySelector('#save-config');
-            
-            modal.querySelector('#cancel-config').onclick = () => {
-                document.body.removeChild(modal);
-                resolve(null); // Usar modo demo
-            };
-            
-            modal.querySelector('#save-and-continue').onclick = () => {
-                const url = urlInput.value.trim();
-                const key = keyInput.value.trim();
-                
-                if (!url || !key) {
-                    alert('Por favor completa ambos campos');
-                    return;
-                }
-                
-                const config = { url, anon_key: key };
-                
-                // Guardar si el usuario lo solicitó
-                if (saveCheckbox.checked) {
-                    localStorage.setItem('matemagica_dev_config', JSON.stringify(config));
-                    console.log('💾 Configuración guardada para futuras sesiones');
-                }
-                
-                document.body.removeChild(modal);
-                resolve(config);
-            };
-        });
     }
 
     setupDOMElements() {
         this.elements = {
+            cardFlipper: document.getElementById('card-flipper'),
+            loadingOverlay: document.getElementById('loading-overlay'),
+            errorDisplay: document.getElementById('error-display'),
             teacherRoleBtn: document.getElementById('teacher-role-btn'),
             parentRoleBtn: document.getElementById('parent-role-btn'),
-            googleLoginBtn: document.getElementById('google-login-btn'),
-            authLoader: document.getElementById('auth-loader'),
-            authInterface: document.getElementById('auth-interface'),
-            authError: document.getElementById('auth-error'),
-            loaderText: document.getElementById('loader-text')
+            googleAuthBtn: document.getElementById('google-auth-btn'),
+            backBtn: document.getElementById('back-to-welcome-btn')
         };
-        console.log("🔧 Elementos de auth configurados");
+        
+        console.log("🔧 Elementos DOM configurados");
     }
 
     setupEventListeners() {
-        console.log("✅ Auth.js integrado con funciones HTML existentes");
+        // Solo efectos visuales básicos
+        const buttons = [this.elements.teacherRoleBtn, this.elements.parentRoleBtn];
         
-        // Solo agregar efectos hover visuales adicionales
-        [this.elements.teacherRoleBtn, this.elements.parentRoleBtn].forEach(btn => {
+        buttons.forEach(btn => {
             if (btn) {
                 btn.addEventListener('mouseenter', () => {
-                    btn.style.transform = 'translateY(-8px) scale(1.05)';
+                    btn.style.transform = 'translateY(-4px)';
                 });
                 btn.addEventListener('mouseleave', () => {
-                    btn.style.transform = 'translateY(0) scale(1)';
+                    btn.style.transform = 'translateY(0)';
                 });
             }
         });
+        
+        console.log("✅ Event listeners configurados");
     }
 
     async handleInitialLoad() {
-        this.showLoader(true, "loading");
+        this.showLoader(true);
         
         try {
-            // ✅ NUEVO: Verificar si tenemos Supabase configurado
-            if (!this.supabase) {
-                console.log("🎮 Modo offline detectado - Saltando autenticación OAuth");
-                this.showInterface();
-                return;
-            }
-
-            // ✅ MEJORADO: Limpiar URL de parámetros OAuth problemáticos INMEDIATAMENTE
+            // Verificar callback OAuth
             const urlParams = this.parseUrlFragment();
             if (urlParams) {
-                console.log("🔐 Detectados parámetros OAuth en URL, limpiando...");
-                this.cleanupUrl(); // Limpiar URL ANTES de procesar
+                console.log("🔐 Procesando callback OAuth");
+                this.cleanupUrl();
                 
-                // ✅ NUEVO: Verificar si los parámetros OAuth son válidos antes de usar
-                if (this.isValidOAuthToken(urlParams.access_token)) {
-                    try {
-                        const { error } = await this.supabase.auth.setSession(urlParams);
-                        if (error) {
-                            console.warn('⚠️ Error en OAuth, continuando sin autenticación:', error.message);
-                            throw new Error('OAUTH_FAILED');
-                        }
-                        
-                        const { data: { user } } = await this.supabase.auth.getUser();
-                        if (user) {
-                            await this.onLoginSuccess(user);
-                            return;
-                        }
-                    } catch (oauthError) {
-                        console.warn('⚠️ OAuth falló, limpiando y continuando:', oauthError.message);
-                        localStorage.clear(); // Limpiar tokens corruptos
-                        sessionStorage.clear();
-                    }
-                } else {
-                    console.log('🧹 Token OAuth inválido detectado, ignorando...');
+                const { error } = await this.supabase.auth.setSession(urlParams);
+                if (error) throw error;
+                
+                const { data: { user } } = await this.supabase.auth.getUser();
+                if (user) {
+                    await this.onLoginSuccess(user);
+                    return;
                 }
             }
             
-            // ✅ MEJORADO: Intentar sesión existente solo si tenemos Supabase
-            if (this.supabase) {
-                try {
-                    const { data: { session }, error } = await this.supabase.auth.getSession();
-                    if (error) {
-                        console.warn('⚠️ Error obteniendo sesión:', error.message);
-                        throw new Error('SESSION_ERROR');
-                    }
-                    
-                    if (session && session.user) {
-                        console.log("✅ Sesión existente válida encontrada, redirigiendo...");
-                        await this.onLoginSuccess(session.user);
-                        return;
-                    }
-                } catch (sessionError) {
-                    console.warn('⚠️ Error en sesión existente, limpiando:', sessionError.message);
-                    localStorage.clear();
-                    sessionStorage.clear();
-                }
+            // Verificar sesión existente
+            const { data: { session } } = await this.supabase.auth.getSession();
+            if (session?.user) {
+                console.log("✅ Sesión existente encontrada");
+                await this.onLoginSuccess(session.user);
+                return;
             }
             
-            // ✅ Todo limpio, mostrar interfaz de login
-            console.log("🎯 No hay sesión válida, mostrando interfaz de autenticación");
-            this.showInterface();
+            // Mostrar login
+            this.showLoader(false);
+            console.log("ℹ️ Mostrando login");
             
         } catch (error) {
-            console.error("❌ Error en carga inicial:", error);
-            
-            // Limpiar todo en caso de error grave
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            this.showInterface();
-            console.log("🔄 Interfaz de autenticación mostrada después de error");
+            console.warn("⚠️ Error en verificación:", error.message);
+            this.showLoader(false);
         }
     }
 
-    // ✅ NUEVA FUNCIÓN: Validar token OAuth básico
-    isValidOAuthToken(token) {
-        if (!token || typeof token !== 'string') return false;
-        
-        // Verificar formato JWT básico (3 partes separadas por puntos)
-        const parts = token.split('.');
-        if (parts.length !== 3) return false;
-        
-        try {
-            // Intentar decodificar el payload del JWT
-            const payload = JSON.parse(atob(parts[1]));
-            
-            // Verificar que no esté expirado
-            if (payload.exp && payload.exp * 1000 < Date.now()) {
-                console.log('🕒 Token OAuth expirado');
-                return false;
-            }
-            
-            return true;
-        } catch (e) {
-            console.log('❌ Token OAuth malformado');
-            return false;
-        }
+    selectRole(role) {
+        console.log('👤 Rol seleccionado:', role);
+        this.selectedRole = role;
+        localStorage.setItem('matemagica_selected_role', role);
+        return true;
     }
 
-    // Método principal de autenticación llamado desde HTML
     async signInWithGoogle() {
         if (!this.selectedRole) {
             this.showError("role");
             return false;
         }
         
-        this.showLoader(true, "loading");
+        this.showLoader(true);
         
         try {
-            // ✅ NUEVO: Verificar si estamos en modo offline
-            if (!this.supabase || this.config?.offline_mode) {
-                console.log("🎮 Modo offline detectado - Saltando autenticación real");
-                
-                // Simular autenticación offline
-                const offlineUser = {
-                    id: 'offline-' + Date.now(),
-                    email: 'usuario@offline.local',
-                    user_metadata: {
-                        full_name: 'Usuario Demo',
-                        avatar_url: null
-                    }
-                };
-                
-                await this.onOfflineLoginSuccess(offlineUser);
-                return true;
-            }
-            
-            console.log("🔐 Iniciando OAuth con Google...");
-            
-            // ✅ Resto del código OAuth solo si tenemos Supabase
-            const currentOrigin = window.location.origin;
-            const redirectUrl = `${currentOrigin}/dashboard.html`;
-            
-            console.log(`🏠 Dominio actual: ${currentOrigin}`);
-            console.log(`🔄 URL de redirección: ${redirectUrl}`);
-            
+            console.log("🔐 Iniciando OAuth con Google");
             const { error } = await this.supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
-                options: { 
-                    redirectTo: redirectUrl
-                } 
+                options: { redirectTo: window.location.origin } 
             });
             
-            if (error) {
-                console.error("❌ Error en OAuth:", error);
-                this.handleAuthError("network");
-                return false;
-            }
-            
-            console.log("✅ OAuth iniciado correctamente");
+            if (error) throw error;
+            console.log("✅ OAuth iniciado");
             return true;
         } catch (error) {
-            console.error("❌ Error en signInWithGoogle:", error);
-            this.handleAuthError("network");
-            return false;
-        }
-    }
-
-    // ✅ NUEVA FUNCIÓN: Simular login exitoso en modo offline
-    async onOfflineLoginSuccess(user) {
-        const role = localStorage.getItem('matemagica_selected_role') || 'parent';
-        const userProfile = {
-            user_id: user.id, 
-            email: user.email,
-            full_name: user.user_metadata?.full_name || 'Usuario Demo',
-            avatar_url: user.user_metadata?.avatar_url,
-            user_role: role,
-            offline_mode: true // ✅ Marcar como usuario offline
-        };
-        
-        console.log("🎮 Guardando perfil offline...", userProfile);
-        localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
-        localStorage.removeItem('matemagica_selected_role');
-        
-        // Mostrar mensaje de éxito específico para offline
-        this.showLoader(true, "success");
-        this.showTemporaryMessage('🎮 ¡Perfecto! Entrando en modo demo - Todas las funciones disponibles');
-        
-        setTimeout(() => {
-            this.redirectUser();
-        }, 2000);
-    }
-
-    // 🚪 NUEVA FUNCIÓN: Logout completo del sistema
-    async signOut() {
-        console.log('🚪 Iniciando logout AGRESIVO...');
-        
-        try {
-            // 1. Cerrar sesión en Supabase CON SCOPE GLOBAL
-            if (this.supabase) {
-                console.log('🔐 Cerrando sesión en Supabase...');
-                const { error } = await this.supabase.auth.signOut({ 
-                    scope: 'global' // ✅ CLAVE: Cierra sesión en TODOS los dispositivos/tabs
-                });
-                if (error) {
-                    console.warn('⚠️ Error cerrando sesión en Supabase:', error.message);
-                } else {
-                    console.log('✅ Sesión cerrada GLOBALMENTE en Supabase');
-                }
-            }
-            
-            // 2. Limpiar TODO el localStorage y sessionStorage
-            console.log('🧹 Limpiando TODO el almacenamiento local...');
-            
-            // Lista COMPLETA de posibles claves
-            const itemsToRemove = [
-                'matemagica_user',
-                'matemagica_profile', 
-                'matemagica-user-profile',
-                'matemagica_role',
-                'matemagica_selected_role',
-                'matemagica_student_info',
-                'currentUser',
-                'userProfile',
-                'selectedRole',
-                'isAuthenticated',
-                'sb-localhost-auth-token',
-                'supabase.auth.token',
-                'supabase-auth-token'
-            ];
-            
-            itemsToRemove.forEach(item => {
-                localStorage.removeItem(item);
-                sessionStorage.removeItem(item);
-            });
-            
-            // 3. Limpiar COMPLETAMENTE localStorage y sessionStorage
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            // 4. Limpiar cookies de autenticación si existen
-            document.cookie.split(";").forEach(function(c) { 
-                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-            });
-            
-            // 5. Resetear estado interno COMPLETAMENTE
-            this.selectedRole = null;
-            this.config = null;
-            this.supabase = null;
-            
-            console.log('✅ Logout AGRESIVO completado');
-            
-            // 6. Mostrar mensaje de confirmación
-            this.showTemporaryMessage('🚪 Sesión cerrada completamente. ¡Hasta pronto!');
-            
-            // 7. Redirigir con reload FORZADO para limpiar memoria
-            setTimeout(() => {
-                window.location.replace('index.html'); // ✅ replace() no permite volver atrás
-                window.location.reload(true); // ✅ Reload forzado desde servidor
-            }, 500);
-            
-        } catch (error) {
-            console.error('❌ Error durante logout agresivo:', error);
-            
-            // ✅ FALLBACK NUCLEAR: Si todo falla, limpiar TODO y recargar
-            console.log('🧨 Ejecutando fallback nuclear...');
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            // Redirigir SÍ O SÍ
-            window.location.replace('index.html');
-            setTimeout(() => {
-                window.location.reload(true);
-            }, 100);
-        }
-    }
-
-    // 🧪 NUEVA FUNCIÓN: Validar credenciales de Supabase
-    async validateSupabaseCredentials(config) {
-        try {
-            console.log('🧪 Validando credenciales de Supabase...');
-            
-            // Crear cliente temporal para probar
-            const testClient = window.supabase.createClient(config.url, config.anon_key);
-            
-            // ✅ CORREGIDO: Usar auth.getUser() en lugar de acceder a tablas
-            // Esta operación siempre funciona si las credenciales son válidas
-            const { data, error } = await testClient.auth.getUser();
-            
-            if (error) {
-                console.error('❌ Error validando credenciales:', error.message);
-                
-                // Verificar si es un error de credenciales específicamente
-                if (error.message.includes('Invalid API key') || 
-                    error.message.includes('JWT expired') ||
-                    error.message.includes('invalid_api_key') ||
-                    error.status === 401) {
-                    return false;
-                }
-                
-                // Si el error es que no hay usuario autenticado, las credenciales están bien
-                if (error.message.includes('not authenticated') || error.message.includes('No user found')) {
-                    console.log('✅ Credenciales válidas (sin usuario autenticado)');
-                    return true;
-                }
-                
-                // Otros errores podrían indicar problema de conectividad, no de credenciales
-                console.log('⚠️ Las credenciales parecen válidas, posible problema de red');
-                return true;
-            }
-            
-            console.log('✅ Credenciales de Supabase validadas correctamente');
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error durante validación de credenciales:', error);
-            
-            // Si hay error de red, asumir que las credenciales podrían estar bien
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                console.log('⚠️ Error de red, asumiendo credenciales válidas');
-                return true;
-            }
-            
+            console.error("❌ Error en OAuth:", error);
+            this.showError("general");
+            this.showLoader(false);
             return false;
         }
     }
@@ -625,122 +172,75 @@ class LoginSystem {
         const userProfile = {
             user_id: user.id, 
             email: user.email,
-            full_name: user.user_metadata?.full_name,
+            full_name: user.user_metadata?.full_name || user.email.split('@')[0],
             avatar_url: user.user_metadata?.avatar_url,
             user_role: role
         };
         
         try {
-            console.log("💾 Guardando perfil en Supabase...", userProfile);
-            await this.supabase.from('math_profiles').upsert(userProfile);
+            console.log("💾 Guardando perfil");
+            
+            // Intentar guardar en Supabase (sin bloquear si falla)
+            try {
+                await this.supabase.from('math_profiles').upsert(userProfile, { 
+                    onConflict: 'user_id' 
+                });
+            } catch (dbError) {
+                console.warn('⚠️ Error en BD (continuando):', dbError.message);
+            }
+            
+            // SIEMPRE guardar localmente
             localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
+            localStorage.setItem('matemagica-authenticated', 'true');
             localStorage.removeItem('matemagica_selected_role');
             
-            // Mostrar mensaje de éxito y redirigir
+            // Redirección directa
             this.showLoader(true, "success");
             setTimeout(() => {
-                this.redirectUser();
-            }, 2000);
+                window.location.href = 'dashboard.html';
+            }, 1000);
             
         } catch (error) {
-            console.error("❌ Error guardando perfil:", error);
-            this.handleAuthError("general");
+            console.error("❌ Error en onLoginSuccess:", error);
+            // Guardar localmente y continuar
+            localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
+            localStorage.setItem('matemagica-authenticated', 'true');
+            window.location.href = 'dashboard.html';
         }
     }
 
-    redirectUser() {
-        const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
-        
-        // ✅ CORREGIDO: Ambos roles van al dashboard unificado
-        console.log(`🔄 Redirigiendo usuario (${userProfile.user_role}) al dashboard unificado...`);
-        window.location.assign('dashboard.html');
-    }
-
-    // Funciones de utilidad UI
     showLoader(show, type = "loading") {
-        const loader = this.elements.authLoader;
-        const interface_ = this.elements.authInterface;
-        const loaderText = this.elements.loaderText;
-        
-        if (!loader || !interface_) return;
+        const overlay = this.elements.loadingOverlay;
+        if (!overlay) return;
         
         if (show) {
-            loader.classList.remove('hidden');
-            interface_.classList.add('hidden');
+            overlay.classList.remove('hidden-screen');
+            overlay.style.display = 'flex';
             
-            if (loaderText && this.friendlyMessages[type]) {
+            const loadingText = overlay.querySelector('.loading-text');
+            if (loadingText && this.friendlyMessages[type]) {
                 const messages = this.friendlyMessages[type];
-                const message = messages[Math.floor(Math.random() * messages.length)];
-                loaderText.textContent = message;
+                const message = Array.isArray(messages) ? messages[0] : messages;
+                loadingText.textContent = message;
             }
         } else {
-            loader.classList.add('hidden');
-            interface_.classList.remove('hidden');
+            overlay.classList.add('hidden-screen');
+            overlay.style.display = 'none';
         }
     }
 
-    showInterface() {
-        this.showLoader(false);
-        const error = this.elements.authError;
-        if (error) error.classList.add('hidden');
-    }
-
-    showError(type) {
-        const errorElement = this.elements.authError;
-        if (!errorElement) return;
+    showError(errorType) {
+        const message = this.friendlyMessages.errors[errorType] || this.friendlyMessages.errors.general;
+        const errorDisplay = this.elements.errorDisplay;
         
-        const message = this.friendlyMessages.errors[type] || this.friendlyMessages.errors.general;
-        errorElement.querySelector('.error-message').textContent = message;
-        errorElement.classList.remove('hidden');
-        
-        setTimeout(() => {
-            errorElement.classList.add('hidden');
-        }, 5000);
-    }
-
-    // 🔑 Nueva función para mostrar error específico de API key
-    showApiKeyError() {
-        const errorElement = this.elements.authError;
-        if (!errorElement) return;
-        
-        const message = "🔑 Las credenciales han expirado. Por favor, actualiza tu API key de Supabase en config.local.json";
-        errorElement.querySelector('.error-message').textContent = message;
-        errorElement.classList.remove('hidden');
-        
-        // Mostrar por más tiempo para que el usuario pueda leer
-        setTimeout(() => {
-            errorElement.classList.add('hidden');
-        }, 10000);
-    }
-
-    // 💡 Función para mostrar mensajes temporales
-    showTemporaryMessage(message) {
-        const tempMessage = document.createElement('div');
-        tempMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300';
-        tempMessage.textContent = message;
-        
-        document.body.appendChild(tempMessage);
-        
-        // Animación de entrada
-        setTimeout(() => {
-            tempMessage.style.transform = 'translateX(0)';
-        }, 100);
-        
-        // Eliminar después de 3 segundos
-        setTimeout(() => {
-            tempMessage.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (document.body.contains(tempMessage)) {
-                    document.body.removeChild(tempMessage);
-                }
-            }, 300);
-        }, 3000);
-    }
-
-    handleAuthError(type) {
-        console.error(`❌ Error de autenticación: ${type}`);
-        this.showLoader(false);
-        this.showError(type);
+        if (errorDisplay) {
+            errorDisplay.textContent = message;
+            errorDisplay.style.display = 'block';
+            
+            setTimeout(() => { 
+                errorDisplay.style.display = 'none'; 
+            }, 4000);
+        }
     }
 
     parseUrlFragment() {
@@ -748,7 +248,6 @@ class LoginSystem {
             const params = new URLSearchParams(window.location.hash.substring(1));
             const accessToken = params.get('access_token');
             if (accessToken) {
-                console.log('🔍 Detectados parámetros OAuth en URL');
                 return { 
                     access_token: accessToken, 
                     refresh_token: params.get('refresh_token') 
@@ -761,113 +260,8 @@ class LoginSystem {
     }
 
     cleanupUrl() {
-        // ✅ MEJORADO: Limpiar TODOS los fragmentos OAuth y parámetros problemáticos
         if (window.location.hash) {
-            console.log('🧹 Limpiando URL de parámetros OAuth...');
-            
-            // Limpiar hash OAuth completo
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-            
-            // También limpiar cualquier parámetro de error en la URL
-            const url = new URL(window.location);
-            url.searchParams.delete('error');
-            url.searchParams.delete('error_description');
-            url.searchParams.delete('error_code');
-            
-            if (url.search !== window.location.search) {
-                window.history.replaceState(null, '', url.pathname + url.search);
-            }
-            
-            console.log('✅ URL limpiada completamente');
-        }
-    }
-
-    // 🎭 Función para seleccionar rol (profesor/apoderado)
-    selectRole(rol) {
-        console.log(`🎭 Rol seleccionado: ${rol}`);
-        
-        this.selectedRole = rol;
-        localStorage.setItem('matemagica_selected_role', rol);
-        
-        // ✅ NUEVO: Actualizar el texto del botón según el modo
-        this.updateGoogleButtonText();
-        
-        // Actualizar UI para mostrar selección
-        const teacherBtn = this.elements.teacherRoleBtn;
-        const parentBtn = this.elements.parentRoleBtn;
-        const loginBtn = this.elements.googleLoginBtn;
-        
-        if (teacherBtn && parentBtn && loginBtn) {
-            // Remover clases activas
-            teacherBtn.classList.remove('ring-4', 'ring-blue-300', 'bg-blue-600');
-            parentBtn.classList.remove('ring-4', 'ring-green-300', 'bg-green-600');
-            
-            // Agregar clase activa al botón seleccionado
-            if (rol === 'teacher') {
-                teacherBtn.classList.add('ring-4', 'ring-blue-300', 'bg-blue-600');
-                teacherBtn.innerHTML = `
-                    <i class="fas fa-chalkboard-teacher text-4xl mb-4"></i>
-                    <h3 class="text-xl font-bold">Profesor</h3>
-                    <p class="text-sm opacity-90">Gestiona estudiantes y cursos</p>
-                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
-                `;
-            } else {
-                parentBtn.classList.add('ring-4', 'ring-green-300', 'bg-green-600');
-                parentBtn.innerHTML = `
-                    <i class="fas fa-heart text-4xl mb-4"></i>
-                    <h3 class="text-xl font-bold">Apoderado</h3>
-                    <p class="text-sm opacity-90">Acompaña el aprendizaje</p>
-                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
-                `;
-            }
-            
-            // Activar botón de login
-            loginBtn.disabled = false;
-            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            loginBtn.classList.add('hover:bg-white', 'hover:text-gray-800', 'transform', 'hover:scale-105');
-            
-            // Mostrar mensaje amigable
-            const friendlyRole = rol === 'teacher' ? 'profesor' : 'apoderado';
-            this.showTemporaryMessage(`🎉 ¡Perfecto! Te has registrado como ${friendlyRole}. Ahora puedes continuar.`);
-        }
-    }
-
-    // ✅ NUEVA FUNCIÓN: Actualizar texto del botón Google según el modo
-    updateGoogleButtonText() {
-        const googleBtn = document.getElementById('google-auth-btn');
-        if (!googleBtn) return;
-
-        const isOfflineMode = !this.supabase || this.config?.offline_mode;
-        const role = this.selectedRole || localStorage.getItem('matemagica_selected_role');
-        
-        if (isOfflineMode) {
-            // Modo offline/demo
-            googleBtn.innerHTML = `
-                <span style="font-size: 24px;">🎮</span>
-                <span>Entrar en Modo Demo</span>
-            `;
-            
-            // Cambiar estilo para que se vea como demo
-            googleBtn.style.background = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
-            googleBtn.style.color = '#374151';
-            googleBtn.style.border = '2px solid #a8edea';
-            
-        } else {
-            // Modo online con Google OAuth
-            googleBtn.innerHTML = `
-                <svg width="24" height="24" viewBox="0 0 48 48">
-                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C41.332,36.191,44,30.651,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                </svg>
-                <span>Entrar con Google</span>
-            `;
-            
-            // Estilo original de Google
-            googleBtn.style.background = 'white';
-            googleBtn.style.color = '#374151';
-            googleBtn.style.border = '2px solid #e2e8f0';
+            window.history.replaceState(null, '', window.location.pathname);
         }
     }
 }

@@ -57,9 +57,8 @@
         <h2>🔧 Pruebas de Recursos</h2>
         <div id="manifestTest" class="status">Probando manifest.json...</div>
         <div id="stylesTest" class="status">Probando styles.css...</div>
+        <div id="configTest" class="status">Probando config-service.js...</div>
         <div id="authTest" class="status">Probando auth.js...</div>
-        <div id="dashboardTest" class="status">Probando dashboard.js...</div>
-        <div id="pdfTest" class="status">Probando pdf-generator.js...</div>
     </div>
 
     <div class="card">
@@ -129,15 +128,13 @@
         async function runTests() {
             document.getElementById('manifestTest').innerHTML = 'Probando manifest.json...';
             document.getElementById('stylesTest').innerHTML = 'Probando styles.css...';
+            document.getElementById('configTest').innerHTML = 'Probando config-service.js...';
             document.getElementById('authTest').innerHTML = 'Probando auth.js...';
-            document.getElementById('dashboardTest').innerHTML = 'Probando dashboard.js...';
-            document.getElementById('pdfTest').innerHTML = 'Probando pdf-generator.js...';
             
             await testResource('/manifest.json', 'manifestTest', 'Manifest');
             await testResource('/styles.css', 'stylesTest', 'Styles');
+            await testResource('/js/config-service.js', 'configTest', 'Config Service');
             await testResource('/js/auth.js', 'authTest', 'Auth Service');
-            await testResource('/js/dashboard.js', 'dashboardTest', 'Dashboard Service');
-            await testResource('/js/pdf-generator.js', 'pdfTest', 'PDF Generator Service');
         }
 
         function clearBrowserData() {

@@ -29,7 +29,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Iniciando Matemágica Dashboard v4.0 (SaaS Compatible)...');
     
     try {
-        // Verificar si estamos en la nueva estructura
+        // PASO 1: Esperar un momento para que auth.js complete su trabajo
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // PASO 2: Verificar si estamos en la nueva estructura
         const isNewDashboard = document.getElementById('matematicas-segundo-content') !== null;
         
         if (isNewDashboard) {
@@ -37,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return; // La nueva estructura maneja su propia inicialización
         }
         
-        // Código legacy para estructura antigua
+        // PASO 3: Código legacy para estructura antigua
         await initializeSupabase();
         await checkAuthentication();
         await initializeCurriculum();
@@ -68,34 +71,76 @@ async function initializeSupabase() {
 }
 
 async function checkAuthentication() {
-    // Si no hay Supabase, usar modo local
-    if (!DASHBOARD_CONFIG.supabase) {
-        const localUser = localStorage.getItem('matematica_user');
-        if (!localUser) {
-            // Crear usuario por defecto
-            const defaultUser = {
-                id: 'local-user',
-                email: 'usuario@local.com',
-                full_name: 'Usuario Local',
-                user_type: 'apoderado'
-            };
-            localStorage.setItem('matematica_user', JSON.stringify(defaultUser));
+    console.log('🔐 Verificando autenticación - VERSIÓN MEJORADA');
+    
+    // 1️⃣ VERIFICAR DATOS LOCALES PRIMERO
+    const isAuthenticated = localStorage.getItem('matemagica-authenticated');
+    const userProfile = localStorage.getItem('matemagica-user-profile');
+    
+    console.log('🔍 Estado localStorage:', { isAuthenticated, hasProfile: !!userProfile });
+    
+    if (isAuthenticated === 'true' && userProfile) {
+        try {
+            const profile = JSON.parse(userProfile);
+            console.log('✅ Usuario autenticado encontrado:', profile.email);
+            
+            // Actualizar UI inmediatamente
+            const userNameElement = document.getElementById('user-name');
+            if (userNameElement) {
+                userNameElement.textContent = profile.full_name || profile.email.split('@')[0];
+            }
+            
+            // ✅ USUARIO VÁLIDO - CONTINUAR SIN PROBLEMAS
+            return;
+            
+        } catch (error) {
+            console.warn('⚠️ Error parseando perfil local:', error);
+            // Continuar con verificación Supabase como fallback
         }
-        return;
     }
     
-    // Verificar autenticación con Supabase
-    const { data: { user } } = await DASHBOARD_CONFIG.supabase.auth.getUser();
-    if (!user) {
+    // 2️⃣ VERIFICAR SUPABASE COMO SEGUNDA OPCIÓN
+    if (DASHBOARD_CONFIG.supabase) {
+        try {
+            console.log('🔍 Verificando sesión con Supabase...');
+            const { data: { session } } = await DASHBOARD_CONFIG.supabase.auth.getSession();
+            
+            if (session?.user) {
+                console.log('✅ Sesión Supabase encontrada:', session.user.email);
+                
+                // Actualizar datos locales con información de Supabase
+                const userProfile = {
+                    user_id: session.user.id,
+                    email: session.user.email,
+                    full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
+                    avatar_url: session.user.user_metadata?.avatar_url,
+                    user_role: 'parent' // Default
+                };
+                
+                localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
+                localStorage.setItem('matemagica-authenticated', 'true');
+                
+                // Actualizar UI
+                const userNameElement = document.getElementById('user-name');
+                if (userNameElement) {
+                    userNameElement.textContent = userProfile.full_name;
+                }
+                
+                return;
+            }
+        } catch (supabaseError) {
+            console.warn('⚠️ Error verificando Supabase:', supabaseError.message);
+        }
+    }
+    
+    // 3️⃣ SOLO REDIRIGIR SI NO HAY NINGUNA AUTENTICACIÓN VÁLIDA
+    console.log('❌ No se encontró autenticación válida');
+    
+    // Dar una pequeña pausa antes de redirigir para permitir que se complete la carga
+    setTimeout(() => {
+        console.log('🔄 Redirigiendo al login...');
         window.location.href = 'index.html';
-        return;
-    }
-    
-    // Actualizar UI con nombre del usuario solo si el elemento existe
-    const userNameElement = document.getElementById('user-name');
-    if (userNameElement) {
-        userNameElement.textContent = user.user_metadata?.full_name || user.email;
-    }
+    }, 2000);
 }
 
 // 📚 INICIALIZACIÓN DEL CURRÍCULUM - Adaptada para compatibilidad

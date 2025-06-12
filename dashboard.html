@@ -656,35 +656,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- ✅ NUEVO: Configuración inmediata de Supabase para IA -->
-    <script>
-        // ✅ CONFIGURACIÓN INMEDIATA PARA GEMINI AI
-        console.log('🔧 Configurando Supabase para IA...');
-        
-        // Configuración hardcodeada para desarrollo local (funciona en localhost)
-        window.SUPABASE_CONFIG = {
-            url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-            anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NzQ4NDQsImV4cCI6MjA0OTE1MDg0NH0.FELDriHpfy0xHwxJQGDXCi0Gd8vJWm4L9MLu3DWGZh8",
-            configured: true,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log('✅ Configuración de Supabase expuesta globalmente para módulos IA');
-        
-        // ✅ Notificar a gemini-ai.js si ya está cargado
-        if (window.geminiAI && typeof window.geminiAI.onConfigurationReady === 'function') {
-            console.log('🔔 Notificando a Gemini AI que la configuración está lista');
-            window.geminiAI.onConfigurationReady();
-        }
-        
-        // ✅ También crear un evento personalizado para mayor robustez
-        window.dispatchEvent(new CustomEvent('supabaseConfigReady', {
-            detail: window.SUPABASE_CONFIG
-        }));
-    </script>
-    
-    <!-- ✅ CARGAR GEMINI AI DESPUÉS DE LA CONFIGURACIÓN -->
-    <script src="gemini-ai.js"></script>
+    <!-- 🔐 SERVICIO DE CONFIGURACIÓN SEGURA - CARGAR PRIMERO -->
+    <script src="js/config-service.js"></script>
     
     <!-- ✅ NUEVO MÓDULO DE PDF DEDICADO -->
     <script src="js/pdf-generator.js"></script>
@@ -805,13 +778,8 @@
                 initializeGlobalAIIndicator();
                 updateWelcomeMessage(); // ✅ NUEVO: Mensaje de bienvenida personalizado
                 
-                // ✅ CORREGIDO: Verificar que la IA esté REALMENTE funcionando
-                if (window.geminiAI && window.geminiAI.configured) {
-                    console.log('🤖 Sistema de IA disponible y configurado correctamente');
-                } else if (window.geminiAI) {
-                    console.log('⚠️ Sistema de IA cargado pero no configurado (modo offline)');
-                } else {
-                    console.log('❌ Sistema de IA no disponible');
+                if (window.geminiAI) {
+                    console.log('🤖 Sistema de IA disponible');
                 }
                 
             } catch (error) {
@@ -911,24 +879,12 @@
                 };
             }
             
-            // ✅ CORREGIDO: Esperar verificación real antes de mostrar estado
-            console.log('🤖 Indicador de IA inicializado: VERIFICANDO...');
-            window.AIIndicator.setStatus('working');
-            
-            // Verificar estado real después de que termine la verificación asíncrona
+            // Establecer estado inicial basado en la configuración de Gemini
             setTimeout(() => {
-                const checkAIStatus = () => {
-                    if (window.geminiAI && window.geminiAI.configured !== undefined) {
-                        const isConfigured = window.geminiAI.configured;
-                        window.AIIndicator.setStatus(isConfigured ? 'active' : 'inactive');
-                        console.log(`🤖 Indicador de IA actualizado: ${isConfigured ? 'ACTIVO' : 'INACTIVO'}`);
-                    } else {
-                        // Reintentar si aún no está listo
-                        setTimeout(checkAIStatus, 500);
-                    }
-                };
-                checkAIStatus();
-            }, 2000); // Esperar 2 segundos para que termine la verificación
+                const isConfigured = window.geminiAI && window.geminiAI.configured;
+                window.AIIndicator.setStatus(isConfigured ? 'active' : 'inactive');
+                console.log(`🤖 Indicador de IA inicializado: ${isConfigured ? 'ACTIVO' : 'INACTIVO'}`);
+            }, 1000); // Esperar a que se cargue Gemini AI
             
             // Añadir click listener para mostrar información de IA
             const aiIndicator = document.getElementById('ai-indicator');

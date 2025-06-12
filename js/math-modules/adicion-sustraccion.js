@@ -301,14 +301,87 @@ class AdicionSustraccionModule {
         }
     }
 
-    // ✅ DESCARGAR PDF
-    downloadPDF() {
+    // ✅ DESCARGAR PDF - VERSIÓN DEBUG ACTUALIZADA
+    async downloadPDF() {
+        console.log('🔥 FUNCIÓN PDF LLAMADA - VERSIÓN NUEVA ACTUALIZADA');
+        console.log('🔥 Ejercicios disponibles:', this.currentExercises.length);
+        
         if (this.currentExercises.length === 0) {
             this.showErrorToast('Primero genera algunos ejercicios');
+            console.log('🔥 No hay ejercicios disponibles');
             return;
         }
         
-        this.showInfoToast('Función de PDF próximamente disponible');
+        try {
+            this.showInfoToast('📄 Generando PDF con versión actualizada...');
+            console.log('🔥 Iniciando proceso de PDF...');
+            
+            // Verificar librerías con logging detallado
+            console.log('🔥 Verificando librerías:', {
+                jspdf: !!window.jspdf,
+                html2canvas: !!window.html2canvas,
+                generatePDFReport: typeof generatePDFReport
+            });
+            
+            if (!window.jspdf || !window.html2canvas) {
+                console.error('🔥 Librerías PDF no disponibles');
+                this.showErrorToast('Las librerías de PDF no están cargadas. Recarga la página.');
+                return;
+            }
+            
+            // Verificar función generatePDFReport
+            if (typeof generatePDFReport !== 'function') {
+                console.error('🔥 generatePDFReport no es una función');
+                this.showErrorToast('Generador de PDF no disponible. Recarga la página.');
+                return;
+            }
+            
+            console.log('🔥 Obteniendo configuración...');
+            const difficulty = document.getElementById('difficulty-select')?.value || 'medio';
+            const operationType = document.getElementById('operation-type-select')?.value || 'ambos';
+            const studentName = this.getCurrentStudentName();
+            
+            console.log('🔥 Configuración:', {
+                difficulty,
+                operationType,
+                studentName,
+                ejercicios: this.currentExercises.length
+            });
+            
+            console.log('🔥 Llamando a generatePDFReport...');
+            
+            // Llamada al generador con opciones completas
+            const pdfOptions = {
+                studentName: studentName,
+                difficulty: difficulty,
+                operationType: operationType,
+                exercises: this.currentExercises
+            };
+            
+            console.log('🔥 Opciones de PDF:', pdfOptions);
+            
+            await generatePDFReport(this.currentExercises, pdfOptions);
+            
+            console.log('🔥 PDF generado exitosamente');
+            this.showSuccessToast('📄 ¡PDF descargado exitosamente!');
+            
+        } catch (error) {
+            console.error('🔥 Error completo al generar PDF:', error);
+            console.error('🔥 Stack trace:', error.stack);
+            this.showErrorToast(`Error al generar PDF: ${error.message}`);
+        }
+    }
+    
+    // 🔧 MÉTODO AUXILIAR: Obtener nombre del estudiante actual
+    getCurrentStudentName() {
+        // Intentar obtener de diferentes fuentes
+        if (window.authManager?.currentUser?.user_metadata?.full_name) {
+            return window.authManager.currentUser.user_metadata.full_name.split(' ')[0];
+        }
+        if (typeof matemáticaDashboardConfig !== 'undefined' && matemáticaDashboardConfig.currentStudentData) {
+            return matemáticaDashboardConfig.currentStudentData.name;
+        }
+        return 'Estudiante';
     }
 
     // ✅ GENERAR EJERCICIOS VERTICALES
@@ -1218,7 +1291,7 @@ Responde SOLO con el contenido pedagógico, sin formato adicional.`;
                     <div class="text-sm text-gray-800">
                         <div class="mb-2 text-center font-bold text-purple-700">${motivation}</div>
                         <div class="mb-2">🧮 <strong>Problema:</strong> ${exercise.num1 % 10} unidades son menos que ${exercise.num2 % 10}</div>
-                        <div class="mb-2">🏠 <strong>Solución:</strong> ¡Pide prestado a la casa de las decenas!</div>
+                        <div class="mb-2">🏠 <strong>Solución:</strong> ¡Pide prestado 10 de las decenas!</div>
                         <div class="mb-2">📦 <strong>10 unidades = 1 decena</strong></div>
                         <div class="mb-2">🔄 <strong>Ahora tienes:</strong> ${(exercise.num1 % 10) + 10} unidades para restar</div>
                         <div class="mb-2">🎯 <strong>Calcula:</strong> ${(exercise.num1 % 10) + 10} - ${exercise.num2 % 10} = ?</div>
@@ -1469,6 +1542,7 @@ Responde SOLO con el contenido pedagógico, sin formato adicional.`;
             ayudaDiv.innerHTML = contenidoAyuda;
             
             // Insertar en la misma ubicación que el feedback automático
+
             helpButton.parentNode.insertBefore(ayudaDiv, helpButton.nextSibling);
             
             console.log(`✅ Ayuda pedagógica con IA mostrada para ejercicio ${exerciseId}`);

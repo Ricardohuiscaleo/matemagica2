@@ -1,138 +1,59 @@
-// Matemágica PWA - Servicio de IA con Google Gemini - VERSIÓN SUPABASE EDGE FUNCTIONS
-// Este servicio ahora usa Supabase Edge Functions para proteger las API keys
+// Matemágica PWA - Servicio de IA con Google Gemini - VERSIÓN FRONTEND DIRECTO
+// API key hardcodeada para producción
 
 class GeminiAIService {
     constructor() {
-        this.configured = false;
-        this.isNetlify = window.location.hostname.includes('netlify.app');
-        this.apiEndpoint = this.isNetlify ? 
-            '/.netlify/functions/gemini-ai' : // ✅ Netlify Function segura
-            '/api/gemini-ai'; // Para otros deployments
+        // 🔑 API key hardcodeada para producción
+        this.apiKey = 'AIzaSyCc1bdkzVLHXxxKOBndV3poK2KQikLJ6DI';
+        this.apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        this.configured = true;
+        this.hasKey = true;
         
-        // ✅ SIN CREDENCIALES HARDCODEADAS
-        console.log(`🔒 Servicio IA configurado en modo seguro: ${this.isNetlify ? 'Netlify' : 'Estándar'}`);
-        this.initializeSecureConnection();
+        console.log('🤖 Gemini AI Service (Frontend Directo):', {
+            configured: this.configured,
+            apiUrl: this.apiUrl
+        });
+        console.log('✅ Gemini AI activado - Generación inteligente disponible (frontend directo)');
     }
 
-    async initializeSecureConnection() {
-        try {
-            // ✅ Verificar conectividad con backend seguro
-            const testResponse = await fetch(this.apiEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: "Test de conectividad - responde: OK"
-                })
-            });
+    // 🔐 Verificar configuración
+    async checkConfiguration() {
+        // Siempre configurado en frontend
+        this.configured = true;
+        this.hasKey = true;
+        return true;
+    }
 
-            if (testResponse.ok) {
-                const data = await testResponse.json();
-                if (data.success) {
-                    this.configured = true;
-                    console.log('✅ IA configurada correctamente con backend seguro');
-                    return;
-                }
-            }
-            
-            console.log('⚠️ Backend IA no disponible - modo offline activo');
-            this.configured = false;
-            
-        } catch (error) {
-            console.log('📱 Conexión IA no disponible - modo offline activo');
-            this.configured = false;
+    // 🔐 Configuración manual (para compatibilidad)
+    configure(apiKey) {
+        console.log('✅ API key configurada manualmente');
+        if (apiKey) {
+            this.apiKey = apiKey;
         }
     }
 
-    // ✅ Llamada segura al backend
-    async generateContent(prompt, schema = null) {
-        console.log('🤖 Generando contenido con backend seguro...');
-        
-        if (!this.configured) {
-            console.log('📱 Modo offline activo, usando contenido local');
-            return this.getFallbackContent();
-        }
-
-        try {
-            const response = await fetch(this.apiEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, schema })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Backend Error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Error en backend');
-            }
-
-            return data.content;
-
-        } catch (error) {
-            console.error('❌ Error en backend IA:', error);
-            return this.getFallbackContent();
-        }
+    // ✅ Auto-configuración (siempre disponible)
+    tryAutoConfig() {
+        return true;
     }
 
-    // ✅ Generación segura de ejercicios
+    // Generación directa con esquemas JSON - Sumas
     async generateAdditions(level, quantity = 50) {
-        if (!this.configured) {
-            return this.getFallbackAdditions(level, quantity);
-        }
-
-        const prompt = `Genera exactamente ${quantity} sumas de 2 dígitos nivel ${level}...`;
-        const schema = {
-            type: "object",
-            properties: {
-                exercises: {
-                    type: "array",
-                    items: {
-                        type: "object",
-                        properties: {
-                            num1: { type: "number" },
-                            num2: { type: "number" },
-                            operation: { type: "string" }
-                        }
-                    }
-                }
-            }
-        };
-
-        try {
-            const result = await this.generateContent(prompt, schema);
-            return result.exercises || this.getFallbackAdditions(level, quantity);
-        } catch (error) {
-            return this.getFallbackAdditions(level, quantity);
-        }
-    }
-
-    // Generación directa con esquemas JSON - Restas
-    async generateSubtractions(level, quantity = 50) {
-        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Supabase Edge Functions - Nivel: ${level}`);
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} sumas con Gemini AI (frontend directo) - Nivel: ${level}`);
         
-        if (!this.configured) {
-            console.log('⚠️ Supabase no configurado, usando fallback');
-            return this.getFallbackSubtractions(level, quantity);
-        }
-
         try {
-            const levelInstructions = this.getLevelInstructions(level, 'subtraction');
+            const levelInstructions = this.getLevelInstructions(level, 'addition');
             
-            const prompt = `Genera exactamente ${quantity} problemas de resta de dos dígitos para un niño de 7-8 años.
+            const prompt = `Genera exactamente ${quantity} problemas de suma de dos dígitos para un niño de 7-8 años.
             
             REGLAS ESPECÍFICAS:
             ${levelInstructions}
             
-            IMPORTANTE: En las restas, el primer número SIEMPRE debe ser mayor que el segundo para evitar resultados negativos.
-            
             Devuelve SOLO un objeto JSON con el formato exacto:
             {
                 "exercises": [
-                    {"num1": 54, "num2": 27, "operation": "subtraction"},
-                    {"num1": 43, "num2": 18, "operation": "subtraction"}
+                    {"num1": número, "num2": número, "operation": "addition"},
+                    ...
                 ]
             }
             
@@ -157,8 +78,80 @@ class GeminiAIService {
                 required: ["exercises"]
             };
 
-            console.log(`🔄 Llamando a Supabase Edge Function para ${quantity} restas...`);
-            const result = await this.callSupabaseFunction(prompt, schema);
+            console.log(`🔄 Llamando a Gemini API directamente para ${quantity} sumas...`);
+            const result = await this.callGeminiWithSchema(prompt, schema);
+            console.log('✅ Respuesta de Gemini recibida:', result);
+            
+            const exercises = result.exercises || [];
+            
+            // Validar y tomar solo la cantidad exacta
+            const validExercises = exercises
+                .filter(ex => ex.num1 && ex.num2 && ex.num1 > 0 && ex.num2 > 0)
+                .map(ex => ({ ...ex, operation: 'addition' }))
+                .slice(0, quantity);
+
+            // Si no tenemos suficientes, completar con fallback
+            if (validExercises.length < quantity) {
+                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos de IA, completando con fallback`);
+                const fallbackExercises = this.getFallbackAdditions(level, quantity - validExercises.length);
+                validExercises.push(...fallbackExercises);
+            }
+
+            console.log(`✅ ${validExercises.length} sumas generadas con IA exitosamente`);
+            return validExercises.slice(0, quantity);
+
+        } catch (error) {
+            console.error('❌ Error específico generando sumas con IA:', error);
+            console.log(`🔄 Fallback: Usando ${quantity} ejercicios offline de respaldo`);
+            return this.getFallbackAdditions(level, quantity);
+        }
+    }
+
+    // Generación directa con esquemas JSON - Restas
+    async generateSubtractions(level, quantity = 50) {
+        console.log(`🤖 Generando EXACTAMENTE ${quantity} restas con Gemini AI (frontend directo) - Nivel: ${level}`);
+        
+        try {
+            const levelInstructions = this.getLevelInstructions(level, 'subtraction');
+            
+            const prompt = `Genera exactamente ${quantity} problemas de resta de dos dígitos para un niño de 7-8 años.
+            
+            REGLAS ESPECÍFICAS:
+            ${levelInstructions}
+            
+            IMPORTANTE: En las restas, el primer número SIEMPRE debe ser mayor que el segundo para evitar resultados negativos.
+            
+            Devuelve SOLO un objeto JSON con el formato exacto:
+            {
+                "exercises": [
+                    {"num1": número, "num2": número, "operation": "subtraction"},
+                    ...
+                ]
+            }
+            
+            IMPORTANTE: Debe haber EXACTAMENTE ${quantity} ejercicios, ni más ni menos.`;
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    exercises: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                num1: { type: "INTEGER" },
+                                num2: { type: "INTEGER" },
+                                operation: { type: "STRING" }
+                            },
+                            required: ["num1", "num2", "operation"]
+                        }
+                    }
+                },
+                required: ["exercises"]
+            };
+
+            console.log(`🔄 Llamando a Gemini API directamente para ${quantity} restas...`);
+            const result = await this.callGeminiWithSchema(prompt, schema);
             console.log('✅ Respuesta de Gemini recibida:', result);
             
             const exercises = result.exercises || [];
@@ -171,116 +164,154 @@ class GeminiAIService {
 
             // Si no tenemos suficientes, completar con fallback
             if (validExercises.length < quantity) {
-                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos, completando con fallback...`);
+                console.log(`⚠️ Solo ${validExercises.length} ejercicios válidos de IA, completando con fallback`);
                 const fallbackExercises = this.getFallbackSubtractions(level, quantity - validExercises.length);
-                return [...validExercises, ...fallbackExercises];
+                validExercises.push(...fallbackExercises);
             }
 
-            return validExercises;
+            console.log(`✅ ${validExercises.length} restas generadas con IA exitosamente`);
+            return validExercises.slice(0, quantity);
 
         } catch (error) {
-            console.error('❌ Error generando restas con Supabase:', error);
+            console.error('❌ Error específico generando restas con IA:', error);
+            console.log(`🔄 Fallback: Usando ${quantity} ejercicios offline de respaldo`);
             return this.getFallbackSubtractions(level, quantity);
         }
     }
 
-    // 🚀 Llamada universal usando Supabase Edge Functions
-    async callSupabaseFunction(prompt, schema = null) {
-        // ✅ MEJORADO: Usar configuración dinámica
-        const config = this.getSupabaseConfig();
-        if (!config) {
-            throw new Error('Configuración de Supabase no disponible');
-        }
-
-        const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.anon_key}`,
-                'X-Requested-With': 'XMLHttpRequest' // ✅ Header adicional para CORS
-            },
-            mode: 'cors', // ✅ Especificar modo CORS explícitamente
-            credentials: 'omit', // ✅ No enviar cookies para evitar problemas CORS
-            body: JSON.stringify({
-                prompt: prompt,
-                schema: schema
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Supabase Edge Function Error: ${response.status} - ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Error en Edge Function');
-        }
-
-        return data.content;
-    }
-
     // 3 niveles bien definidos con lógica de reserva
     getLevelInstructions(level, operation) {
-        const baseInstructions = operation === 'addition' ? 
-            "Todos los números deben ser de dos dígitos (entre 10 y 99)." :
-            "Todos los números deben ser de dos dígitos (entre 10 y 99). El primer número SIEMPRE debe ser mayor que el segundo.";
-
+        const operationName = operation === 'addition' ? 'suma' : 'resta';
+        
         switch (level) {
             case 1:
-                return operation === 'addition' ?
-                    `${baseInstructions} SIN RESERVA: La suma de las unidades debe ser menor a 10. Ejemplo: 23 + 34 = 57` :
-                    `${baseInstructions} SIN PRÉSTAMO: Las unidades del primer número deben ser mayores o iguales que las del segundo. Ejemplo: 47 - 23 = 24`;
-            
+                return `Nivel 1 (Fácil): ${operationName}s SIN reserva. Números de 10-99, donde ${operation === 'addition' ? 'no se necesita llevar números a la siguiente columna' : 'no se necesita pedir prestado de las decenas'}.`;
+                
             case 2:
-                return operation === 'addition' ?
-                    `${baseInstructions} CON RESERVA: La suma de las unidades debe ser 10 o mayor. Ejemplo: 28 + 35 = 63` :
-                    `${baseInstructions} CON PRÉSTAMO: Las unidades del primer número deben ser menores que las del segundo. Ejemplo: 52 - 28 = 24`;
-            
+                return `Nivel 2 (Medio): ${operationName}s CON reserva. Números de 10-99, donde ${operation === 'addition' ? 'se necesita llevar números a la siguiente columna' : 'se necesita pedir prestado de las decenas'}. Todos los ejercicios deben requerir reserva.`;
+                
             case 3:
-                return `${baseInstructions} MIXTO: Mezcla ejercicios con y sin ${operation === 'addition' ? 'reserva' : 'préstamo'}.`;
-            
+                return `Nivel 3 (Difícil): Mezcla equilibrada de ${operationName}s. 25 ejercicios SIN reserva y 25 ejercicios CON reserva. Números de 10-99. Alternar entre ${operation === 'addition' ? 'sumas simples y sumas que requieren llevar' : 'restas simples y restas que requieren préstamo'}.`;
+                
             default:
-                return baseInstructions;
+                return `${operationName}s básicas de dos dígitos.`;
         }
     }
 
-    // ✅ Generar ayuda pedagógica con terminología unificada
+    // ✅ FUNCIÓN RENOVADA: Generar ayuda pedagógica
     async generateHelpForExercise(num1, num2, operation) {
-        console.log(`🤖 Generando ayuda pedagógica para ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
+        console.log(`🎯 Generando ayuda pedagógica con IA (frontend directo) para: ${num1} ${operation === 'addition' ? '+' : '-'} ${num2}`);
         
-        if (!this.configured) {
-            return this.getFallbackHelp(num1, num2, operation);
-        }
-
-        const studentName = this.getStudentName();
-        const operationText = operation === 'addition' ? 'suma' : 'resta';
-        const symbol = operation === 'addition' ? '+' : '-';
-
-        const prompt = `Genera una explicación pedagógica paso a paso para resolver este ejercicio de ${operationText}: ${num1} ${symbol} ${num2}
-
-        CONTEXTO:
-        - Estudiante: ${studentName} (7-8 años, segundo básico)
-        - Ejercicio: ${num1} ${symbol} ${num2}
-        - Método: Algoritmo tradicional (vertical)
-
-        INSTRUCCIONES:
-        - Usa un lenguaje simple y amigable apropiado para la edad
-        - Explica paso a paso el proceso ${operation === 'addition' ? 'de suma con o sin reserva' : 'de resta con o sin préstamo'}
-        - Incluye consejos visuales ("imagina que tienes...")
-        - Máximo 150 palabras
-        - Usa emojis apropiados para matemáticas
-
-        FORMATO:
-        Responde SOLO con la explicación, sin metadatos adicionales.`;
-
         try {
-            const result = await this.callSupabaseFunction(prompt);
-            return result || this.getFallbackHelp(num1, num2, operation);
+            const operationText = operation === 'addition' ? 'suma con reserva' : 'resta con préstamo';
+            const operationSymbol = operation === 'addition' ? '+' : '-';
+            
+            const prompt = `Eres un profesor de matemáticas muy amigable para un niño de 7-8 años. Ayúdalo a resolver esta operación SIN dar la respuesta:
+
+            OPERACIÓN: ${num1} ${operationSymbol} ${num2}
+
+            INSTRUCCIONES:
+            - NO reveles la respuesta final
+            - Usa emojis divertidos y apropiados para niños
+            - Explica paso a paso el proceso de ${operationText}
+            - Usa vocabulario simple y claro
+            - Incluye técnicas visuales (como contar con dedos)
+            - Motiva al estudiante
+            - Máximo 3-4 oraciones cortas
+
+            Responde SOLO con la ayuda pedagógica.`;
+
+            const result = await this.callGemini(prompt);
+            console.log('✅ Ayuda pedagógica generada con IA (frontend directo)');
+            return result;
+
         } catch (error) {
             console.error('❌ Error generando ayuda:', error);
             return this.getFallbackHelp(num1, num2, operation);
         }
+    }
+
+    // ✅ generateContent (para compatibilidad)
+    async generateContent(prompt) {
+        console.log('🤖 Llamando generateContent con frontend directo:', prompt.substring(0, 100) + '...');
+        
+        try {
+            const result = await this.callGemini(prompt);
+            console.log('✅ generateContent ejecutado exitosamente (frontend directo)');
+            return result;
+
+        } catch (error) {
+            console.error('❌ Error en generateContent:', error);
+            return this.getFallbackCustomHelp();
+        }
+    }
+
+    // 🔐 Llamada a Gemini con esquema JSON (directo)
+    async callGeminiWithSchema(prompt, schema) {
+        const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    responseSchema: schema,
+                    temperature: 0.7,
+                    maxOutputTokens: 2048
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Gemini API Error: ${response.status} - ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!content) {
+            throw new Error('No content in API response');
+        }
+
+        return JSON.parse(content);
+    }
+
+    // 🔐 Llamada simple a Gemini (directo)
+    async callGemini(prompt) {
+        const response = await fetch(`${this.apiUrl}?key=${this.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    temperature: 0.8,
+                    maxOutputTokens: 1024
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Gemini API Error: ${response.status} - ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!content) {
+            throw new Error('No content in API response');
+        }
+
+        return content;
     }
 
     // Ejercicios de fallback offline
