@@ -80,13 +80,16 @@ class GeminiAIService {
                 return false;
             }
 
-            // Hacer una llamada de prueba simple
+            // ✅ CORREGIDO: Hacer una llamada de prueba con headers CORS apropiados
             const testResponse = await fetch(`${config.url}/functions/v1/gemini-ai`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${config.anon_key}`
+                    'Authorization': `Bearer ${config.anon_key}`,
+                    'X-Requested-With': 'XMLHttpRequest' // ✅ Header adicional para CORS
                 },
+                mode: 'cors', // ✅ Especificar modo CORS explícitamente
+                credentials: 'omit', // ✅ No enviar cookies para evitar problemas CORS
                 body: JSON.stringify({
                     prompt: "Responde solo con: OK",
                     temperature: 0.1
@@ -108,6 +111,14 @@ class GeminiAIService {
             }
         } catch (error) {
             console.log(`❌ Error verificando conexión: ${error.message}`);
+            
+            // ✅ NUEVO: Detectar específicamente errores CORS
+            if (error.message.includes('CORS') || 
+                error.message.includes('access control') || 
+                error.message.includes('Failed to fetch')) {
+                console.log('🌐 Detectado error CORS - Posible problema de configuración en producción');
+            }
+            
             return false;
         }
     }
@@ -425,8 +436,11 @@ class GeminiAIService {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.anon_key}`
+                'Authorization': `Bearer ${config.anon_key}`,
+                'X-Requested-With': 'XMLHttpRequest' // ✅ Header adicional para CORS
             },
+            mode: 'cors', // ✅ Especificar modo CORS explícitamente
+            credentials: 'omit', // ✅ No enviar cookies para evitar problemas CORS
             body: JSON.stringify({
                 prompt: prompt,
                 schema: schema
