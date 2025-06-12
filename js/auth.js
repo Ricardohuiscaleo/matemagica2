@@ -60,7 +60,7 @@ class LoginSystem {
             // Fallback a configuración hardcodeada
             this.config = {
                 url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-                anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9zZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+                anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
             };
             console.log("⚠️ Usando configuración de fallback");
             return false;
@@ -225,7 +225,7 @@ class LoginSystem {
         this.showLoader(true);
         
         try {
-            console.log("🔐 Iniciando OAuth con Google");
+            console.log("🔐 Iniciando OAuth with Google");
             const { error } = await this.supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
                 options: { redirectTo: window.location.origin } 

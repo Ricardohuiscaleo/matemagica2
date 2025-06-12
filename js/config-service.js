@@ -20,7 +20,7 @@ window.ConfigService = {
         exerciseLevel: 'medio'
     },
 
-    // ✅ NUEVO: Método para simular backend en desarrollo local
+    // ✅ CORREGIDO: Método para cargar configuración en todos los entornos
     async loadConfig() {
         if (isLocalDevelopment) {
             console.log('🏠 ConfigService: Usando configuración local para desarrollo');
@@ -32,8 +32,15 @@ window.ConfigService = {
                 environment: 'development'
             };
         } else {
-            // En producción, intentar cargar desde backend real
-            throw new Error('Backend no disponible - Este mensaje no debería aparecer en localhost');
+            // ✅ NUEVO: Configuración válida para producción con API key corregida
+            console.log('🌐 ConfigService: Usando configuración para producción');
+            return {
+                supabase: {
+                    url: "https://uznvakpuuxnpdhoejrog.supabase.co",
+                    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+                },
+                environment: 'production'
+            };
         }
     },
 
