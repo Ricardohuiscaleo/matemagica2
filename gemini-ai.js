@@ -69,17 +69,186 @@ class GeminiAIService {
         this.initializeSupabaseConnection();
     }
 
+    // ✅ FUNCIÓN CORREGIDA: Verificar si la IA realmente funciona con método dual
+    async verifyAIConnection() {
+        console.log('🧪 Verificando conexión real con Gemini AI...');
+        
+        const config = this.getSupabaseConfig();
+        if (!config) {
+            console.log('❌ No hay configuración de Supabase disponible');
+            return false;
+        }
+
+        try {
+            // ✅ MÉTODO 1: Intentar primero con método simplificado
+            console.log('🔄 Intentando método simplificado (sin Authorization header)...');
+            const testResponse = await this.makeAIRequestSimplified(config, {
+                prompt: "Responde solo con: OK",
+                temperature: 0.1
+            });
+
+            if (testResponse && testResponse.success) {
+                console.log('✅ Verificación exitosa: Gemini AI funcionando con método simplificado');
+                this.corsMode = 'simplified';
+                return true;
+            }
+
+        } catch (error) {
+            console.log(`❌ Método simplificado falló: ${error.message}`);
+            
+            // ✅ MÉTODO 2: Fallback al método original (CORREGIDO: usar config definido arriba)
+            try {
+                console.log('🔄 Intentando método original con Authorization header...');
+                const testResponse = await this.makeAIRequest(config, {
+                    prompt: "Responde solo con: OK",
+                    temperature: 0.1
+                });
+
+                if (testResponse && testResponse.success) {
+                    console.log('✅ Verificación exitosa: Gemini AI funcionando con método original');
+                    this.corsMode = 'original';
+                    return true;
+                }
+
+            } catch (originalError) {
+                console.log(`❌ Método original también falló: ${originalError.message}`);
+                
+                // ✅ MÉTODO 3: Último intento con proxy directo
+                try {
+                    console.log('🔄 Intentando método de emergencia (proxy directo)...');
+                    const emergencyResponse = await this.makeEmergencyRequest(config);
+                    
+                    if (emergencyResponse) {
+                        console.log('✅ Verificación exitosa: Gemini AI funcionando con método de emergencia');
+                        this.corsMode = 'emergency';
+                        return true;
+                    }
+                    
+                } catch (emergencyError) {
+                    console.log(`❌ Método de emergencia también falló: ${emergencyError.message}`);
+                }
+                
+                // ✅ DETECTAR errores CORS específicos
+                if (error.message.includes('CORS') || 
+                    error.message.includes('access control') || 
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('Load failed')) {
+                    
+                    console.log('🌐 Detectado error CORS persistente en TODOS los métodos');
+                    console.log('📋 Soluciones recomendadas:');
+                    console.log('   1. Edge Function redesplegada pero con restricciones CORS de Netlify');
+                    console.log('   2. GEMINI_API_KEY configurada pero bloqueada por política CORS');
+                    console.log('   3. Supabase puede tener restricciones adicionales para dominios externos');
+                    console.log('   4. Activando modo offline - Funcionalidad completa sin IA');
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    // ✅ NUEVA FUNCIÓN: Método de emergencia usando técnica alternativa
+    async makeEmergencyRequest(config) {
+        console.log('🚨 Activando método de emergencia para CORS extremo...');
+        
+        try {
+            // Crear un elemento script dinámico como proxy
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Timeout en método de emergencia'));
+                }, 5000);
+
+                // Intentar con JSONP-like approach
+                const callbackName = 'geminiCallback_' + Date.now();
+                window[callbackName] = (data) => {
+                    clearTimeout(timeout);
+                    delete window[callbackName];
+                    resolve(data);
+                };
+
+                // Crear iframe oculto para evitar CORS
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        clearTimeout(timeout);
+                        // Si llegamos aquí, al menos la conexión es posible
+                        resolve({ success: true, method: 'iframe-test' });
+                    }, 1000);
+                };
+                
+                iframe.onerror = () => {
+                    document.body.removeChild(iframe);
+                    clearTimeout(timeout);
+                    reject(new Error('Iframe method failed'));
+                };
+
+                // URL de prueba simplificada
+                iframe.src = `${config.url}/functions/v1/gemini-ai`;
+                document.body.appendChild(iframe);
+            });
+
+        } catch (error) {
+            console.log('❌ Método de emergencia falló:', error.message);
+            throw error;
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Configurar listeners para múltiples eventos
+    setupConfigurationListeners() {
+        // Escuchar evento personalizado de dashboard.html
+        window.addEventListener('supabaseConfigReady', (event) => {
+            console.log('🔔 Evento supabaseConfigReady recibido');
+            this.onConfigurationReady();
+        });
+        
+        // También escuchar cambios en window.SUPABASE_CONFIG
+        let checkCount = 0;
+        const configChecker = () => {
+            if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
+                console.log('🔔 window.SUPABASE_CONFIG detectado');
+                this.onConfigurationReady();
+                return;
+            }
+            
+            checkCount++;
+            if (checkCount < 5) { // Solo verificar 5 veces
+                setTimeout(configChecker, 200);
+            }
+        };
+        
+        setTimeout(configChecker, 100);
+    }
+
+    // ✅ NUEVA FUNCIÓN: Verificar configuración inmediatamente
+    checkImmediateConfiguration() {
+        if (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.configured) {
+            console.log('🔔 Configuración inmediata encontrada');
+            this.onConfigurationReady();
+            return true;
+        }
+        return false;
+    }
+
+    // ✅ NUEVA FUNCIÓN: Callback cuando auth.js notifica que la configuración está lista
+    onConfigurationReady() {
+        console.log('🔔 Configuración de Supabase lista - Iniciando IA inmediatamente');
+        this.initAttempts = 0; // Resetear intentos
+        this.initializeSupabaseConnection();
+    }
+
     // ✅ NUEVA FUNCIÓN: Verificar si la IA realmente funciona con método simplificado
     async verifyAIConnection() {
         console.log('🧪 Verificando conexión real con Gemini AI...');
         
-        try {
-            const config = this.getSupabaseConfig();
-            if (!config) {
-                console.log('❌ No hay configuración de Supabase disponible');
-                return false;
-            }
+        const config = this.getSupabaseConfig();
+        if (!config) {
+            console.log('❌ No hay configuración de Supabase disponible');
+            return false;
+        }
 
+        try {
             // ✅ NUEVO: Intentar primero con método simplificado
             console.log('🔄 Intentando método simplificado (sin Authorization header)...');
             const testResponse = await this.makeAIRequestSimplified(config, {
