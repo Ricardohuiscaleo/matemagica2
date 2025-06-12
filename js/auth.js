@@ -120,6 +120,19 @@ class LoginSystem {
             // 🏭 MODO PRODUCCIÓN - Cargar desde backend o variables globales
             console.log('🏭 Cargando configuración desde backend...');
             
+            // ✅ NUEVA SOLUCIÓN: Configuración hardcodeada para Netlify/producción
+            if (window.location.hostname.includes('netlify.app') || 
+                window.location.hostname.includes('matemagic.netlify.app')) {
+                
+                console.log('🌐 Detectado Netlify - Usando configuración hardcodeada');
+                this.config = {
+                    url: "https://uznvakpuuxnpdhoejrog.supabase.co",
+                    anon_key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM1NzQ4NDQsImV4cCI6MjA0OTE1MDg0NH0.FELDriHpfy0xHwxJQGDXCi0Gd8vJWm4L9MLu3DWGZh8"
+                };
+                console.log("✅ Configuración hardcodeada aplicada para Netlify");
+                return;
+            }
+            
             try {
                 const response = await fetch('/api/config', {
                     method: 'GET',
