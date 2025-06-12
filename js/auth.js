@@ -412,9 +412,27 @@ class LoginSystem {
         this.showLoader(true, "loading");
         
         try {
+            // ✅ NUEVO: Verificar si estamos en modo offline
+            if (!this.supabase || this.config?.offline_mode) {
+                console.log("🎮 Modo offline detectado - Saltando autenticación real");
+                
+                // Simular autenticación offline
+                const offlineUser = {
+                    id: 'offline-' + Date.now(),
+                    email: 'usuario@offline.local',
+                    user_metadata: {
+                        full_name: 'Usuario Demo',
+                        avatar_url: null
+                    }
+                };
+                
+                await this.onOfflineLoginSuccess(offlineUser);
+                return true;
+            }
+            
             console.log("🔐 Iniciando OAuth con Google...");
             
-            // ✅ ARREGLO: Asegurar que la redirección se mantenga en el mismo dominio
+            // ✅ Resto del código OAuth solo si tenemos Supabase
             const currentOrigin = window.location.origin;
             const redirectUrl = `${currentOrigin}/dashboard.html`;
             
@@ -424,7 +442,7 @@ class LoginSystem {
             const { error } = await this.supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
                 options: { 
-                    redirectTo: redirectUrl // ✅ Redirigir directamente al dashboard en el mismo dominio
+                    redirectTo: redirectUrl
                 } 
             });
             
@@ -443,51 +461,29 @@ class LoginSystem {
         }
     }
 
-    // 🎭 Función para seleccionar rol (profesor/apoderado)
-    selectRole(rol) {
-        console.log(`🎭 Rol seleccionado: ${rol}`);
+    // ✅ NUEVA FUNCIÓN: Simular login exitoso en modo offline
+    async onOfflineLoginSuccess(user) {
+        const role = localStorage.getItem('matemagica_selected_role') || 'parent';
+        const userProfile = {
+            user_id: user.id, 
+            email: user.email,
+            full_name: user.user_metadata?.full_name || 'Usuario Demo',
+            avatar_url: user.user_metadata?.avatar_url,
+            user_role: role,
+            offline_mode: true // ✅ Marcar como usuario offline
+        };
         
-        this.selectedRole = rol;
-        localStorage.setItem('matemagica_selected_role', rol);
+        console.log("🎮 Guardando perfil offline...", userProfile);
+        localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
+        localStorage.removeItem('matemagica_selected_role');
         
-        // Actualizar UI para mostrar selección
-        const teacherBtn = this.elements.teacherRoleBtn;
-        const parentBtn = this.elements.parentRoleBtn;
-        const loginBtn = this.elements.googleLoginBtn;
+        // Mostrar mensaje de éxito específico para offline
+        this.showLoader(true, "success");
+        this.showTemporaryMessage('🎮 ¡Perfecto! Entrando en modo demo - Todas las funciones disponibles');
         
-        if (teacherBtn && parentBtn && loginBtn) {
-            // Remover clases activas
-            teacherBtn.classList.remove('ring-4', 'ring-blue-300', 'bg-blue-600');
-            parentBtn.classList.remove('ring-4', 'ring-green-300', 'bg-green-600');
-            
-            // Agregar clase activa al botón seleccionado
-            if (rol === 'teacher') {
-                teacherBtn.classList.add('ring-4', 'ring-blue-300', 'bg-blue-600');
-                teacherBtn.innerHTML = `
-                    <i class="fas fa-chalkboard-teacher text-4xl mb-4"></i>
-                    <h3 class="text-xl font-bold">Profesor</h3>
-                    <p class="text-sm opacity-90">Gestiona estudiantes y cursos</p>
-                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
-                `;
-            } else {
-                parentBtn.classList.add('ring-4', 'ring-green-300', 'bg-green-600');
-                parentBtn.innerHTML = `
-                    <i class="fas fa-heart text-4xl mb-4"></i>
-                    <h3 class="text-xl font-bold">Apoderado</h3>
-                    <p class="text-sm opacity-90">Acompaña el aprendizaje</p>
-                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
-                `;
-            }
-            
-            // Activar botón de login
-            loginBtn.disabled = false;
-            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            loginBtn.classList.add('hover:bg-white', 'hover:text-gray-800', 'transform', 'hover:scale-105');
-            
-            // Mostrar mensaje amigable
-            const friendlyRole = rol === 'teacher' ? 'profesor' : 'apoderado';
-            this.showTemporaryMessage(`🎉 ¡Perfecto! Te has registrado como ${friendlyRole}. Ahora puedes continuar con Google.`);
-        }
+        setTimeout(() => {
+            this.redirectUser();
+        }, 2000);
     }
 
     // 🚪 NUEVA FUNCIÓN: Logout completo del sistema
@@ -783,6 +779,95 @@ class LoginSystem {
             }
             
             console.log('✅ URL limpiada completamente');
+        }
+    }
+
+    // 🎭 Función para seleccionar rol (profesor/apoderado)
+    selectRole(rol) {
+        console.log(`🎭 Rol seleccionado: ${rol}`);
+        
+        this.selectedRole = rol;
+        localStorage.setItem('matemagica_selected_role', rol);
+        
+        // ✅ NUEVO: Actualizar el texto del botón según el modo
+        this.updateGoogleButtonText();
+        
+        // Actualizar UI para mostrar selección
+        const teacherBtn = this.elements.teacherRoleBtn;
+        const parentBtn = this.elements.parentRoleBtn;
+        const loginBtn = this.elements.googleLoginBtn;
+        
+        if (teacherBtn && parentBtn && loginBtn) {
+            // Remover clases activas
+            teacherBtn.classList.remove('ring-4', 'ring-blue-300', 'bg-blue-600');
+            parentBtn.classList.remove('ring-4', 'ring-green-300', 'bg-green-600');
+            
+            // Agregar clase activa al botón seleccionado
+            if (rol === 'teacher') {
+                teacherBtn.classList.add('ring-4', 'ring-blue-300', 'bg-blue-600');
+                teacherBtn.innerHTML = `
+                    <i class="fas fa-chalkboard-teacher text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold">Profesor</h3>
+                    <p class="text-sm opacity-90">Gestiona estudiantes y cursos</p>
+                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
+                `;
+            } else {
+                parentBtn.classList.add('ring-4', 'ring-green-300', 'bg-green-600');
+                parentBtn.innerHTML = `
+                    <i class="fas fa-heart text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold">Apoderado</h3>
+                    <p class="text-sm opacity-90">Acompaña el aprendizaje</p>
+                    <div class="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded">✅ Seleccionado</div>
+                `;
+            }
+            
+            // Activar botón de login
+            loginBtn.disabled = false;
+            loginBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            loginBtn.classList.add('hover:bg-white', 'hover:text-gray-800', 'transform', 'hover:scale-105');
+            
+            // Mostrar mensaje amigable
+            const friendlyRole = rol === 'teacher' ? 'profesor' : 'apoderado';
+            this.showTemporaryMessage(`🎉 ¡Perfecto! Te has registrado como ${friendlyRole}. Ahora puedes continuar.`);
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Actualizar texto del botón Google según el modo
+    updateGoogleButtonText() {
+        const googleBtn = document.getElementById('google-auth-btn');
+        if (!googleBtn) return;
+
+        const isOfflineMode = !this.supabase || this.config?.offline_mode;
+        const role = this.selectedRole || localStorage.getItem('matemagica_selected_role');
+        
+        if (isOfflineMode) {
+            // Modo offline/demo
+            googleBtn.innerHTML = `
+                <span style="font-size: 24px;">🎮</span>
+                <span>Entrar en Modo Demo</span>
+            `;
+            
+            // Cambiar estilo para que se vea como demo
+            googleBtn.style.background = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
+            googleBtn.style.color = '#374151';
+            googleBtn.style.border = '2px solid #a8edea';
+            
+        } else {
+            // Modo online con Google OAuth
+            googleBtn.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C41.332,36.191,44,30.651,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                </svg>
+                <span>Entrar con Google</span>
+            `;
+            
+            // Estilo original de Google
+            googleBtn.style.background = 'white';
+            googleBtn.style.color = '#374151';
+            googleBtn.style.border = '2px solid #e2e8f0';
         }
     }
 }
