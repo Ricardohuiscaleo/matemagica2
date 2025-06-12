@@ -6,6 +6,7 @@
     <title>Matemágica - Plataforma Educativa</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="favicon.ico">
     <meta name="theme-color" content="#3B82F6">
@@ -21,14 +22,29 @@
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 
-                <!-- Logo -->
-                <div class="flex items-center space-x-2">
-                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        🧮 Matemágica
-                    </h1>
-                    <span class="hidden sm:inline-block text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                        v2.0
-                    </span>
+                <!-- Logo con rol y customización -->
+                <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent py-1" style="font-family: 'Pacifico', cursive; line-height: 1.4;">
+                            🧮 Matemágica
+                        </h1>
+                        <span class="hidden sm:inline-block text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                            v2.0
+                        </span>
+                    </div>
+                    
+                    <!-- Etiqueta de rol discreta -->
+                    <div class="flex items-center space-x-2">
+                        <div class="hidden sm:flex items-center bg-gray-100 hover:bg-gray-200 transition-colors px-2 py-1 rounded-lg cursor-pointer group" id="role-indicator">
+                            <span class="text-xs font-medium text-gray-600 mr-1" id="user-role-text">Profesor</span>
+                            <i class="fas fa-user-tie text-gray-500 text-xs" id="role-icon"></i>
+                        </div>
+                        
+                        <!-- Tuerca de customización -->
+                        <button id="customize-role-btn" class="hidden sm:flex items-center justify-center w-7 h-7 bg-gray-100 hover:bg-blue-100 transition-colors rounded-lg group" title="Personalizar mi rol">
+                            <i class="fas fa-cog text-gray-500 group-hover:text-blue-600 text-xs group-hover:rotate-90 transition-all duration-300"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -523,12 +539,125 @@
         </div>
     </div>
 
+    <!-- Modal de Customización de Rol -->
+    <div id="role-customization-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">👤 Personalizar mi Rol</h3>
+                    <button id="close-role-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Tipo de Usuario -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Soy:</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                                <input type="radio" name="user-type" value="teacher" class="mr-2">
+                                <div class="text-center w-full">
+                                    <i class="fas fa-chalkboard-teacher text-blue-600 text-lg"></i>
+                                    <p class="text-sm font-medium text-gray-700">Profesor/a</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors">
+                                <input type="radio" name="user-type" value="parent" class="mr-2">
+                                <div class="text-center w-full">
+                                    <i class="fas fa-home text-purple-600 text-lg"></i>
+                                    <p class="text-sm font-medium text-gray-700">Apoderado/a</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Personalización específica para Profesor -->
+                    <div id="teacher-customization" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Prefiero que me llamen:</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="teacher-title" value="profesor" class="mr-2">
+                                <span class="text-sm">Profesor</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="teacher-title" value="profesora" class="mr-2">
+                                <span class="text-sm">Profesora</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="teacher-title" value="tia" class="mr-2">
+                                <span class="text-sm">Tía/o (más cercano)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="teacher-title" value="docente" class="mr-2">
+                                <span class="text-sm">Docente</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Personalización específica para Apoderado -->
+                    <div id="parent-customization" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Soy:</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="papa" class="mr-2">
+                                <span class="text-sm">Papá</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="mama" class="mr-2">
+                                <span class="text-sm">Mamá</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="ambos" class="mr-2">
+                                <span class="text-sm">Papá y Mamá (cuenta compartida)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="abuelo" class="mr-2">
+                                <span class="text-sm">Abuelo/a</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="tutor" class="mr-2">
+                                <span class="text-sm">Tutor/a</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="parent-title" value="familiar" class="mr-2">
+                                <span class="text-sm">Otro familiar</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Nombre personalizado opcional -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre para mostrar (opcional)</label>
+                        <input type="text" id="custom-display-name" placeholder="Ej: Miss Carmen, Tía Ana, etc." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Si está vacío, usaremos la opción seleccionada arriba</p>
+                    </div>
+                    
+                    <div class="flex space-x-3 pt-4">
+                        <button type="button" id="cancel-role-customization" 
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="button" id="save-role-customization" 
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            💾 Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast de Notificaciones -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- 🔐 SERVICIO DE CONFIGURACIÓN SEGURA - CARGAR PRIMERO -->
+    <script src="js/config-service.js"></script>
     
     <!-- ✅ NUEVO MÓDULO DE PDF DEDICADO -->
     <script src="js/pdf-generator.js"></script>
@@ -638,6 +767,7 @@
             initializeDashboardSystem();
             setupSidebarNavigation();
             setupModalEventListeners();
+            initializeRoleCustomization(); // ✅ NUEVO: Inicializar sistema de customización de roles
         });
 
         // ✅ Inicializar sistema del dashboard
@@ -906,16 +1036,120 @@
             }
         }
 
-        // ✅ LOGOUT
+        // ✅ LOGOUT MEJORADO PARA PRODUCCIÓN - COMPATIBLE CON NETLIFY
         async function logout() {
+            console.log('🚪 Iniciando logout desde producción...');
+            
+            // Mostrar confirmación
+            if (!confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                return;
+            }
+            
             try {
-                if (window.supabase) {
-                    await window.supabase.auth.signOut();
+                showInfoToast('🚪 Cerrando sesión...');
+                
+                // 1. Intentar usar el sistema principal de autenticación si está disponible
+                if (window.loginSystem && window.loginSystem.signOut) {
+                    console.log('🚪 Usando logout del sistema principal...');
+                    await window.loginSystem.signOut();
+                    return; // Si funciona, terminar aquí
                 }
-                window.location.href = 'index.html';
+                
+                // 2. Fallback mejorado para producción
+                console.log('🚪 Usando logout de fallback mejorado para producción...');
+                
+                // Cerrar sesión en Supabase si está disponible
+                if (window.supabase) {
+                    try {
+                        console.log('🔐 Cerrando sesión en Supabase...');
+                        await window.supabase.auth.signOut({ scope: 'global' });
+                        console.log('✅ Sesión cerrada en Supabase');
+                    } catch (supabaseError) {
+                        console.warn('⚠️ Error cerrando sesión en Supabase:', supabaseError.message);
+                    }
+                }
+                
+                // 3. Limpiar COMPLETAMENTE el almacenamiento local
+                console.log('🧹 Limpiando almacenamiento local...');
+                const itemsToRemove = [
+                    'matemagica-user-profile', 
+                    'matemagica_selected_role', 
+                    'matemagica_user',
+                    'matemagica_profile',
+                    'matemagica_role',
+                    'matemagica_student_info',
+                    'currentUser', 
+                    'userProfile',
+                    'selectedRole',
+                    'isAuthenticated',
+                    'studentData',
+                    'ejerciciosHistorial',
+                    'student_profiles',
+                    'exercise_progress',
+                    'sb-uznvakpuuxnpdhoejrog-auth-token',
+                    'supabase.auth.token',
+                    'supabase-auth-token'
+                ];
+                
+                itemsToRemove.forEach(item => {
+                    localStorage.removeItem(item);
+                    sessionStorage.removeItem(item);
+                    console.log(`  ✅ Removido: ${item}`);
+                });
+                
+                // 4. Limpiar COMPLETAMENTE localStorage y sessionStorage
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    console.log('✅ Almacenamiento completamente limpiado');
+                } catch (storageError) {
+                    console.warn('⚠️ Error limpiando almacenamiento:', storageError);
+                }
+                
+                // 5. Limpiar cookies de autenticación
+                console.log('🍪 Limpiando cookies...');
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                // 6. Mostrar mensaje de éxito
+                showSuccessToast('🚪 Sesión cerrada completamente. ¡Hasta pronto!');
+                
+                // 7. Redirigir con delay para mostrar el mensaje
+                setTimeout(() => {
+                    console.log('🔄 Redirigiendo a la página de login...');
+                    
+                    // Usar replace() para evitar que puedan volver con el botón "atrás"
+                    window.location.replace('index.html');
+                    
+                    // Forzar recarga después de un momento
+                    setTimeout(() => {
+                        window.location.reload(true);
+                    }, 100);
+                }, 1000);
+                
             } catch (error) {
-                console.error('Error en logout:', error);
-                window.location.href = 'index.html';
+                console.error('❌ Error durante logout:', error);
+                
+                // FALLBACK NUCLEAR: Si todo falla, limpiar TODO y recargar
+                console.log('🧨 Ejecutando fallback nuclear...');
+                
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.error('Error incluso en fallback:', e);
+                }
+                
+                showErrorToast('⚠️ Error al cerrar sesión, pero se limpiará automáticamente');
+                
+                // Redirigir SÍ O SÍ
+                setTimeout(() => {
+                    window.location.replace('index.html');
+                    setTimeout(() => {
+                        window.location.reload(true);
+                    }, 100);
+                }, 500);
             }
         }
     </script>
