@@ -12,7 +12,6 @@ declare global {
 
 // @ts-ignore - Ignorar error de módulo Deno para VS Code
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from "../_shared/cors.ts"
 
 // Tipos para la API de Gemini
 interface GeminiRequest {
@@ -31,38 +30,55 @@ interface GeminiResponse {
 }
 
 serve(async (req: Request) => {
-  // ✅ NUEVO: Logging mejorado para diagnóstico CORS
-  const origin = req.headers.get('origin') || 'unknown'
-  const userAgent = req.headers.get('user-agent') || 'unknown'
-  console.log(`🌐 Request desde: ${origin} | User-Agent: ${userAgent.substring(0, 50)}...`)
-  
-  // ✅ MEJORADO: Manejar CORS preflight con headers específicos
+  // ✅ NUEVO: Headers CORS simplificados para máxima compatibilidad
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400'
+  };
+
+  // ✅ MEJORADO: Manejo de preflight más simple
   if (req.method === 'OPTIONS') {
-    console.log('🔄 Manejando preflight CORS request')
-    return new Response('ok', { 
-      headers: {
-        ...corsHeaders,
-        // ✅ NUEVO: Headers específicos para Netlify
-        'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
-      }
-    })
+    console.log('🔄 Manejando preflight CORS request simple');
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { prompt, schema, temperature = 0.7, maxTokens = 2048 }: GeminiRequest = await req.json()
+    const requestBody = await req.json();
+    const { 
+      prompt, 
+      schema, 
+      temperature = 0.7, 
+      maxTokens = 2048,
+      anon_key // ✅ NUEVO: Recibir API key en el body en lugar del header
+    } = requestBody;
+    
+    console.log('🌐 Request recibido - Verificando configuración...');
     
     if (!prompt) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Prompt requerido para generar contenido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+        JSON.stringify({ 
+          success: false, 
+          error: 'Prompt requerido para generar contenido' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    // Obtener API key desde variables de entorno de Deno
-    const apiKey = Deno.env.get('GEMINI_API_KEY')
+    // ✅ NUEVO: Validar anon_key básica (opcional para CORS)
+    if (anon_key && !anon_key.startsWith('eyJ')) {
+      console.log('⚠️ API key de Supabase inválida recibida');
+    }
+
+    // Obtener API key de Gemini desde variables de entorno
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY no configurada')
+      throw new Error('GEMINI_API_KEY no configurada');
     }
 
     console.log('🚀 Generando contenido con Gemini AI...')
@@ -134,46 +150,32 @@ serve(async (req: Request) => {
           hasSchema: !!schema,
           contentLength: content.length,
           timestamp: new Date().toISOString(),
-          origin: origin // ✅ NUEVO: Incluir origin en respuesta para debug
+          corsMode: 'simplified' // ✅ NUEVO: Indicar modo CORS simplificado
         }
       }),
       { 
         headers: { 
           ...corsHeaders, 
-          'Content-Type': 'application/json',
-          // ✅ NUEVO: Origin específico para Netlify
-          'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
+          'Content-Type': 'application/json'
         } 
       }
     )
 
   } catch (error) {
     console.error('💥 Error en Edge Function:', error)
-    console.error('🌐 Origin del request problemático:', origin)
-    
-    // Determinar el tipo de error para mejor manejo
-    const isAPIError = error instanceof Error && error.message.includes('Gemini API')
-    const isConfigError = error instanceof Error && error.message.includes('GEMINI_API_KEY')
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: isConfigError 
-          ? 'Configuración de IA no disponible' 
-          : isAPIError 
-            ? 'Servicio de IA temporalmente no disponible'
-            : 'Error generando contenido con IA',
+        error: 'Error generando contenido con IA',
         fallback: true,
-        errorType: isConfigError ? 'config' : isAPIError ? 'api' : 'unknown',
-        origin: origin // ✅ NUEVO: Incluir origin en error para debug
+        corsMode: 'simplified' // ✅ NUEVO: Indicar modo CORS simplificado
       }),
       { 
-        status: isConfigError ? 500 : isAPIError ? 503 : 500,
+        status: 500,
         headers: { 
           ...corsHeaders, 
-          'Content-Type': 'application/json',
-          // ✅ NUEVO: Origin específico para Netlify
-          'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
+          'Content-Type': 'application/json'
         } 
       }
     )

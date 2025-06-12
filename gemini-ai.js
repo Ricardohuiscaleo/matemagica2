@@ -69,7 +69,7 @@ class GeminiAIService {
         this.initializeSupabaseConnection();
     }
 
-    // ✅ NUEVA FUNCIÓN: Verificar si la IA realmente funciona
+    // ✅ NUEVA FUNCIÓN: Verificar si la IA realmente funciona con método simplificado
     async verifyAIConnection() {
         console.log('🧪 Verificando conexión real con Gemini AI...');
         
@@ -80,50 +80,55 @@ class GeminiAIService {
                 return false;
             }
 
-            // ✅ NUEVO: Primer intento con configuración CORS estándar
-            const testResponse = await this.makeAIRequest(config, {
+            // ✅ NUEVO: Intentar primero con método simplificado
+            console.log('🔄 Intentando método simplificado (sin Authorization header)...');
+            const testResponse = await this.makeAIRequestSimplified(config, {
                 prompt: "Responde solo con: OK",
                 temperature: 0.1
             });
 
             if (testResponse && testResponse.success) {
-                console.log('✅ Verificación exitosa: Gemini AI está funcionando correctamente');
+                console.log('✅ Verificación exitosa: Gemini AI funcionando con método simplificado');
+                this.corsMode = 'simplified'; // ✅ Recordar que funciona el método simplificado
                 return true;
-            } else {
-                console.log('❌ Error en Edge Function:', testResponse?.error || 'Sin respuesta');
-                return false;
             }
 
         } catch (error) {
-            console.log(`❌ Error verificando conexión: ${error.message}`);
+            console.log(`❌ Método simplificado falló: ${error.message}`);
             
-            // ✅ NUEVO: Detectar específicamente errores CORS y sugerir soluciones
-            if (error.message.includes('CORS') || 
-                error.message.includes('access control') || 
-                error.message.includes('Failed to fetch') ||
-                error.message.includes('Load failed')) {
-                
-                console.log('🌐 Detectado error CORS - Implementando solución de respaldo...');
-                
-                // ✅ NUEVO: Intentar con configuración CORS alternativa para Netlify
-                try {
-                    const altResponse = await this.makeAIRequestCORSFallback();
-                    if (altResponse) {
-                        console.log('✅ Conexión exitosa usando método alternativo CORS');
-                        return true;
-                    }
-                } catch (altError) {
-                    console.log('❌ Método alternativo CORS también falló:', altError.message);
+            // ✅ Fallback al método original si el simplificado falla
+            try {
+                console.log('🔄 Intentando método original con Authorization header...');
+                const testResponse = await this.makeAIRequest(config, {
+                    prompt: "Responde solo con: OK",
+                    temperature: 0.1
+                });
+
+                if (testResponse && testResponse.success) {
+                    console.log('✅ Verificación exitosa: Gemini AI funcionando con método original');
+                    this.corsMode = 'original';
+                    return true;
                 }
+
+            } catch (originalError) {
+                console.log(`❌ Método original también falló: ${originalError.message}`);
                 
-                console.log('📋 Sugerencias para resolver CORS en producción:');
-                console.log('   1. Verificar que la Edge Function esté desplegada correctamente');
-                console.log('   2. Revisar configuración de CORS en Supabase Dashboard');
-                console.log('   3. Verificar que el dominio esté en lista blanca');
+                // ✅ DETECTAR errores CORS específicos
+                if (error.message.includes('CORS') || 
+                    error.message.includes('access control') || 
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('Load failed')) {
+                    
+                    console.log('🌐 Detectado error CORS persistente - La Edge Function puede necesitar configuración adicional');
+                    console.log('📋 Soluciones recomendadas:');
+                    console.log('   1. Verificar que la Edge Function esté redesplegada correctamente');
+                    console.log('   2. Verificar que GEMINI_API_KEY esté configurada en Supabase');
+                    console.log('   3. Contactar soporte de Supabase sobre restricciones CORS en Netlify');
+                }
             }
-            
-            return false;
         }
+        
+        return false;
     }
 
     // ✅ NUEVA FUNCIÓN: Hacer request con configuración CORS optimizada
@@ -181,6 +186,28 @@ class GeminiAIService {
             console.log('❌ Método alternativo CORS falló:', error.message);
             return null;
         }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Método simplificado sin headers problemáticos
+    async makeAIRequestSimplified(config, payload) {
+        const response = await fetch(`${config.url}/functions/v1/gemini-ai`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+                // ✅ SIN Authorization header para evitar preflight CORS complejo
+            },
+            mode: 'cors',
+            body: JSON.stringify({
+                ...payload,
+                anon_key: config.anon_key // ✅ API key en el body en lugar del header
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        return await response.json();
     }
 
     async initializeSupabaseConnection() {
