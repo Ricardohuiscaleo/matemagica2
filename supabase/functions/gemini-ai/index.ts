@@ -31,9 +31,21 @@ interface GeminiResponse {
 }
 
 serve(async (req: Request) => {
-  // Manejar CORS preflight
+  // ✅ NUEVO: Logging mejorado para diagnóstico CORS
+  const origin = req.headers.get('origin') || 'unknown'
+  const userAgent = req.headers.get('user-agent') || 'unknown'
+  console.log(`🌐 Request desde: ${origin} | User-Agent: ${userAgent.substring(0, 50)}...`)
+  
+  // ✅ MEJORADO: Manejar CORS preflight con headers específicos
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log('🔄 Manejando preflight CORS request')
+    return new Response('ok', { 
+      headers: {
+        ...corsHeaders,
+        // ✅ NUEVO: Headers específicos para Netlify
+        'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
+      }
+    })
   }
 
   try {
@@ -121,14 +133,23 @@ serve(async (req: Request) => {
         metadata: {
           hasSchema: !!schema,
           contentLength: content.length,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          origin: origin // ✅ NUEVO: Incluir origin en respuesta para debug
         }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          // ✅ NUEVO: Origin específico para Netlify
+          'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
+        } 
+      }
     )
 
   } catch (error) {
     console.error('💥 Error en Edge Function:', error)
+    console.error('🌐 Origin del request problemático:', origin)
     
     // Determinar el tipo de error para mejor manejo
     const isAPIError = error instanceof Error && error.message.includes('Gemini API')
@@ -143,11 +164,17 @@ serve(async (req: Request) => {
             ? 'Servicio de IA temporalmente no disponible'
             : 'Error generando contenido con IA',
         fallback: true,
-        errorType: isConfigError ? 'config' : isAPIError ? 'api' : 'unknown'
+        errorType: isConfigError ? 'config' : isAPIError ? 'api' : 'unknown',
+        origin: origin // ✅ NUEVO: Incluir origin en error para debug
       }),
       { 
         status: isConfigError ? 500 : isAPIError ? 503 : 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          // ✅ NUEVO: Origin específico para Netlify
+          'Access-Control-Allow-Origin': origin.includes('netlify.app') ? origin : '*',
+        } 
       }
     )
   }
