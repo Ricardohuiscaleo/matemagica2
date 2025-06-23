@@ -2165,6 +2165,14 @@ class BaseProfileManagement {
         }
     }
 
+    goBackToDashboard() {
+        console.log('⏪ Volviendo al dashboard principal...');
+        // Redirigir a apoderado-dashboard.html para asegurar que se muestre el contenido del dashboard.
+        // Esto es simple y efectivo, aunque una recarga completa.
+        // Mejoras futuras podrían implicar restaurar el estado del DOM sin recargar toda la página.
+        window.location.href = 'apoderado-dashboard.html';
+    }
+
 } // ...existing code... (fin de la clase BaseProfileManagement)
 
 // 👥 FÁBRICA PARA CREAR INSTANCIAS DE GESTIÓN DE PERFILES
