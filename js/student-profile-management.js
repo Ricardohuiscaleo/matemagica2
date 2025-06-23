@@ -2188,3 +2188,43 @@ const StudentProfileFactory = {
 if (typeof window !== 'undefined') {
     window.StudentProfileFactory = StudentProfileFactory;
 }
+
+// ==================================================================
+//             INICIALIZACIÓN Y SEÑAL DE "LISTO"
+// ==================================================================
+try {
+    // StudentProfileFactory ya se hizo accesible globalmente arriba.
+
+    // Creamos la instancia principal del gestor de perfiles
+    // que otros módulos (como los dashboards) pueden necesitar.
+    if (typeof window !== 'undefined' && typeof StudentProfileFactory !== 'undefined' && typeof StudentProfileFactory.create === 'function') {
+        window.studentProfileManagement = StudentProfileFactory.create();
+        console.log("✅ Gestor de perfiles (`studentProfileManagement`) instanciado y disponible globalmente.");
+
+        // Disparamos un evento personalizado para avisarle al resto de la aplicación
+        // que este módulo ya está cargado y listo para ser usado.
+        // El 'apoderado-dashboard.html' estará escuchando este evento.
+        // Esperamos a que el DOM esté completamente cargado para disparar el evento.
+        if (document.readyState === 'loading') { // Si el DOM aún se está cargando
+            document.addEventListener('DOMContentLoaded', () => {
+                document.dispatchEvent(new CustomEvent('studentProfileFactoryReady', {
+                    detail: {
+                        manager: window.studentProfileManagement
+                    }
+                }));
+                console.log("🎉 Evento 'studentProfileFactoryReady' disparado (después de DOMContentLoaded). ¡El módulo está listo!");
+            });
+        } else { // Si el DOM ya está cargado
+            document.dispatchEvent(new CustomEvent('studentProfileFactoryReady', {
+                detail: {
+                    manager: window.studentProfileManagement
+                }
+            }));
+            console.log("🎉 Evento 'studentProfileFactoryReady' disparado (DOM ya cargado). ¡El módulo está listo!");
+        }
+    } else if (typeof window !== 'undefined') {
+        console.warn("⚠️ StudentProfileFactory o su método create no están definidos. No se pudo instanciar studentProfileManagement ni disparar evento 'studentProfileFactoryReady'.");
+    }
+} catch (error) {
+    console.error("❌ Error catastrófico al inicializar student-profile-management.js:", error);
+}

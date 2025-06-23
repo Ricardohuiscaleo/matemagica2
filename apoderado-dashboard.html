@@ -856,109 +856,98 @@
             }
         }
 
-        // ✅ FUNCIÓN PARA ABRIR GESTIÓN DE PERFILES
+        // ✅ FUNCIÓN PARA ABRIR GESTIÓN DE PERFILES (MODIFICADA PARA USAR EVENTO)
         function openProfileManagement() {
             try {
                 console.log('👥 Abriendo sección de gestión de perfiles...');
                 
-                // ✅ VERIFICACIÓN ROBUSTA: Comprobar si StudentProfileFactory existe
-                if (typeof StudentProfileFactory !== 'undefined' && StudentProfileFactory) {
-                    console.log('✅ StudentProfileFactory disponible, creando instancia...');
+                if (window.studentProfileManagement) {
+                    console.log('✅ `studentProfileManagement` disponible globalmente.');
                     
-                    // Crear instancia si no existe
-                    if (!window.studentProfileManagement) {
-                        window.studentProfileManagement = StudentProfileFactory.create();
-                    }
-                    
-                    // Verificar si está inicializado
-                    if (window.studentProfileManagement && window.studentProfileManagement.isInitialized) {
+                    if (window.studentProfileManagement.isInitialized) {
+                        console.log('⚙️ Gestor de perfiles ya inicializado. Renderizando sección...');
                         window.studentProfileManagement.renderFullSection();
-                    } else if (window.studentProfileManagement) {
-                        // Inicializar si no está listo
+                    } else {
+                        console.log('⚙️ Gestor de perfiles no inicializado. Inicializando y renderizando...');
                         window.studentProfileManagement.init().then(() => {
                             window.studentProfileManagement.renderFullSection();
                         }).catch(error => {
                             console.error('❌ Error inicializando gestión de perfiles:', error);
-                            showProfileManagementError();
+                            showProfileManagementError("Error al inicializar el gestor de perfiles.");
                         });
                     }
                 } else {
-                    console.warn('⚠️ StudentProfileFactory no disponible, intentando cargar script...');
-                    loadProfileManagementScript();
+                    console.warn('⚠️ `studentProfileManagement` no disponible. Intentando cargar script o esperando evento...');
+                    // Si el script ya fue añadido, el listener de 'studentProfileFactoryReady' debería manejarlo.
+                    // Si no, lo cargamos.
+                    const existingScript = document.querySelector('script[src="js/student-profile-management.js"]');
+                    if (!existingScript) {
+                        loadProfileManagementScript();
+                    } else {
+                        // El script existe, pero la instancia no. Podría ser un error en el script mismo.
+                        // O el evento 'studentProfileFactoryReady' aún no se dispara.
+                        // Mostramos indicador y esperamos que el listener global lo resuelva.
+                        showLoadingIndicator('Esperando módulo de perfiles...');
+                        console.log("⏳ El script de perfiles existe, pero la instancia no. Esperando evento 'studentProfileFactoryReady'.");
+                    }
                 }
-                
             } catch (error) {
-                console.error('❌ Error abriendo gestión de perfiles:', error);
-                showProfileManagementError();
+                console.error('❌ Error crítico abriendo gestión de perfiles:', error);
+                showProfileManagementError("Error crítico al intentar abrir la gestión de perfiles.");
             }
         }
 
-        // 🔄 NUEVA FUNCIÓN: Cargar script de gestión de perfiles dinámicamente
+        // 🔄 FUNCIÓN PARA CARGAR SCRIPT DE GESTIÓN DE PERFILES (MODIFICADA)
         function loadProfileManagementScript() {
             console.log('📦 Cargando script de gestión de perfiles dinámicamente...');
-            
-            // Mostrar indicador de carga
             showLoadingIndicator('Cargando gestión de perfiles...');
-            
-            // Verificar si el script ya existe en el DOM
-            const existingScript = document.querySelector('script[src*="student-profile-management.js"]');
-            if (existingScript) {
-                console.log('📜 Script ya existe en DOM, esperando carga...');
-                waitForScriptLoad();
+
+            const scriptId = 'student-profile-management-script';
+            if (document.getElementById(scriptId)) {
+                console.log('📜 Script ya añadido al DOM. Esperando evento `studentProfileFactoryReady`.');
+                // No es necesario re-añadirlo. El listener global para 'studentProfileFactoryReady'
+                // debería encargarse de llamar a openProfileManagement cuando esté listo.
                 return;
             }
-            
-            // Crear y cargar el script
+
             const script = document.createElement('script');
             script.src = 'js/student-profile-management.js';
+            script.id = scriptId;
             script.async = true;
-            
+
             script.onload = () => {
-                console.log('✅ Script de gestión de perfiles cargado exitosamente');
-                hideLoadingIndicator();
-                
-                // Esperar un momento para que se ejecute el script
-                setTimeout(() => {
-                    if (typeof StudentProfileFactory !== 'undefined') {
-                        console.log('🎉 StudentProfileFactory ahora disponible');
-                        openProfileManagement(); // Reintentar
-                    } else {
-                        console.error('❌ StudentProfileFactory aún no disponible después de cargar script');
-                        showProfileManagementError();
-                    }
-                }, 500);
+                console.log('✅ Script `student-profile-management.js` cargado por el navegador.');
+                // No llamamos a openProfileManagement() aquí directamente.
+                // Confiamos en que el script disparará 'studentProfileFactoryReady'.
+                // hideLoadingIndicator() se llamará cuando el evento 'studentProfileFactoryReady' se reciba.
             };
-            
+
             script.onerror = (error) => {
                 console.error('❌ Error cargando script de gestión de perfiles:', error);
                 hideLoadingIndicator();
-                showProfileManagementError();
+                showProfileManagementError("No se pudo cargar el módulo de gestión de perfiles.");
             };
-            
+
             document.head.appendChild(script);
         }
 
-        // ⏳ NUEVA FUNCIÓN: Esperar a que se cargue el script
-        function waitForScriptLoad() {
-            let attempts = 0;
-            const maxAttempts = 20;
-            
-            const checkInterval = setInterval(() => {
-                attempts++;
-                
-                if (typeof StudentProfileFactory !== 'undefined') {
-                    clearInterval(checkInterval);
-                    hideLoadingIndicator();
-                    console.log('✅ StudentProfileFactory detectado después de esperar');
-                    openProfileManagement(); // Reintentar
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    hideLoadingIndicator();
-                    console.error('❌ Timeout esperando StudentProfileFactory');
-                    showProfileManagementError();
-                }
-            }, 250); // Revisar cada 250ms
-        }
+        // Listener global para el evento 'studentProfileFactoryReady'
+        // Este listener se añade una vez cuando apoderado-dashboard.html se carga.
+        document.addEventListener('studentProfileFactoryReady', (event) => {
+            console.log("🎉 Evento 'studentProfileFactoryReady' recibido en apoderado-dashboard.html!");
+            hideLoadingIndicator();
+            if (event.detail && event.detail.manager) {
+                // La instancia ya está creada y disponible en window.studentProfileManagement
+                // y también en event.detail.manager.
+                // Llamamos a openProfileManagement para que continúe el flujo de inicialización/renderizado.
+                openProfileManagement();
+            } else {
+                console.error("❌ Evento 'studentProfileFactoryReady' recibido sin el gestor en event.detail.");
+                showProfileManagementError("Error al recibir la confirmación del módulo de perfiles.");
+            }
+        });
+
+        // Se elimina waitForScriptLoad ya que el evento 'studentProfileFactoryReady' maneja la lógica de "espera".
 
         // 🔄 NUEVA FUNCIÓN: Mostrar indicador de carga
         function showLoadingIndicator(mensaje = 'Cargando...') {
@@ -989,10 +978,13 @@
             }
         }
 
-        // ❌ NUEVA FUNCIÓN: Mostrar error de gestión de perfiles
-        function showProfileManagementError() {
+        // ❌ FUNCIÓN PARA MOSTRAR ERROR DE GESTIÓN DE PERFILES (MODIFICADA PARA ACEPTAR MENSAJE)
+        function showProfileManagementError(customMessage = "Error cargando gestión de perfiles.") {
             hideLoadingIndicator();
             
+            // Evitar múltiples modales de error
+            if (document.getElementById('profile-error-modal')) return;
+
             const errorModal = document.createElement('div');
             errorModal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
             errorModal.id = 'profile-error-modal';
@@ -1001,10 +993,10 @@
                 <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center">
                     <div class="text-6xl mb-4">😕</div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">
-                        Error cargando gestión de perfiles
+                        ${customMessage}
                     </h2>
                     <p class="text-gray-600 mb-6 leading-relaxed">
-                        No se pudo cargar el sistema de gestión de perfiles. Esto puede deberse a una conexión lenta o un problema temporal.
+                        No se pudo cargar el sistema de gestión de perfiles. Esto puede deberse a una conexión lenta, un error en el módulo o un problema temporal.
                     </p>
                     
                     <div class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
@@ -1012,27 +1004,27 @@
                             <i class="fas fa-tools mr-2"></i>¿Qué puedes hacer?
                         </h3>
                         <ul class="text-left text-yellow-700 space-y-1 text-sm">
-                            <li>🔄 Recargar la página completamente</li>
+                            <li>🔄 Intentar recargar la página completamente (Ctrl+Shift+R o Cmd+Shift+R)</li>
                             <li>🌐 Verificar tu conexión a internet</li>
-                            <li>🚫 Desactivar bloqueadores de anuncios temporalmente</li>
-                            <li>⏳ Esperar unos segundos y volver a intentar</li>
+                            <li>🔎 Revisar la consola del navegador (F12) para más detalles del error</li>
+                            <li>⏳ Esperar unos segundos y volver a intentar abrir la sección</li>
                         </ul>
                     </div>
                     
                     <div class="space-y-3">
                         <button onclick="retryProfileManagement()" 
                                 class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors">
-                            <i class="fas fa-refresh mr-2"></i>Reintentar
+                            <i class="fas fa-sync-alt mr-2"></i>Reintentar Abrir Sección
                         </button>
                         
                         <button onclick="reloadPage()" 
                                 class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg font-medium transition-colors">
-                            <i class="fas fa-redo mr-2"></i>Recargar Página
+                            <i class="fas fa-redo mr-2"></i>Recargar Página Completa
                         </button>
                         
                         <button onclick="closeErrorModal()" 
                                 class="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition-colors">
-                            <i class="fas fa-times mr-2"></i>Cerrar
+                            <i class="fas fa-times mr-2"></i>Cerrar este mensaje
                         </button>
                     </div>
                 </div>
@@ -1041,7 +1033,7 @@
             document.body.appendChild(errorModal);
         }
 
-        // 🔄 NUEVA FUNCIÓN: Reintentar carga de gestión de perfiles
+        // 🔄 FUNCIÓN PARA REINTENTAR CARGA DE GESTIÓN DE PERFILES (MODIFICADA)
         function retryProfileManagement() {
             console.log('🔄 Reintentando carga de gestión de perfiles...');
             closeErrorModal();
@@ -1052,18 +1044,28 @@
                 problemScript.remove();
             }
             
-            // Limpiar variables globales problemáticas
+            // Limpiar variables globales problemáticas y el script si es necesario.
+            // Es importante que window.studentProfileManagement se limpie para que openProfileManagement
+            // intente cargar el script de nuevo si es necesario.
             if (window.studentProfileManagement) {
                 delete window.studentProfileManagement;
+                console.log("🧹 `window.studentProfileManagement` eliminado para reintento.");
             }
             
-            // Reintentar después de un breve delay
+            // Opcionalmente, remover el script para forzar una recarga completa del mismo
+            // const problemScript = document.getElementById('student-profile-management-script');
+            // if (problemScript) {
+            //     problemScript.remove();
+            //     console.log("🧹 Script de gestión de perfiles eliminado del DOM para recarga.");
+            // }
+
+            // Reintentar abrir la sección. openProfileManagement decidirá si necesita cargar el script.
             setTimeout(() => {
                 openProfileManagement();
-            }, 1000);
+            }, 500); // Reducido el delay
         }
 
-        // 🔄 NUEVA FUNCIÓN: Recargar página
+        // 🔄 FUNCIÓN PARA RECARGAR PÁGINA
         function reloadPage() {
             console.log('🔄 Recargando página...');
             window.location.reload();
