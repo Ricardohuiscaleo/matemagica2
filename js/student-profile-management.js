@@ -1083,9 +1083,68 @@ class BaseProfileManagement {
     // 🎨 MÉTODO PARA ACTUALIZAR INTERFAZ CON DATOS REALES
     updateSearchInterfaceWithRealData() {
         const resultsContainer = document.getElementById('professionals-results');
-        if (resultsContainer && resultsContainer.innerHTML.includes('Busca profesionales')) {
-            console.log('🎨 Actualizando interfaz de búsqueda con datos reales...');
-            // La interfaz se actualizará cuando el usuario haga una búsqueda
+        if (!resultsContainer) return;
+
+        resultsContainer.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${this.profesoresDisponibles.map(teacher => this.renderTeacherCard(teacher)).join('')}
+            </div>
+        `;
+        console.log('🎨 Interfaz de búsqueda actualizada con datos de profesores.');
+    }
+
+    renderTeacherCard(teacher) {
+        if (!teacher) return '';
+        return `
+            <div class="bg-white rounded-xl shadow-md p-5 border-2 border-gray-100 hover:border-blue-300 transition-all transform hover:scale-105">
+                <div class="flex items-center mb-4">
+                    <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mr-4 shadow-lg">
+                        ${teacher.full_name.substring(0, 1)}
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-gray-800 truncate" title="${teacher.full_name}">${teacher.full_name}</h3>
+                        <p class="text-sm text-purple-600 font-medium">${teacher.specialization}</p>
+                        <div class="flex items-center text-xs text-yellow-500 mt-1">
+                            <i class="fas fa-star mr-1"></i> ${teacher.rating.toFixed(1)} (${teacher.total_reviews} reseñas)
+                            ${teacher.is_verified ? '<i class="fas fa-check-circle text-green-500 ml-2" title="Verificado"></i>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs text-gray-600 mb-4">
+                    <p><i class="fas fa-briefcase mr-2 text-blue-500"></i>${teacher.years_experience} años de experiencia</p>
+                    <p><i class="fas fa-map-marker-alt mr-2 text-red-500"></i>${teacher.location.comuna}, ${teacher.location.region}</p>
+                    <p><i class="fas fa-chalkboard-teacher mr-2 text-green-500"></i>Online: ${teacher.location.online ? 'Sí' : 'No'} / Presencial: ${teacher.location.presencial ? 'Sí' : 'No'}</p>
+                    <p class="truncate" title="${teacher.bio}"><i class="fas fa-info-circle mr-2 text-gray-500"></i>${teacher.bio}</p>
+                </div>
+                 <div class="mt-4 text-center">
+                    <button onclick="studentProfileManagement.selectTeacher('${teacher.id}')"
+                            class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">
+                        Seleccionar Profesor
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    async initializeTeacherAssignment() {
+        console.log('👩‍🏫 Inicializando asignación de profesores...');
+        await this.loadTeachersFromSupabase(); // Carga profesores reales o fallback
+
+        const searchBtn = document.getElementById('search-professionals-btn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                console.log('🔍 Botón "Ver Todos los Profesionales" clickeado');
+                this.updateSearchInterfaceWithRealData();
+            });
+        } else {
+            console.warn('⚠️ Botón search-professionals-btn no encontrado');
+        }
+
+        const sendProfileBtn = document.getElementById('send-profile-btn');
+        if (sendProfileBtn) {
+            sendProfileBtn.addEventListener('click', () => this.sendProfileToTeachers());
+        } else {
+            console.warn('⚠️ Botón send-profile-btn no encontrado');
         }
     }
 
@@ -1589,6 +1648,195 @@ class BaseProfileManagement {
         }
     }
 
+    // --- Implementaciones Adicionales ---
+
+    showStudentDetail(studentId) {
+        console.log(`🔍 Mostrando detalle para estudiante ID: ${studentId}`);
+        const student = this.students.find(s => s.id === studentId);
+        if (!student) {
+            this.showNotification('❌ Estudiante no encontrado', 'error');
+            return;
+        }
+        // Aquí iría la lógica para mostrar un modal o una vista detallada del estudiante.
+        // Por ahora, solo un log y una alerta.
+        alert(`Detalles de ${student.name}:\nEdad: ${this.calculateAge(student.birthdate)}\nIntereses: ${student.interests?.join(', ') || 'N/A'}`);
+        this.showNotification(`Mostrando detalles de ${student.name}`, 'info');
+    }
+
+    renderActivitiesView() {
+        console.log('🎨 Renderizando vista de Actividades/Clases...');
+        // Esta vista es más relevante para el rol de profesor.
+        // Podría mostrar un calendario de clases, asignación de tareas, etc.
+        return `
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-chalkboard mr-2 text-yellow-500"></i>Gestión de Clases y Actividades
+                </h2>
+                <p class="text-gray-600">
+                    Esta sección permitirá a los profesores gestionar sus clases, asignar actividades y hacer seguimiento.
+                    (Funcionalidad futura)
+                </p>
+                <div class="mt-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                    <h3 class="font-bold text-yellow-800 mb-2">Próximamente:</h3>
+                    <ul class="list-disc list-inside text-yellow-700 text-sm">
+                        <li>Creación y programación de clases</li>
+                        <li>Asignación de tareas y ejercicios</li>
+                        <li>Material de estudio complementario</li>
+                        <li>Seguimiento de asistencia</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    renderAnalyticsView() {
+        console.log('📊 Renderizando vista de Reportes/Analíticas...');
+        // Esta vista es para mostrar estadísticas de progreso.
+        // Podría incluir gráficos, tablas de rendimiento, etc.
+         return `
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-chart-bar mr-2 text-green-500"></i>Reportes y Analíticas de Progreso
+                </h2>
+                <p class="text-gray-600">
+                    Aquí se mostrarán las estadísticas detalladas del progreso de los estudiantes.
+                    (Funcionalidad futura)
+                </p>
+                <div class="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <h3 class="font-bold text-green-800 mb-2">Próximamente:</h3>
+                    <ul class="list-disc list-inside text-green-700 text-sm">
+                        <li>Gráficos de rendimiento por materia y habilidad</li>
+                        <li>Comparativas de progreso (individual y grupal)</li>
+                        <li>Identificación de áreas de mejora</li>
+                        <li>Reportes descargables en PDF</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    saveStudentProfile() {
+        console.log('💾 Guardando perfil de estudiante...');
+        try {
+            const name = document.getElementById('student-name').value.trim();
+            const nickname = document.getElementById('student-nickname').value.trim();
+            const birthdate = document.getElementById('student-birthdate').value;
+            const gender = document.getElementById('student-gender').value;
+            const region = document.getElementById('student-region').value;
+            const comuna = document.getElementById('student-comuna').value;
+            const favoriteSubject = document.getElementById('favorite-subject').value;
+            const description = document.getElementById('student-description').value.trim();
+
+            const interests = [];
+            document.querySelectorAll('.interest-checkbox:checked').forEach(checkbox => {
+                interests.push(checkbox.value);
+            });
+
+            if (!name || !nickname || !birthdate || !gender || !region || !comuna) {
+                this.showNotification('⚠️ Por favor completa todos los campos obligatorios.', 'warning');
+                // Resaltar campos faltantes (lógica adicional podría ir aquí)
+                return;
+            }
+
+            const studentId = `student-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+            const studentData = {
+                id: studentId,
+                name,
+                nickname,
+                birthdate,
+                gender,
+                region,
+                city: comuna, // Usamos 'city' internamente como en studentCard, pero el campo es 'comuna'
+                favoriteSubject,
+                interests,
+                description,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                activo: true, // Marcar como activo por defecto
+                // Datos académicos se añadirán en la pestaña de "Asignar Profesores"
+                academic: {
+                    grade: null,
+                    school: null
+                },
+                // Profesores asignados (vacío inicialmente)
+                assignedTeachers: []
+            };
+
+            console.log('🧑‍🎓 Datos del nuevo estudiante:', studentData);
+
+            // Añadir a la lista local y simular guardado
+            this.students.push(studentData);
+
+            // Guardar en localStorage (para apoderados)
+            // En un sistema real, esto iría a Supabase o similar.
+            const storageKey = this.getUserRole() === 'teacher' ? 'profesorEstudiantes' : 'apoderadoEstudiantes';
+            localStorage.setItem(storageKey, JSON.stringify(this.students));
+            console.log(`💾 Estudiantes guardados en localStorage (${storageKey})`);
+
+
+            this.showNotification(`✅ Perfil de ${nickname} guardado exitosamente`, 'success');
+
+            // Limpiar formulario (opcional)
+            // document.getElementById('student-profile-form').reset();
+            // window.ChileLocationService.resetComunaSelector('student-comuna');
+
+
+            // Cambiar a la pestaña de "Asignar Profesores"
+            this.currentStudent = studentData; // Guardar referencia al estudiante actual para la siguiente pestaña
+            this.switchView('assign-teachers');
+
+        } catch (error) {
+            console.error('❌ Error guardando perfil:', error);
+            this.showNotification('❌ Error al guardar el perfil. Intenta de nuevo.', 'error');
+        }
+    }
+
+    showNotification(message, type = 'info', duration = 4000) {
+        console.log(`🔔 Notificación [${type}]: ${message}`);
+        const container = document.getElementById('toast-container') || document.body;
+
+        const toast = document.createElement('div');
+        let bgColor, icon;
+
+        switch (type) {
+            case 'success':
+                bgColor = 'bg-green-500';
+                icon = '<i class="fas fa-check-circle mr-2"></i>';
+                break;
+            case 'error':
+                bgColor = 'bg-red-500';
+                icon = '<i class="fas fa-times-circle mr-2"></i>';
+                break;
+            case 'warning':
+                bgColor = 'bg-yellow-500';
+                icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
+                break;
+            default: // info
+                bgColor = 'bg-blue-500';
+                icon = '<i class="fas fa-info-circle mr-2"></i>';
+        }
+
+        toast.className = `${bgColor} text-white p-4 rounded-lg shadow-lg flex items-center text-sm`;
+        toast.innerHTML = `${icon} ${message}`;
+
+        // Posicionamiento del toast container si no existe
+        if (!document.getElementById('toast-container')) {
+            const toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+            document.body.appendChild(toastContainer);
+            container = toastContainer;
+        }
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, duration);
+    }
+
+
     // 🌍 NUEVO: Detectar ubicación y configurar selectores (MÉTODO MEJORADO con geolocalización nativa)
     async detectLocationAndSetupSelectors(regionSelect, comunaSelect) {
         console.log('🌍 Iniciando detección de ubicación avanzada...');
@@ -1885,10 +2133,10 @@ class BaseProfileManagement {
         if (locationInfo) {
             locationInfo.innerHTML = `
                 <h4 class="text-sm font-semibold text-green-800 mb-2">
-                    <i class="fas fa-check-circle mr-1"></i>¡Ubicación detectada automáticamente por IP!
+                    <i class="fas fa-check-circle mr-1"></i>¡Ubicación detectada automáticamente!
                 </h4>
                 <ul class="text-xs text-green-700 space-y-1">
-                    <li>✅ Tu región y comuna fueron detectadas desde tu conexión a internet</li>
+                    <li>✅ Tu región y comuna fueron detectadas desde tu navegador o conexión</li>
                     <li>🔄 Puedes cambiarlas manualmente si no son correctas</li>
                     <li>🔒 Tu ubicación ayuda a conectarte con profesores locales</li>
                     <li>📊 También mejora las estadísticas educativas regionales</li>
@@ -1908,7 +2156,7 @@ class BaseProfileManagement {
                     <i class="fas fa-lightbulb mr-1"></i>Selecciona tu ubicación manualmente
                 </h4>
                 <ul class="text-xs text-orange-700 space-y-1">
-                    <li>🔍 No pudimos detectar tu ubicación automáticamente</li>
+                    <li>🔍 No pudimos detectar tu ubicación automáticamente o fue denegada</li>
                     <li>📍 Por favor selecciona tu región y comuna manualmente</li>
                     <li>👩‍🏫 Esto nos ayuda a conectarte con profesores locales</li>
                     <li>📊 También mejora las estadísticas educativas regionales</li>
@@ -1917,4 +2165,74 @@ class BaseProfileManagement {
         }
     }
 
-}    // ...existing code...
+    goBackToDashboard() {
+        console.log('⏪ Volviendo al dashboard principal...');
+        // Redirigir a apoderado-dashboard.html para asegurar que se muestre el contenido del dashboard.
+        // Esto es simple y efectivo, aunque una recarga completa.
+        // Mejoras futuras podrían implicar restaurar el estado del DOM sin recargar toda la página.
+        window.location.href = 'apoderado-dashboard.html';
+    }
+
+} // ...existing code... (fin de la clase BaseProfileManagement)
+
+// 👥 FÁBRICA PARA CREAR INSTANCIAS DE GESTIÓN DE PERFILES
+const StudentProfileFactory = {
+    create: function() {
+        console.log('🏭 Creando instancia de BaseProfileManagement desde Factory...');
+        // Por ahora, siempre creamos BaseProfileManagement.
+        // En el futuro, podría decidir qué clase instanciar basado en el rol del usuario.
+        const profileManager = new BaseProfileManagement();
+
+        // Exponer la instancia globalmente si es necesario para debug o acceso directo,
+        // aunque es mejor interactuar a través de la instancia devuelta por openProfileManagement.
+        // window.currentProfileManagerInstance = profileManager;
+
+        return profileManager;
+    }
+};
+
+// Asegurarse de que StudentProfileFactory esté disponible globalmente
+// para que apoderado-dashboard.html pueda acceder a él.
+if (typeof window !== 'undefined') {
+    window.StudentProfileFactory = StudentProfileFactory;
+}
+
+// ==================================================================
+//             INICIALIZACIÓN Y SEÑAL DE "LISTO"
+// ==================================================================
+try {
+    // StudentProfileFactory ya se hizo accesible globalmente arriba.
+
+    // Creamos la instancia principal del gestor de perfiles
+    // que otros módulos (como los dashboards) pueden necesitar.
+    if (typeof window !== 'undefined' && typeof StudentProfileFactory !== 'undefined' && typeof StudentProfileFactory.create === 'function') {
+        window.studentProfileManagement = StudentProfileFactory.create();
+        console.log("✅ Gestor de perfiles (`studentProfileManagement`) instanciado y disponible globalmente.");
+
+        // Disparamos un evento personalizado para avisarle al resto de la aplicación
+        // que este módulo ya está cargado y listo para ser usado.
+        // El 'apoderado-dashboard.html' estará escuchando este evento.
+        // Esperamos a que el DOM esté completamente cargado para disparar el evento.
+        if (document.readyState === 'loading') { // Si el DOM aún se está cargando
+            document.addEventListener('DOMContentLoaded', () => {
+                document.dispatchEvent(new CustomEvent('studentProfileFactoryReady', {
+                    detail: {
+                        manager: window.studentProfileManagement
+                    }
+                }));
+                console.log("🎉 Evento 'studentProfileFactoryReady' disparado (después de DOMContentLoaded). ¡El módulo está listo!");
+            });
+        } else { // Si el DOM ya está cargado
+            document.dispatchEvent(new CustomEvent('studentProfileFactoryReady', {
+                detail: {
+                    manager: window.studentProfileManagement
+                }
+            }));
+            console.log("🎉 Evento 'studentProfileFactoryReady' disparado (DOM ya cargado). ¡El módulo está listo!");
+        }
+    } else if (typeof window !== 'undefined') {
+        console.warn("⚠️ StudentProfileFactory o su método create no están definidos. No se pudo instanciar studentProfileManagement ni disparar evento 'studentProfileFactoryReady'.");
+    }
+} catch (error) {
+    console.error("❌ Error catastrófico al inicializar student-profile-management.js:", error);
+}
