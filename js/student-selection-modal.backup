@@ -1,0 +1,312 @@
+// ✅ COMPONENTE: MODAL DE SELECCIÓN DE ESTUDIANTES
+// Responsabilidad ÚNICA: Seleccionar entre estudiantes existentes
+// NO maneja creación ni edición - solo selección rápida
+console.log('👥 Inicializando Módulo de Selección de Estudiantes...');
+
+class StudentSelectionModal {
+    constructor(studentManager) {
+        this.studentManager = studentManager;
+        this.isOpen = false;
+        this.modalId = 'student-selection-modal-dynamic';
+        
+        // Configuración específica para SELECCIÓN únicamente
+        this.config = {
+            maxVisibleStudents: 5,
+            enableSearch: true,
+            quickSelection: true,
+            showStats: true
+        };
+    }
+
+    // ✅ FUNCIÓN ESPECÍFICA: Solo para seleccionar estudiantes existentes
+    open() {
+        if (this.isOpen) return;
+        
+        const students = this.studentManager.getAllStudents();
+        
+        // Si no hay estudiantes, redirigir directamente a crear nuevo
+        if (students.length === 0) {
+            this.redirectToNewStudent();
+            return;
+        }
+        
+        this.createSelectionModal();
+        this.populateStudentsList();
+        this.setupSelectionListeners();
+        this.showModal();
+        
+        this.isOpen = true;
+        console.log('👥 Modal de SELECCIÓN abierto');
+    }
+
+    // ✅ CREAR MODAL ESPECÍFICO PARA SELECCIÓN
+    createSelectionModal() {
+        this.removeExistingModal();
+
+        const modalHTML = `
+            <div id="${this.modalId}" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <!-- Header específico para selección -->
+                    <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-t-xl">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-bold">👥 Cambiar Estudiante</h3>
+                                <p class="text-blue-100 text-sm">Selecciona quién va a estudiar</p>
+                            </div>
+                            <button id="close-selection-modal" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Contenido específico para selección -->
+                    <div class="p-4">
+                        <!-- Búsqueda rápida -->
+                        <div class="mb-4" id="search-container">
+                            <input type="text" id="student-search-input" 
+                                   placeholder="Buscar estudiante..." 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <!-- Lista de estudiantes -->
+                        <div id="students-selection-list" class="space-y-2 max-h-64 overflow-y-auto">
+                            <!-- Contenido dinámico -->
+                        </div>
+                        
+                        <!-- Acciones específicas para selección -->
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <button id="add-new-student-link" 
+                                    class="w-full text-blue-600 hover:text-blue-800 text-sm font-medium py-2 hover:bg-blue-50 rounded-lg transition-colors">
+                                <i class="fas fa-plus mr-1"></i>Agregar Nuevo Estudiante
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    // ✅ POBLAR LISTA ESPECÍFICA PARA SELECCIÓN
+    populateStudentsList() {
+        const container = document.getElementById('students-selection-list');
+        if (!container) return;
+
+        const students = this.studentManager.getAllStudents();
+        const currentStudent = this.studentManager.getCurrentStudent();
+
+        container.innerHTML = students.map(student => {
+            const isSelected = currentStudent && currentStudent.id === student.id;
+            const avatar = student.avatar || (student.gender === 'niña' ? '👧' : '👦');
+            
+            return `
+                <div class="student-selection-item p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-blue-50 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}"
+                     onclick="window.studentSelectionModal.selectStudent('${student.id}')"
+                     data-student-name="${student.name.toLowerCase()}">
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white">
+                                ${avatar}
+                            </div>
+                            <div>
+                                <div class="font-medium text-gray-900">${student.name}</div>
+                                <div class="text-sm text-gray-500">${student.age} años • ${student.course || 'Sin curso'}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            ${isSelected ? `
+                                <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check text-white text-xs"></i>
+                                </div>
+                            ` : `
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            `}
+                        </div>
+                    </div>
+                    
+                    ${this.config.showStats && student.stats ? `
+                        <div class="mt-2 text-xs text-gray-500 flex space-x-4">
+                            <span>📚 ${student.stats.totalExercises || 0} ejercicios</span>
+                            <span>⭐ ${student.stats.totalPoints || 0} puntos</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ✅ LISTENERS ESPECÍFICOS PARA SELECCIÓN
+    setupSelectionListeners() {
+        // Cerrar modal
+        const closeBtn = document.getElementById('close-selection-modal');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.close());
+        }
+
+        // Búsqueda
+        const searchInput = document.getElementById('student-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.filterStudents(e.target.value));
+        }
+
+        // Redirigir a nuevo estudiante
+        const addNewBtn = document.getElementById('add-new-student-link');
+        if (addNewBtn) {
+            addNewBtn.addEventListener('click', () => {
+                this.close();
+                this.openNewStudentModal();
+            });
+        }
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) {
+                this.close();
+            }
+        });
+    }
+
+    // ✅ FUNCIÓN ESPECÍFICA: Solo seleccionar (NO editar)
+    async selectStudent(studentId) {
+        try {
+            await this.studentManager.selectStudent(studentId);
+            
+            if (typeof showSuccessToast === 'function') {
+                const student = this.studentManager.getCurrentStudent();
+                showSuccessToast(`✅ ${student.name} seleccionado`);
+            }
+            
+            // Cerrar modal después de selección exitosa
+            setTimeout(() => this.close(), 500);
+            
+        } catch (error) {
+            console.error('❌ Error seleccionando estudiante:', error);
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('Error al seleccionar estudiante');
+            }
+        }
+    }
+
+    // ✅ FILTRO DE BÚSQUEDA ESPECÍFICO
+    filterStudents(searchTerm) {
+        const items = document.querySelectorAll('.student-selection-item');
+        const term = searchTerm.toLowerCase().trim();
+        
+        items.forEach(item => {
+            const studentName = item.dataset.studentName;
+            const matches = studentName.includes(term);
+            item.style.display = matches ? 'block' : 'none';
+        });
+    }
+
+    // ✅ REDIRIGIR A NUEVO ESTUDIANTE (SIN duplicar funcionalidad)
+    redirectToNewStudent() {
+        console.log('📝 Redirigiendo a crear nuevo estudiante...');
+        this.openNewStudentModal();
+    }
+
+    // ✅ ABRIR MODAL DE NUEVO ESTUDIANTE (delegar responsabilidad)
+    openNewStudentModal() {
+        const newStudentModal = document.getElementById('new-student-modal');
+        if (newStudentModal) {
+            newStudentModal.classList.remove('hidden');
+            newStudentModal.style.display = 'flex';
+            
+            // Limpiar formulario
+            const form = document.getElementById('new-student-form');
+            if (form) form.reset();
+            
+            console.log('📝 Modal de NUEVO ESTUDIANTE abierto');
+        }
+    }
+
+    // ✅ MÉTODOS DE CONTROL DEL MODAL
+    showModal() {
+        const modal = document.getElementById(this.modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            
+            // Enfocar en búsqueda
+            setTimeout(() => {
+                const searchInput = document.getElementById('student-search-input');
+                if (searchInput) searchInput.focus();
+            }, 100);
+        }
+    }
+
+    close() {
+        if (!this.isOpen) return;
+        
+        const modal = document.getElementById(this.modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+        
+        this.removeExistingModal();
+        this.isOpen = false;
+        console.log('👥 Modal de SELECCIÓN cerrado');
+    }
+
+    removeExistingModal() {
+        const existingModal = document.getElementById(this.modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+    }
+
+    // ✅ MÉTODO PÚBLICO
+    isModalOpen() {
+        return this.isOpen;
+    }
+}
+
+// ✅ CREAR INSTANCIA GLOBAL DEL MODAL - CORREGIDO
+if (typeof window !== 'undefined') {
+    // Función para inicializar el modal cuando studentManager esté listo
+    window.initializeStudentSelectionModal = function() {
+        if (window.studentManager && !window.studentSelectionModal) {
+            window.studentSelectionModal = new StudentSelectionModal(window.studentManager);
+            console.log('✅ Modal de Selección de Estudiantes disponible globalmente');
+            return true;
+        }
+        return false;
+    };
+
+    // Intentar inicializar inmediatamente
+    document.addEventListener('DOMContentLoaded', () => {
+        // Verificar si ya está inicializado desde student-management.js
+        if (window.studentSelectionModal) {
+            console.log('✅ Modal ya inicializado por student-management.js');
+            return;
+        }
+        
+        // Esperar un poco para que studentManager se inicialice
+        setTimeout(() => {
+            if (!window.initializeStudentSelectionModal()) {
+                // Si no está listo, seguir intentando con intervalos más largos
+                let attempts = 0;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (window.initializeStudentSelectionModal() || attempts >= 20) {
+                        clearInterval(interval);
+                        if (attempts >= 20 && !window.studentSelectionModal) {
+                            console.warn('⚠️ Timeout esperando studentManager para el modal');
+                        }
+                    }
+                }, 250); // Intervalos más largos
+            }
+        }, 200); // Esperar un poco más inicialmente
+    });
+}
+
+// ✅ EXPORTAR PARA MÓDULOS
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StudentSelectionModal;
+}
+
+console.log('✅ Módulo UX/UI Modal Selección de Estudiantes cargado completamente');

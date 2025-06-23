@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil Profesional - Matemágica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header Navigation -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center">
+                        <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <span class="text-white font-bold text-lg">M</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-800">Matemágica</span>
+                    </a>
+                </div>
+                
+                <nav class="hidden md:flex space-x-8">
+                    <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">Mi Dashboard</a>
+                    <a href="profesor-profile.html" class="text-blue-600 font-medium">Mi Perfil</a>
+                    <a href="buscar-teachers.html" class="text-gray-600 hover:text-gray-900">Red de Profesores</a>
+                </nav>
+
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button id="user-menu-button" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <img class="h-8 w-8 rounded-full bg-gray-300" src="https://via.placeholder.com/32" alt="Avatar">
+                            <span class="ml-2 text-gray-700 hidden sm:block" id="user-name">Cargando...</span>
+                        </button>
+                    </div>
+                    <button id="logout-btn" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-6" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="dashboard.html" class="text-gray-700 hover:text-blue-600">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                        </svg>
+                        Mi Dashboard
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-blue-600 font-medium ml-1 md:ml-2">Mi Perfil Profesional</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Header del perfil -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 mb-8 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">👩‍🏫 Mi Perfil Profesional</h1>
+                    <p class="text-blue-100 max-w-2xl">
+                        Gestiona tu información profesional, especialidades y habilidades para ser encontrado 
+                        por apoderados que buscan profesionales como tú.
+                    </p>
+                </div>
+                <div class="hidden lg:block">
+                    <div class="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <span class="text-4xl">👤</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor principal del formulario -->
+        <div id="teacher-profile-form-container" class="min-h-[600px]">
+            <!-- El formulario se inicializa aquí -->
+            <div class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="mt-4 text-gray-600">Cargando tu perfil profesional...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de confirmación -->
+    <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Confirmar cambios</h3>
+            <p class="text-gray-600 mb-6">¿Estás seguro de que quieres guardar los cambios en tu perfil profesional?</p>
+            <div class="flex space-x-4">
+                <button id="cancel-changes" class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600">
+                    Cancelar
+                </button>
+                <button id="confirm-changes" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Screen Component -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-50 flex items-center justify-center" style="display: none;">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600 text-lg">Guardando tu perfil...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config-service.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <!-- ✅ NUEVO: Configuración global de Skills con Skills Personalizadas -->
+    <script src="js/skills-config.js"></script>
+    
+    <script src="js/skills-service.js"></script>
+    <script src="js/components/skills-ui-components.js"></script>
+    
+    <script>
+        // ====================================
+        // 🚀 INICIALIZACIÓN DE LA PÁGINA CORREGIDA
+        // ====================================
+        
+        let teacherProfileForm = null;
+        let currentTeacherId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                console.log('👩‍🏫 Inicializando página de perfil de profesor...');
+                
+                // Verificar autenticación
+                await checkAuthAndRedirect();
+                
+                // Esperar a que el sistema de skills esté listo
+                await waitForSkillsSystem();
+                
+                // Obtener ID del profesor actual
+                currentTeacherId = await getCurrentTeacherId();
+                
+                // Inicializar formulario de perfil
+                await initializeProfileForm();
+                
+                // Configurar eventos
+                setupEventListeners();
+                
+                console.log('✅ Página de perfil de profesor inicializada correctamente');
+                
+            } catch (error) {
+                console.error('❌ Error inicializando página:', error);
+                showError('Error cargando la página. Recarga e intenta nuevamente.');
+            }
+        });
+
+        async function waitForSkillsSystem() {
+            return new Promise((resolve, reject) => {
+                if (window.SkillsSystemInitializer && window.SkillsSystemInitializer.initialized) {
+                    console.log('✅ Sistema de Skills ya disponible');
+                    resolve();
+                    return;
+                }
+
+                // Escuchar evento de inicialización
+                document.addEventListener('skillsSystemReady', (event) => {
+                    console.log('✅ Sistema de Skills listo:', event.detail);
+                    resolve();
+                });
+
+                // Timeout de seguridad
+                setTimeout(() => {
+                    if (!window.SkillsSystemInitializer?.initialized) {
+                        console.warn('⚠️ Timeout esperando Skills System, continuando sin él');
+                        resolve(); // Continuar aunque no esté listo
+                    }
+                }, 5000);
+            });
+        }
+
+        async function checkAuthAndRedirect() {
+            // Verificar si el usuario está autenticado
+            const user = await getCurrentUser();
+            if (!user) {
+                console.log('❌ Usuario no autenticado, redirigiendo...');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Verificar que sea profesor
+            const userProfile = localStorage.getItem('matemagica-user-profile');
+            if (userProfile) {
+                const profile = JSON.parse(userProfile);
+                if (profile.user_role !== 'teacher') {
+                    console.log('❌ Usuario no es profesor, redirigiendo...');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+                
+                console.log(`✅ Profesor autenticado: ${profile.full_name}`);
+                // Actualizar nombre de usuario en header
+                const userNameElement = document.getElementById('user-name');
+                if (userNameElement) {
+                    userNameElement.textContent = profile.full_name || profile.email || 'Profesor';
+                }
+            }
+        }
+
+        async function getCurrentTeacherId() {
+            // Obtener ID del profesor actual desde localStorage
+            const userProfile = localStorage.getItem('matemagica-user-profile');
+            if (userProfile) {
+                const profile = JSON.parse(userProfile);
+                const teacherId = profile.id || profile.user_id;
+                console.log(`👩‍🏫 ID de profesor obtenido: ${teacherId}`);
+                return teacherId;
+            }
+            console.warn('⚠️ No se pudo obtener ID del profesor');
+            return null;
+        }
+
+        async function initializeProfileForm() {
+            console.log('📝 Inicializando formulario de perfil...');
+            
+            // Verificar que TeacherProfileForm esté disponible
+            if (typeof TeacherProfileForm === 'undefined') {
+                throw new Error('TeacherProfileForm no está disponible');
+            }
+            
+            // Inicializar formulario de perfil de profesor
+            teacherProfileForm = new TeacherProfileForm('teacher-profile-form-container', currentTeacherId);
+            
+            console.log('✅ Formulario de perfil inicializado');
+        }
+
+        function setupEventListeners() {
+            console.log('🔧 Configurando event listeners...');
+            
+            // Logout button
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        console.log('🚪 Cerrando sesión...');
+                        await logout();
+                        window.location.href = 'index.html';
+                    } catch (error) {
+                        console.error('❌ Error al cerrar sesión:', error);
+                    }
+                });
+            }
+
+            // User menu (simple toggle)
+            const userMenuBtn = document.getElementById('user-menu-button');
+            if (userMenuBtn) {
+                userMenuBtn.addEventListener('click', () => {
+                    console.log('👤 Toggle user menu');
+                    // Implementar menú desplegable si es necesario
+                });
+            }
+
+            // Modal de confirmación
+            const cancelBtn = document.getElementById('cancel-changes');
+            const confirmBtn = document.getElementById('confirm-changes');
+            const modal = document.getElementById('confirmation-modal');
+            
+            if (cancelBtn && modal) {
+                cancelBtn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                });
+            }
+
+            if (confirmBtn && modal) {
+                confirmBtn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    // Aquí se ejecutaría la acción confirmada
+                    console.log('✅ Cambios confirmados');
+                });
+            }
+            
+            console.log('✅ Event listeners configurados');
+        }
+
+        // ====================================
+        // 🛠️ FUNCIONES AUXILIARES MEJORADAS
+        // ====================================
+
+        function showError(message) {
+            console.error('🚨 Error:', message);
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg z-50 max-w-sm';
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <div class="text-red-400 mr-3 text-xl">❌</div>
+                    <div class="flex-1">
+                        <div class="text-red-800 font-medium">Error</div>
+                        <div class="text-red-600 text-sm mt-1">${message}</div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remover después de 8 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 8000);
+        }
+
+        function showSuccess(message) {
+            console.log('✅ Éxito:', message);
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg z-50 max-w-sm';
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <div class="text-green-400 mr-3 text-xl">✅</div>
+                    <div class="flex-1">
+                        <div class="text-green-800 font-medium">Éxito</div>
+                        <div class="text-green-600 text-sm mt-1">${message}</div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="ml-2 text-green-400 hover:text-green-600 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remover después de 5 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // ====================================
+        // 🔄 FUNCIONES DE ESTADO MEJORADAS
+        // ====================================
+
+        function showLoading(message = 'Cargando...') {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                const textElement = loadingScreen.querySelector('p');
+                if (textElement) {
+                    textElement.textContent = message;
+                }
+                loadingScreen.style.display = 'flex';
+            }
+        }
+
+        function hideLoading() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+        }
+
+        // ====================================
+        // 🌐 FUNCIONES DE AUTENTICACIÓN CORREGIDAS
+        // ====================================
+
+        async function getCurrentUser() {
+            try {
+                const userProfile = localStorage.getItem('matemagica-user-profile');
+                if (userProfile) {
+                    const user = JSON.parse(userProfile);
+                    console.log('👤 Usuario actual encontrado:', user.full_name || user.email);
+                    return user;
+                }
+                console.warn('⚠️ No se encontró perfil de usuario en localStorage');
+                return null;
+            } catch (error) {
+                console.error('❌ Error obteniendo usuario actual:', error);
+                return null;
+            }
+        }
+
+        async function logout() {
+            try {
+                console.log('🚪 Limpiando datos de sesión...');
+                localStorage.removeItem('matemagica-authenticated');
+                localStorage.removeItem('matemagica-user-profile');
+                localStorage.removeItem('matemagica_selected_role');
+                
+                // Limpiar también datos específicos de profesor si existen
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('teacher_profile_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                console.log('✅ Sesión cerrada correctamente');
+            } catch (error) {
+                console.error('❌ Error durante logout:', error);
+                throw error;
+            }
+        }
+
+        // ====================================
+        // 🔧 SERVICE WORKER Y PWA SETUP
+        // ====================================
+
+        // Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('✅ SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('❌ SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // ====================================
+        // 🎯 FUNCIONES GLOBALES PARA DEBUGGING
+        // ====================================
+        
+        window.debugProfesorProfile = {
+            getCurrentState: () => ({
+                teacherProfileForm: !!teacherProfileForm,
+                currentTeacherId,
+                skillsSystemReady: window.SkillsSystemInitializer?.initialized,
+                userProfile: localStorage.getItem('matemagica-user-profile')
+            }),
+            
+            reinitialize: async () => {
+                console.log('🔄 Reinicializando profesor profile...');
+                await initializeProfileForm();
+            },
+            
+            showTestError: () => showError('Error de prueba'),
+            showTestSuccess: () => showSuccess('Éxito de prueba')
+        };
+
+        console.log('🎉 Sistema de profesor profile cargado. Debug disponible en window.debugProfesorProfile');
+    </script>
+</body>
+</html>

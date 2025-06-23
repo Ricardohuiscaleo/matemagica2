@@ -2,18 +2,47 @@
 console.log('👨‍👩‍👧‍👦 Inicializando dashboard del apoderado...');
 
 // Variables globales
-// currentUser se obtiene de auth-flow.js - no redeclarar aquí
+let currentUser = null; // ✅ AGREGAR DECLARACIÓN GLOBAL
 let studentData = null;
 let ejerciciosHistorial = [];
 
-// Elementos DOM principales
-const infoEstudiante = document.getElementById('info-estudiante');
-const estudianteAsignado = document.getElementById('estudiante-asignado');
-const formularioConfigurar = document.getElementById('formulario-configurar');
-const sinEstudiante = document.getElementById('sin-estudiante');
-const seccionGenerador = document.getElementById('seccion-generador');
-const seccionResultados = document.getElementById('seccion-resultados');
-const seccionEstadisticas = document.getElementById('seccion-estadisticas');
+// ✅ FUNCIÓN AUXILIAR PARA MANIPULAR DOM TOLERANTE
+function updateElementSafely(elementId, action) {
+    const element = document.getElementById(elementId);
+    if (element && action) {
+        try {
+            action(element);
+            return true;
+        } catch (error) {
+            console.warn(`⚠️ No se pudo actualizar elemento ${elementId}:`, error);
+            return false;
+        }
+    } else {
+        console.log(`ℹ️ Elemento ${elementId} no encontrado - continuando sin errores`);
+        return false;
+    }
+}
+
+function setTextSafely(elementId, text) {
+    return updateElementSafely(elementId, (el) => el.textContent = text);
+}
+
+function addClassSafely(elementId, className) {
+    return updateElementSafely(elementId, (el) => el.classList.add(className));
+}
+
+function removeClassSafely(elementId, className) {
+    return updateElementSafely(elementId, (el) => el.classList.remove(className));
+}
+
+function getElementValueSafely(elementId, defaultValue = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        return element.value || defaultValue;
+    }
+    console.log(`ℹ️ Elemento ${elementId} no encontrado - usando valor por defecto: ${defaultValue}`);
+    return defaultValue;
+}
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
@@ -41,22 +70,34 @@ async function initializeApoderadoDashboard() {
 }
 
 function checkAuthentication() {
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('currentUser');
+    // ✅ USAR EL SISTEMA NUEVO DE AUTENTICACIÓN
+    const isAuthenticated = localStorage.getItem('matemagica-authenticated');
+    const userProfile = localStorage.getItem('matemagica-user-profile');
     
-    if (isAuthenticated !== 'true' || !userData) {
+    if (isAuthenticated !== 'true' || !userProfile) {
         console.warn('⚠️ Usuario no autenticado, redirigiendo...');
         window.location.href = '/index.html';
         return false;
     }
     
     try {
-        currentUser = JSON.parse(userData);
-        if (currentUser.role !== 'parent') {
+        // ✅ PARSEAR EL PERFIL MODERNO
+        const profile = JSON.parse(userProfile);
+        currentUser = {
+            ...profile,
+            name: profile.full_name,
+            avatar: profile.avatar_url,
+            role: profile.user_role // Mapear al formato legacy para compatibilidad
+        };
+        
+        // ✅ VERIFICAR ROL CORRECTO
+        if (profile.user_role !== 'parent') {
             console.warn('⚠️ Usuario no es apoderado, redirigiendo...');
             window.location.href = '/index.html';
             return false;
         }
+        
+        console.log('✅ Apoderado autenticado:', profile.full_name);
         return true;
     } catch (error) {
         console.error('❌ Error al parsear datos de usuario:', error);
@@ -68,12 +109,14 @@ function checkAuthentication() {
 function loadUserData() {
     if (!currentUser) return;
     
-    // Actualizar info del apoderado en el header
-    document.getElementById('apoderado-nombre').textContent = currentUser.name || 'Apoderado';
+    // ✅ ACTUALIZAR INFO DEL APODERADO CON VERIFICACIÓN TOLERANTE
+    setTextSafely('apoderado-nombre', currentUser.name || 'Apoderado');
     
-    if (currentUser.avatar) {
-        document.getElementById('apoderado-avatar').src = currentUser.avatar;
-    }
+    updateElementSafely('apoderado-avatar', (el) => {
+        if (currentUser.avatar) {
+            el.src = currentUser.avatar;
+        }
+    });
     
     console.log('✅ Datos del usuario cargados');
 }
@@ -104,30 +147,41 @@ function loadStudentData() {
 }
 
 function setupEventListeners() {
-    // Botones de configuración
-    document.getElementById('btn-configurar-estudiante').addEventListener('click', mostrarFormularioConfig);
-    document.getElementById('btn-empezar-config').addEventListener('click', mostrarFormularioConfig);
-    document.getElementById('btn-cancelar-config').addEventListener('click', ocultarFormularioConfig);
+    // ✅ BOTONES DE CONFIGURACIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-configurar-estudiante', (el) => 
+        el.addEventListener('click', mostrarFormularioConfig));
+    updateElementSafely('btn-empezar-config', (el) => 
+        el.addEventListener('click', mostrarFormularioConfig));
+    updateElementSafely('btn-cancelar-config', (el) => 
+        el.addEventListener('click', ocultarFormularioConfig));
     
-    // Formulario de configuración
-    document.getElementById('form-configurar-estudiante').addEventListener('submit', guardarConfiguracionEstudiante);
+    // ✅ FORMULARIO DE CONFIGURACIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('form-configurar-estudiante', (el) => 
+        el.addEventListener('submit', guardarConfiguracionEstudiante));
     
-    // Botones de generación
-    document.getElementById('btn-generar-ia').addEventListener('click', () => generarEjercicios('ia'));
-    document.getElementById('btn-generar-offline').addEventListener('click', () => generarEjercicios('offline'));
+    // ✅ BOTONES DE GENERACIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-generar-ia', (el) => 
+        el.addEventListener('click', () => generarEjercicios('ia')));
+    updateElementSafely('btn-generar-offline', (el) => 
+        el.addEventListener('click', () => generarEjercicios('offline')));
     
-    // Botones de resultados
-    document.getElementById('btn-descargar-pdf').addEventListener('click', descargarPDF);
-    document.getElementById('btn-generar-cuento').addEventListener('click', generarCuento);
-    document.getElementById('btn-marcar-completado').addEventListener('click', marcarComoCompletado);
+    // ✅ BOTONES DE RESULTADOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-descargar-pdf', (el) => 
+        el.addEventListener('click', descargarPDF));
+    updateElementSafely('btn-generar-cuento', (el) => 
+        el.addEventListener('click', generarCuento));
+    updateElementSafely('btn-marcar-completado', (el) => 
+        el.addEventListener('click', marcarComoCompletado));
     
-    // Cerrar sesión
-    document.getElementById('btn-cerrar-sesion').addEventListener('click', cerrarSesion);
+    // ✅ CERRAR SESIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-cerrar-sesion', (el) => 
+        el.addEventListener('click', cerrarSesion));
     
-    // Modal de cuento
-    document.getElementById('btn-cerrar-cuento').addEventListener('click', cerrarModalCuento);
+    // ✅ MODAL DE CUENTO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-cerrar-cuento', (el) => 
+        el.addEventListener('click', cerrarModalCuento));
     
-    console.log('✅ Event listeners configurados');
+    console.log('✅ Event listeners configurados (tolerante)');
 }
 
 function updateUI() {
@@ -141,70 +195,70 @@ function updateUI() {
 }
 
 function mostrarEstudianteAsignado() {
-    // Ocultar otras secciones
-    sinEstudiante.classList.add('hidden');
-    formularioConfigurar.classList.add('hidden');
+    // ✅ OCULTAR OTRAS SECCIONES CON VERIFICACIÓN TOLERANTE
+    addClassSafely('sin-estudiante', 'hidden');
+    addClassSafely('formulario-configurar', 'hidden');
     
-    // Mostrar info del estudiante
-    estudianteAsignado.classList.remove('hidden');
+    // ✅ MOSTRAR INFO DEL ESTUDIANTE CON VERIFICACIÓN TOLERANTE
+    removeClassSafely('estudiante-asignado', 'hidden');
     
-    // Actualizar datos
+    // ✅ ACTUALIZAR DATOS CON VERIFICACIÓN TOLERANTE
     const inicial = studentData.name.charAt(0).toUpperCase();
-    document.getElementById('estudiante-inicial').textContent = inicial;
-    document.getElementById('estudiante-nombre-display').textContent = studentData.name;
-    document.getElementById('estudiante-info-display').textContent = `${studentData.grade} • ${studentData.age} años`;
+    setTextSafely('estudiante-inicial', inicial);
+    setTextSafely('estudiante-nombre-display', studentData.name);
+    setTextSafely('estudiante-info-display', `${studentData.grade} • ${studentData.age} años`);
     
-    // Nivel actual
+    // ✅ NIVEL ACTUAL CON VERIFICACIÓN TOLERANTE
     const niveles = ['Fácil', 'Medio', 'Difícil'];
     const nivelActual = niveles[parseInt(studentData.level) - 1] || 'Fácil';
-    document.getElementById('estudiante-nivel-display').textContent = nivelActual;
+    setTextSafely('estudiante-nivel-display', nivelActual);
     
-    // Estadísticas rápidas
+    // ✅ ESTADÍSTICAS RÁPIDAS CON VERIFICACIÓN TOLERANTE
     const totalEjercicios = ejerciciosHistorial.length;
-    document.getElementById('total-ejercicios-estudiante').textContent = totalEjercicios;
+    setTextSafely('total-ejercicios-estudiante', totalEjercicios);
     
     if (ejerciciosHistorial.length > 0) {
         const ultimaSesion = new Date(ejerciciosHistorial[ejerciciosHistorial.length - 1].fecha);
-        document.getElementById('ultima-sesion').textContent = ultimaSesion.toLocaleDateString('es-ES');
+        setTextSafely('ultima-sesion', ultimaSesion.toLocaleDateString('es-ES'));
         
-        // Nivel favorito (más usado)
+        // ✅ NIVEL FAVORITO (MÁS USADO) CON VERIFICACIÓN TOLERANTE
         const nivelesUsados = ejerciciosHistorial.map(e => e.nivel);
         const nivelFavorito = nivelesUsados.sort((a,b) =>
             nivelesUsados.filter(v => v===a).length - nivelesUsados.filter(v => v===b).length
         ).pop();
-        document.getElementById('nivel-favorito-estudiante').textContent = niveles[nivelFavorito - 1] || '-';
+        setTextSafely('nivel-favorito-estudiante', niveles[nivelFavorito - 1] || '-');
     }
     
-    console.log('✅ Estudiante asignado mostrado');
+    console.log('✅ Estudiante asignado mostrado (tolerante)');
 }
 
 function mostrarSinEstudiante() {
-    estudianteAsignado.classList.add('hidden');
-    formularioConfigurar.classList.add('hidden');
-    sinEstudiante.classList.remove('hidden');
-    seccionGenerador.classList.add('hidden');
+    addClassSafely('estudiante-asignado', 'hidden');
+    addClassSafely('formulario-configurar', 'hidden');
+    removeClassSafely('sin-estudiante', 'hidden');
+    addClassSafely('seccion-generador', 'hidden');
     
-    console.log('📝 Mostrando pantalla sin estudiante');
+    console.log('📝 Mostrando pantalla sin estudiante (tolerante)');
 }
 
 function mostrarFormularioConfig() {
-    sinEstudiante.classList.add('hidden');
-    estudianteAsignado.classList.add('hidden');
-    formularioConfigurar.classList.remove('hidden');
+    addClassSafely('sin-estudiante', 'hidden');
+    addClassSafely('estudiante-asignado', 'hidden');
+    removeClassSafely('formulario-configurar', 'hidden');
     
-    // Si hay datos existentes, pre-llenar el formulario
+    // ✅ SI HAY DATOS EXISTENTES, PRE-LLENAR EL FORMULARIO CON VERIFICACIÓN TOLERANTE
     if (studentData) {
-        document.getElementById('config-estudiante-nombre').value = studentData.name || '';
-        document.getElementById('config-estudiante-curso').value = studentData.grade || '';
-        document.getElementById('config-estudiante-edad').value = studentData.age || '';
-        document.getElementById('config-estudiante-nivel').value = studentData.level || '1';
+        updateElementSafely('config-estudiante-nombre', (el) => el.value = studentData.name || '');
+        updateElementSafely('config-estudiante-curso', (el) => el.value = studentData.grade || '');
+        updateElementSafely('config-estudiante-edad', (el) => el.value = studentData.age || '');
+        updateElementSafely('config-estudiante-nivel', (el) => el.value = studentData.level || '1');
     }
     
-    console.log('📝 Mostrando formulario de configuración');
+    console.log('📝 Mostrando formulario de configuración (tolerante)');
 }
 
 function ocultarFormularioConfig() {
-    formularioConfigurar.classList.add('hidden');
+    addClassSafely('formulario-configurar', 'hidden');
     updateUI();
 }
 
@@ -249,21 +303,23 @@ async function guardarConfiguracionEstudiante(event) {
 }
 
 function mostrarSeccionGenerador() {
-    seccionGenerador.classList.remove('hidden');
+    removeClassSafely('seccion-generador', 'hidden');
     
-    // Configurar nivel recomendado según el estudiante
-    const nivelSelect = document.getElementById('nivelSelect');
-    if (studentData && studentData.level) {
-        nivelSelect.value = studentData.level;
-    }
+    // ✅ CONFIGURAR NIVEL RECOMENDADO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('nivelSelect', (el) => {
+        if (studentData && studentData.level) {
+            el.value = studentData.level;
+        }
+    });
     
-    // Actualizar recomendación
-    const recomendacion = document.getElementById('recomendacion-nivel');
-    if (studentData) {
-        const niveles = ['Fácil', 'Medio', 'Difícil'];
-        const nivelEstudiante = niveles[parseInt(studentData.level) - 1] || 'Fácil';
-        recomendacion.textContent = `Nivel configurado para ${studentData.name}: ${nivelEstudiante}`;
-    }
+    // ✅ ACTUALIZAR RECOMENDACIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('recomendacion-nivel', (el) => {
+        if (studentData) {
+            const niveles = ['Fácil', 'Medio', 'Difícil'];
+            const nivelEstudiante = niveles[parseInt(studentData.level) - 1] || 'Fácil';
+            el.textContent = `Nivel configurado para ${studentData.name}: ${nivelEstudiante}`;
+        }
+    });
 }
 
 async function generarEjercicios(tipo) {
@@ -272,9 +328,10 @@ async function generarEjercicios(tipo) {
         return;
     }
     
-    const nivel = document.getElementById('nivelSelect').value;
-    const cantidad = document.getElementById('cantidadSelect').value;
-    const tipoOperacion = document.getElementById('tipoSelect').value;
+    // ✅ OBTENER VALORES CON VERIFICACIÓN TOLERANTE
+    const nivel = getElementValueSafely('nivelSelect', '1');
+    const cantidad = getElementValueSafely('cantidadSelect', '5');
+    const tipoOperacion = getElementValueSafely('tipoSelect', 'mixto');
     
     console.log(`🎯 Generando ${cantidad} ejercicios (${tipo}) - Nivel: ${nivel}, Tipo: ${tipoOperacion}`);
     
@@ -292,22 +349,51 @@ async function generarEjercicios(tipo) {
         mostrarEjercicios(ejercicios);
         
         // Guardar en historial
-        const sesion = {
-            id: Date.now(),
-            fecha: new Date().toISOString(),
+        // ✅ GUARDAR EN HISTORIAL CON GUARDADO HÍBRIDO (localStorage + Supabase)
+        const sesionData = {
+            estudianteNombre: studentData.name,
+            estudianteId: studentData.name,
             nivel: parseInt(nivel),
             cantidad: parseInt(cantidad),
-            tipo: tipoOperacion,
+            tipoOperacion: tipoOperacion,
             metodo: tipo,
-            estudianteId: studentData.name,
-            ejercicios: ejercicios
+            ejercicios: ejercicios,
+            fechaInicio: new Date().toISOString(),
+            duracion: Math.floor(parseInt(cantidad) * 1.5), // Estimar duración
+            tipo: 'apoderado'
         };
-        
-        ejerciciosHistorial.push(sesion);
-        localStorage.setItem('ejerciciosHistorial', JSON.stringify(ejerciciosHistorial));
+
+        // ✅ USAR FUNCIÓN DE GUARDADO HÍBRIDO
+        if (window.guardarSesionHibrida) {
+            const resultado = await window.guardarSesionHibrida(sesionData);
+            
+            if (resultado.supabase) {
+                console.log('☁️ Sesión guardada en Supabase y localStorage');
+                mostrarNotificacion(`✅ ${cantidad} ejercicios generados y sincronizados`, 'success');
+            } else {
+                console.log('💾 Sesión guardada solo en localStorage');
+                mostrarNotificacion(`✅ ${cantidad} ejercicios generados (modo offline)`, 'success');
+            }
+        } else {
+            // ✅ FALLBACK AL MÉTODO ANTERIOR SI NO ESTÁ DISPONIBLE
+            const sesion = {
+                id: Date.now(),
+                fecha: new Date().toISOString(),
+                nivel: parseInt(nivel),
+                cantidad: parseInt(cantidad),
+                tipo: tipoOperacion,
+                metodo: tipo,
+                estudianteId: studentData.name,
+                estudianteNombre: studentData.name,
+                ejercicios: ejercicios
+            };
+            
+            ejerciciosHistorial.push(sesion);
+            localStorage.setItem('ejerciciosHistorial', JSON.stringify(ejerciciosHistorial));
+            mostrarNotificacion(`✅ ${cantidad} ejercicios generados para ${studentData.name}`, 'success');
+        }
         
         ocultarCargando();
-        mostrarNotificacion(`✅ ${cantidad} ejercicios generados para ${studentData.name}`, 'success');
         
         // Actualizar estadísticas
         actualizarEstadisticas();
@@ -396,28 +482,30 @@ function generarEjercicioAleatorio(nivel, tipoOperacion, numero) {
 }
 
 function mostrarEjercicios(ejercicios) {
-    const container = document.getElementById('ejercicios-container');
-    container.innerHTML = '';
-    
-    ejercicios.forEach(ejercicio => {
-        const ejercicioCard = document.createElement('div');
-        ejercicioCard.className = 'ejercicio-card';
-        ejercicioCard.innerHTML = `
-            <div class="ejercicio-numero">Ejercicio ${ejercicio.numero}</div>
-            <div class="ejercicio-operacion">
-                ${ejercicio.operacion} = <span class="linea-respuesta"></span>
-            </div>
-        `;
-        container.appendChild(ejercicioCard);
+    // ✅ MOSTRAR EJERCICIOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('ejercicios-container', (container) => {
+        container.innerHTML = '';
+        
+        ejercicios.forEach(ejercicio => {
+            const ejercicioCard = document.createElement('div');
+            ejercicioCard.className = 'ejercicio-card';
+            ejercicioCard.innerHTML = `
+                <div class="ejercicio-numero">Ejercicio ${ejercicio.numero}</div>
+                <div class="ejercicio-operacion">
+                    ${ejercicio.operacion} = <span class="linea-respuesta"></span>
+                </div>
+            `;
+            container.appendChild(ejercicioCard);
+        });
     });
     
-    // Mostrar sección de resultados
-    seccionResultados.classList.remove('hidden');
+    // ✅ MOSTRAR SECCIÓN DE RESULTADOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('seccion-resultados', (el) => {
+        el.classList.remove('hidden');
+        el.scrollIntoView({ behavior: 'smooth' });
+    });
     
-    // Scroll hacia los resultados
-    seccionResultados.scrollIntoView({ behavior: 'smooth' });
-    
-    console.log(`✅ ${ejercicios.length} ejercicios mostrados`);
+    console.log(`✅ ${ejercicios.length} ejercicios mostrados (tolerante)`);
 }
 
 async function descargarPDF() {
@@ -463,12 +551,12 @@ async function generarCuento() {
 }
 
 function mostrarModalCuento(contenido) {
-    document.getElementById('contenido-cuento').innerHTML = contenido;
-    document.getElementById('modal-cuento').classList.remove('hidden');
+    updateElementSafely('contenido-cuento', (el) => el.innerHTML = contenido);
+    removeClassSafely('modal-cuento', 'hidden');
 }
 
 function cerrarModalCuento() {
-    document.getElementById('modal-cuento').classList.add('hidden');
+    addClassSafely('modal-cuento', 'hidden');
 }
 
 function marcarComoCompletado() {
@@ -501,7 +589,7 @@ function actualizarEstadisticas() {
         ejerciciosPorNivel[nivel] = Math.floor(totalPorNivel[nivel] * 0.8);
     });
     
-    // Actualizar barras de progreso
+    // ✅ ACTUALIZAR BARRAS DE PROGRESO CON VERIFICACIÓN TOLERANTE
     const maxEjercicios = Math.max(...Object.values(totalPorNivel), 50);
     
     ['facil', 'medio', 'dificil'].forEach((nombre, index) => {
@@ -510,50 +598,52 @@ function actualizarEstadisticas() {
         const total = totalPorNivel[nivel];
         const porcentaje = total > 0 ? Math.round((completados / total) * 100) : 0;
         
-        document.getElementById(`progreso-${nombre}`).textContent = `${porcentaje}%`;
-        document.getElementById(`barra-${nombre}`).style.width = `${(completados / maxEjercicios) * 100}%`;
+        setTextSafely(`progreso-${nombre}`, `${porcentaje}%`);
+        updateElementSafely(`barra-${nombre}`, (el) => 
+            el.style.width = `${(completados / maxEjercicios) * 100}%`);
     });
     
     // Actualizar historial reciente
     actualizarHistorialReciente();
     
-    console.log('📊 Estadísticas actualizadas');
+    console.log('📊 Estadísticas actualizadas (tolerante)');
 }
 
 function actualizarHistorialReciente() {
-    const historialContainer = document.getElementById('historial-reciente');
-    
-    if (ejerciciosHistorial.length === 0) {
-        historialContainer.innerHTML = '<p class="text-gray-500">Sin actividad registrada aún</p>';
-        return;
-    }
-    
-    const recientes = ejerciciosHistorial.slice(-5).reverse();
-    const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
-    
-    historialContainer.innerHTML = recientes.map(sesion => {
-        const fecha = new Date(sesion.fecha).toLocaleDateString('es-ES');
-        const nivel = niveles[sesion.nivel - 1];
+    // ✅ ACTUALIZAR HISTORIAL CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('historial-reciente', (historialContainer) => {
+        if (ejerciciosHistorial.length === 0) {
+            historialContainer.innerHTML = '<p class="text-gray-500">Sin actividad registrada aún</p>';
+            return;
+        }
         
-        return `
-            <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                <div>
-                    <div class="font-semibold">${fecha}</div>
-                    <div class="text-sm text-gray-600">${sesion.cantidad} ejercicios • ${nivel}</div>
+        const recientes = ejerciciosHistorial.slice(-5).reverse();
+        const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
+        
+        historialContainer.innerHTML = recientes.map(sesion => {
+            const fecha = new Date(sesion.fecha).toLocaleDateString('es-ES');
+            const nivel = niveles[sesion.nivel - 1];
+            
+            return `
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                    <div>
+                        <div class="font-semibold">${fecha}</div>
+                        <div class="text-sm text-gray-600">${sesion.cantidad} ejercicios • ${nivel}</div>
+                    </div>
+                    <div class="text-blue-600 font-bold">${sesion.metodo === 'ia' ? '🤖' : '📚'}</div>
                 </div>
-                <div class="text-blue-600 font-bold">${sesion.metodo === 'ia' ? '🤖' : '📚'}</div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    });
 }
 
 function mostrarCargando(mensaje) {
-    document.getElementById('loading-text').textContent = mensaje;
-    document.getElementById('loading-overlay').classList.remove('hidden');
+    setTextSafely('loading-text', mensaje);
+    removeClassSafely('loading-overlay', 'hidden');
 }
 
 function ocultarCargando() {
-    document.getElementById('loading-overlay').classList.add('hidden');
+    addClassSafely('loading-overlay', 'hidden');
 }
 
 function mostrarNotificacion(mensaje, tipo = 'info') {
@@ -595,17 +685,44 @@ function cerrarSesion() {
     
     if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
         // Usar el sistema principal de autenticación si está disponible
-        if (window.loginSystem && window.loginSystem.signOut) {
+        if (window.loginSystem && typeof window.loginSystem.signOut === 'function') {
             console.log('🚪 Usando logout del sistema principal...');
             window.loginSystem.signOut();
         } else {
-            // Fallback para compatibilidad
-            console.log('🚪 Usando logout de fallback...');
-            localStorage.removeItem('isAuthenticated');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('matemagica-user-profile');
-            localStorage.removeItem('matemagica_selected_role');
-            window.location.href = '/index.html';
+            // Fallback mejorado para compatibilidad
+            console.log('🚪 Usando logout de fallback mejorado...');
+            const itemsToRemove = [
+                'matemagica-authenticated',
+                'matemagica-user-profile',
+                'matemagica_selected_role',
+                'matemagica_user',
+                'matemagica_profile',
+                'matemagica_role',
+                'currentUser',
+                'userProfile',
+                'selectedRole',
+                'studentData',
+                'ejerciciosHistorial',
+                'profesorEstudiantes',
+                'profesorEjerciciosHistorial'
+            ];
+            
+            itemsToRemove.forEach(item => {
+                localStorage.removeItem(item);
+            });
+            
+            sessionStorage.clear();
+            
+            // Cerrar sesión en Supabase si está disponible
+            if (window.supabaseClient && window.supabaseClient.auth) {
+                window.supabaseClient.auth.signOut().catch(err => {
+                    console.warn('⚠️ Error cerrando sesión en Supabase:', err);
+                });
+            }
+            
+            setTimeout(() => {
+                window.location.href = '/index.html';
+            }, 500);
         }
     }
 }

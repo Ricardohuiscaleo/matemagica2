@@ -1,0 +1,1255 @@
+// ✅ SISTEMA DE GESTIÓN DE ESTUDIANTES MODULAR - VERSIÓN CORREGIDA
+// Este módulo maneja completamente la gestión de estudiantes de forma independiente
+
+console.log('👨‍👩‍👧‍👦 Inicializando Sistema de Gestión de Estudiantes v2.0...');
+
+// ✅ CLASE PRINCIPAL CORREGIDA
+class StudentManagementSystem {
+    constructor() {
+        this.students = [];
+        this.currentStudent = null;
+        this.isInitialized = false;
+        this.supabaseClient = null;
+        
+        // ✅ NUEVO: Referencia al módulo UX/UI del modal
+        this.selectionModal = null;
+        
+        // Auto-inicializar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
+    }
+    
+    // ✅ INICIALIZACIÓN CORREGIDA DEL SISTEMA
+    async init() {
+        console.log('🚀 Inicializando Sistema de Gestión de Estudiantes...');
+        
+        try {
+            // 1. Inicializar conexión con Supabase
+            await this.initializeSupabase();
+            
+            // 2. Cargar datos existentes
+            await this.loadStudentsData();
+            
+            // 3. ✅ NUEVO: Inicializar módulo UX/UI del modal
+            this.initializeSelectionModal();
+            
+            // 4. Configurar event listeners del dashboard
+            this.setupDashboardEventListeners();
+            
+            // 5. Actualizar interfaz inicial
+            this.updateDashboardDisplay();
+            
+            this.isInitialized = true;
+            console.log('✅ Sistema de Gestión de Estudiantes inicializado completamente');
+            
+        } catch (error) {
+            console.error('❌ Error inicializando sistema de estudiantes:', error);
+            this.handleInitializationError(error);
+        }
+    }
+
+    // ✅ CORREGIDO: Método mejorado initializeSupabase
+    async initializeSupabase() {
+        try {
+            console.log('🔌 Inicializando conexión Supabase...');
+            
+            // ✅ ORDEN DE PRIORIDAD CORREGIDO para obtener cliente Supabase
+            let supabaseFound = false;
+            
+            // 1. Desde window.supabaseClient (DONDE AUTH.JS LO EXPONE)
+            if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+                this.supabaseClient = window.supabaseClient;
+                supabaseFound = true;
+                console.log('✅ Cliente Supabase conectado desde window.supabaseClient (auth.js)');
+            }
+            // 2. Desde loginSystem.supabase
+            else if (window.loginSystem && window.loginSystem.supabase && typeof window.loginSystem.supabase.from === 'function') {
+                this.supabaseClient = window.loginSystem.supabase;
+                supabaseFound = true;
+                console.log('✅ Cliente Supabase conectado desde loginSystem');
+            }
+            // 3. Desde window.supabase (fallback)
+            else if (window.supabase && typeof window.supabase.from === 'function') {
+                this.supabaseClient = window.supabase;
+                supabaseFound = true;
+                console.log('✅ Cliente Supabase conectado desde window.supabase');
+            }
+            
+            if (supabaseFound) {
+                // ✅ VERIFICAR que el cliente realmente funciona
+                try {
+                    console.log('🧪 Probando conexión con Supabase...');
+                    
+                    // Test simple de conexión
+                    const { data, error } = await this.supabaseClient
+                        .from('math_profiles')
+                        .select('count', { count: 'exact', head: true });
+                    
+                    if (error) {
+                        console.error('❌ Error en test de conexión Supabase:', error);
+                        this.supabaseClient = null;
+                    } else {
+                        console.log('✅ Conexión Supabase verificada exitosamente');
+                        
+                        // ✅ VERIFICAR perfil de usuario
+                        const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+                        if (userProfile.user_id) {
+                            console.log(`👤 Usuario verificado: ${userProfile.email} (ID: ${userProfile.user_id})`);
+                        } else {
+                            console.warn('⚠️ No se encontró perfil de usuario en localStorage');
+                        }
+                    }
+                } catch (testError) {
+                    console.error('❌ Error probando conexión Supabase:', testError);
+                    this.supabaseClient = null;
+                }
+            } else {
+                console.log('⚠️ Cliente Supabase no disponible, usando solo localStorage');
+                
+                // ✅ INTENTAR esperar por auth.js si aún no está listo
+                await this.waitForAuthSystem();
+            }
+            
+        } catch (error) {
+            console.warn('⚠️ Error inicializando Supabase:', error);
+            this.supabaseClient = null;
+        }
+    }
+
+    // ✅ NUEVO: Esperar por el sistema de auth si aún no está listo
+    async waitForAuthSystem() {
+        try {
+            console.log('🔄 Esperando por sistema de autenticación...');
+            
+            // Esperar hasta 10 segundos por auth.js
+            for (let i = 0; i < 20; i++) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Verificar si loginSystem ya expuso el cliente
+                if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+                    this.supabaseClient = window.supabaseClient;
+                    console.log('✅ Cliente Supabase encontrado después de esperar');
+                    
+                    // Verificar conexión
+                    try {
+                        const { data, error } = await this.supabaseClient
+                            .from('math_profiles')
+                            .select('count', { count: 'exact', head: true });
+                        
+                        if (!error) {
+                            console.log('✅ Conexión Supabase verificada (post-espera)');
+                            return;
+                        }
+                    } catch (testError) {
+                        console.warn('⚠️ Error verificando conexión post-espera:', testError);
+                    }
+                }
+                
+                console.log(`🔍 Esperando auth system... ${i + 1}/20`);
+            }
+            
+            console.log('⚠️ Sistema de auth no se inicializó en tiempo esperado');
+        } catch (error) {
+            console.error('❌ Error esperando por auth system:', error);
+        }
+    }
+    
+    // ✅ CORREGIDO: Método faltante handleInitializationError
+    handleInitializationError(error) {
+        console.error('❌ Error en inicialización del sistema de estudiantes:', error);
+        
+        // Intentar modo fallback con solo localStorage
+        try {
+            this.loadStudentsFromLocalStorage();
+            this.setupBasicEventListeners();
+            this.isInitialized = true;
+            console.log('⚠️ Sistema inicializado en modo fallback (solo localStorage)');
+        } catch (fallbackError) {
+            console.error('❌ Error incluso en modo fallback:', fallbackError);
+            this.isInitialized = false;
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante loadStudentsData
+    async loadStudentsData() {
+        try {
+            console.log('📚 Cargando estudiantes...');
+            
+            // Intentar cargar desde Supabase primero
+            if (this.supabaseClient) {
+                const supabaseStudents = await this.loadFromSupabase();
+                if (supabaseStudents && supabaseStudents.length > 0) {
+                    this.students = supabaseStudents;
+                    await this.saveToLocal();
+                    console.log(`✅ ${this.students.length} estudiantes cargados desde Supabase`);
+                    this.loadCurrentStudent();
+                    return;
+                }
+            }
+            
+            // Fallback: cargar desde localStorage
+            this.loadStudentsFromLocalStorage();
+            this.loadCurrentStudent();
+            
+        } catch (error) {
+            console.error('❌ Error cargando estudiantes:', error);
+            this.students = [];
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante loadStudentsFromLocalStorage
+    loadStudentsFromLocalStorage() {
+        try {
+            const localStudents = localStorage.getItem('matemagica_student_profiles');
+            if (localStudents) {
+                this.students = JSON.parse(localStudents);
+                console.log(`✅ ${this.students.length} estudiantes cargados desde localStorage`);
+            } else {
+                this.students = [];
+                console.log('📚 No hay estudiantes guardados');
+            }
+        } catch (error) {
+            console.error('❌ Error cargando desde localStorage:', error);
+            this.students = [];
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante setupDashboardEventListeners
+    setupDashboardEventListeners() {
+        try {
+            // Botón de cambiar estudiante (card clickeable)
+            const studentCardButton = document.getElementById('student-card-button');
+            if (studentCardButton) {
+                studentCardButton.addEventListener('click', () => this.openStudentModal());
+            }
+            
+            // Cerrar modales
+            const closeButtons = [
+                'close-student-modal',
+                'close-new-student-modal', 
+                'close-edit-student-modal'
+            ];
+            
+            closeButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.addEventListener('click', () => this.closeModals());
+            });
+            
+            // Botón nuevo estudiante
+            const newStudentBtn = document.getElementById('new-student-btn');
+            if (newStudentBtn) {
+                newStudentBtn.addEventListener('click', () => this.openNewStudentModal());
+            }
+            
+            console.log('✅ Event listeners del dashboard configurados');
+        } catch (error) {
+            console.error('❌ Error configurando event listeners:', error);
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante setupBasicEventListeners
+    setupBasicEventListeners() {
+        try {
+            // Configurar solo los event listeners esenciales
+            const studentCardButton = document.getElementById('student-card-button');
+            if (studentCardButton) {
+                studentCardButton.addEventListener('click', () => this.openStudentModal());
+            }
+            console.log('✅ Event listeners básicos configurados');
+        } catch (error) {
+            console.error('❌ Error en event listeners básicos:', error);
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante updateDashboardDisplay
+    updateDashboardDisplay() {
+        try {
+            this.updateCurrentStudentDisplay();
+            if (this.selectionModal && this.selectionModal.estaAbierto && this.selectionModal.estaAbierto()) {
+                this.refreshModalContent();
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando dashboard:', error);
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante openNewStudentModal
+    openNewStudentModal() {
+        try {
+            if (this.selectionModal && this.selectionModal.abrirModalNuevoEstudiante) {
+                this.selectionModal.abrirModalNuevoEstudiante();
+            } else {
+                console.warn('⚠️ Módulo UX/UI no disponible, usando fallback');
+                this.openNewStudentModalFallback();
+            }
+        } catch (error) {
+            console.error('❌ Error abriendo modal nuevo estudiante:', error);
+            this.openNewStudentModalFallback();
+        }
+    }
+
+    // ✅ NUEVO: Fallback para modal de nuevo estudiante
+    openNewStudentModalFallback() {
+        const modal = document.getElementById('new-student-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            
+            // Limpiar formulario
+            const form = document.getElementById('new-student-form');
+            if (form) {
+                form.reset();
+                this.resetFormStyles();
+            }
+        }
+    }
+
+    // ✅ CORREGIDO: Método faltante closeModals
+    closeModals() {
+        try {
+            // Cerrar modal de selección
+            if (this.selectionModal && this.selectionModal.cerrar) {
+                this.selectionModal.cerrar();
+            }
+            
+            // Cerrar modales básicos
+            const modals = [
+                'student-modal',
+                'new-student-modal',
+                'edit-student-modal',
+                'fallback-student-modal'
+            ];
+            
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }
+            });
+            
+        } catch (error) {
+            console.error('❌ Error cerrando modales:', error);
+        }
+    }
+
+    // ✅ NUEVO: Inicializar módulo UX/UI del modal
+    initializeSelectionModal() {
+        try {
+            // Verificar si la clase StudentSelectionModal está disponible
+            if (typeof StudentSelectionModal !== 'undefined') {
+                this.selectionModal = new StudentSelectionModal(this);
+                console.log('✅ Módulo UX/UI del modal inicializado');
+            } else {
+                console.warn('⚠️ Módulo StudentSelectionModal no encontrado, usando fallback');
+                // Cargar el módulo dinámicamente si no está disponible
+                this.loadSelectionModalModule();
+            }
+            
+            // ✅ NUEVO: También intentar inicializar el modal global
+            if (window.initializeStudentSelectionModal) {
+                window.initializeStudentSelectionModal();
+            }
+        } catch (error) {
+            console.error('❌ Error inicializando módulo UX/UI:', error);
+        }
+    }
+
+    // ✅ NUEVO: Cargar módulo UX/UI dinámicamente
+    async loadSelectionModalModule() {
+        try {
+            const script = document.createElement('script');
+            script.src = 'js/student-selection-modal.js';
+            script.onload = () => {
+                if (typeof StudentSelectionModal !== 'undefined') {
+                    this.selectionModal = new StudentSelectionModal(this);
+                    console.log('✅ Módulo UX/UI cargado dinámicamente');
+                }
+            };
+            document.head.appendChild(script);
+        } catch (error) {
+            console.error('❌ Error cargando módulo UX/UI dinámicamente:', error);
+        }
+    }
+    
+    // ✅ CARGAR DESDE SUPABASE
+    async loadFromSupabase() {
+        try {
+            const userProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+            const parentId = userProfile.user_id;
+            
+            if (!parentId) return null;
+            
+            const { data, error } = await this.supabaseClient
+                .from('math_profiles')
+                .select('*')
+                .eq('parent_id', parentId)
+                .eq('user_role', 'student')
+                .not('user_id', 'is', null)
+                .order('created_at', { ascending: true });
+            
+            if (error) {
+                console.error('❌ Error consultando Supabase:', error);
+                return null;
+            }
+            
+            // Convertir formato
+            return data.map(student => ({
+                id: student.user_id,
+                name: student.full_name,
+                age: student.age || 8,
+                gender: student.gender || 'niño',
+                course: student.course || '',
+                interests: student.interests || [],
+                mathLevel: student.current_level || 1,
+                avatar: student.avatar || (student.gender === 'niña' ? '👧' : '👦'),
+                parentId: student.parent_id,
+                createdAt: student.created_at,
+                lastActivity: student.updated_at || student.created_at,
+                stats: {
+                    totalExercises: student.total_exercises || 0,
+                    correctAnswers: student.correct_exercises || 0,
+                    totalPoints: student.total_points || 0,
+                    streakDays: student.streak_days || 0,
+                    averageAccuracy: student.average_accuracy || 0
+                }
+            }));
+            
+        } catch (error) {
+            console.error('❌ Error en loadFromSupabase:', error);
+            return null;
+        }
+    }
+    
+    // ✅ GUARDAR EN LOCALSTORAGE
+    async saveToLocal() {
+        try {
+            localStorage.setItem('matemagica_student_profiles', JSON.stringify(this.students));
+            return true;
+        } catch (error) {
+            console.error('❌ Error guardando en localStorage:', error);
+            return false;
+        }
+    }
+    
+    // ✅ CREAR NUEVO ESTUDIANTE
+    async createStudent(studentData) {
+        try {
+            const studentId = `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const parentProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
+            
+            const newStudent = {
+                id: studentId,
+                name: studentData.name.trim(),
+                age: parseInt(studentData.age),
+                gender: studentData.gender,
+                course: studentData.course?.trim() || '',
+                interests: studentData.interests || [],
+                mathLevel: parseInt(studentData.mathLevel) || 1,
+                avatar: studentData.avatar || (studentData.gender === 'niña' ? '👧' : '👦'),
+                parentId: parentProfile.user_id || 'unknown',
+                createdAt: new Date().toISOString(),
+                lastActivity: new Date().toISOString(),
+                stats: {
+                    totalExercises: 0,
+                    correctAnswers: 0,
+                    totalPoints: 0,
+                    streakDays: 0,
+                    averageAccuracy: 0
+                }
+            };
+            
+            this.students.push(newStudent);
+            await this.saveToLocal();
+            
+            // Guardar en Supabase si está disponible
+            if (this.supabaseClient) {
+                await this.saveToSupabase(newStudent);
+            }
+            
+            // Si es el primer estudiante, seleccionarlo
+            if (this.students.length === 1) {
+                await this.selectStudent(newStudent.id);
+            }
+            
+            console.log('✅ Estudiante creado:', newStudent.name);
+            return newStudent;
+            
+        } catch (error) {
+            console.error('❌ Error creando estudiante:', error);
+            throw error;
+        }
+    }
+    
+    // ✅ GUARDAR EN SUPABASE
+    async saveToSupabase(student) {
+        try {
+            if (!this.supabaseClient) return false;
+            
+            const supabaseRecord = {
+                user_id: student.id,
+                full_name: student.name,
+                age: student.age,
+                gender: student.gender,
+                course: student.course,
+                interests: student.interests,
+                current_level: student.mathLevel,
+                parent_id: student.parentId,
+                user_role: 'student',
+                avatar: student.avatar,
+                total_exercises: student.stats.totalExercises,
+                correct_exercises: student.stats.correctAnswers,
+                total_points: student.stats.totalPoints,
+                streak_days: student.stats.streakDays,
+                average_accuracy: student.stats.averageAccuracy,
+                created_at: student.createdAt,
+                updated_at: student.lastActivity
+            };
+            
+            const { error } = await this.supabaseClient
+                .from('math_profiles')
+                .upsert(supabaseRecord, { onConflict: 'user_id' });
+            
+            if (error) {
+                console.error('❌ Error guardando en Supabase:', error);
+                return false;
+            }
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error en saveToSupabase:', error);
+            return false;
+        }
+    }
+    
+    // ✅ SELECCIONAR ESTUDIANTE
+    async selectStudent(studentId) {
+        try {
+            const student = this.students.find(s => s.id === studentId);
+            if (!student) {
+                throw new Error('Estudiante no encontrado');
+            }
+            
+            // Actualizar estudiante actual
+            this.currentStudent = student;
+            
+            // Guardar en localStorage
+            localStorage.setItem('matemagica_current_student_id', studentId);
+            
+            // Actualizar dashboard
+            this.updateDashboardDisplay();
+            
+            // ✅ NUEVO: Actualizar contenido del modal si está abierto
+            this.refreshModalContent();
+            
+            console.log(`✅ Estudiante seleccionado: ${student.name}`);
+            return student;
+            
+        } catch (error) {
+            console.error('❌ Error seleccionando estudiante:', error);
+            throw error;
+        }
+    }
+    
+    // ✅ CARGAR ESTUDIANTE ACTUAL
+    loadCurrentStudent() {
+        try {
+            const currentStudentId = localStorage.getItem('matemagica_current_student_id');
+            if (currentStudentId && this.students.length > 0) {
+                const student = this.students.find(s => s.id === currentStudentId);
+                if (student) {
+                    this.currentStudent = student;
+                    console.log('✅ Estudiante actual cargado:', student.name);
+                } else if (this.students.length > 0) {
+                    this.selectStudent(this.students[0].id);
+                }
+            } else if (this.students.length > 0) {
+                this.selectStudent(this.students[0].id);
+            }
+        } catch (error) {
+            console.error('❌ Error cargando estudiante actual:', error);
+        }
+    }
+    
+    // ✅ ACTUALIZAR DISPLAY DEL ESTUDIANTE ACTUAL
+    updateCurrentStudentDisplay() {
+        const nameElement = document.getElementById('current-student-name');
+        const avatarElement = document.querySelector('.student-avatar, .w-8.h-8.bg-blue-500.rounded-full, .w-8.h-8.bg-pink-500.rounded-full');
+        
+        if (this.currentStudent) {
+            if (nameElement) {
+                nameElement.textContent = this.currentStudent.name;
+            }
+            
+            if (avatarElement) {
+                const avatar = this.currentStudent.avatar || (this.currentStudent.gender === 'niña' ? '👧' : '👦');
+                avatarElement.textContent = avatar;
+                
+                // Actualizar colores según género
+                if (this.currentStudent.gender === 'niña') {
+                    avatarElement.className = avatarElement.className.replace(/bg-blue-\d+/, 'bg-pink-500');
+                } else {
+                    avatarElement.className = avatarElement.className.replace(/bg-pink-\d+/, 'bg-blue-500');
+                }
+            }
+        } else {
+            if (nameElement) nameElement.textContent = 'Sin estudiante';
+            if (avatarElement) avatarElement.textContent = '?';
+        }
+    }
+
+    // ✅ MÉTODOS DE MODALES
+    openStudentModal() {
+        if (this.selectionModal) {
+            // Usar el módulo UX/UI dedicado
+            this.selectionModal.open();
+        } else {
+            // Fallback al método anterior si el módulo no está disponible
+            console.warn('⚠️ Módulo UX/UI no disponible, usando fallback');
+            this.openStudentModalFallback();
+        }
+    }
+
+    // ✅ NUEVO: Método para abrir modal de edición
+    openEditModal(studentId) {
+        try {
+            const student = this.getStudentById(studentId);
+            if (!student) {
+                console.error('❌ Estudiante no encontrado para editar');
+                return;
+            }
+            
+            console.log(`✏️ Abriendo modal de edición para: ${student.name}`);
+            
+            // Abrir el modal
+            const modal = document.getElementById('edit-student-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                
+                // Llenar el formulario con los datos del estudiante
+                this.populateEditForm(student);
+                
+                // Configurar event listeners del formulario de edición
+                this.setupEditFormListeners(student.id);
+            } else {
+                console.error('❌ Modal de edición no encontrado en DOM');
+            }
+        } catch (error) {
+            console.error('❌ Error abriendo modal de edición:', error);
+        }
+    }
+
+    // ✅ NUEVO: Llenar formulario de edición con datos del estudiante
+    populateEditForm(student) {
+        try {
+            // Llenar campos básicos
+            const nameInput = document.getElementById('edit-student-name');
+            const ageSelect = document.getElementById('edit-student-age');
+            const courseInput = document.getElementById('edit-student-course');
+            const levelSelect = document.getElementById('edit-student-level');
+            const avatarInput = document.getElementById('selected-avatar');
+            
+            if (nameInput) nameInput.value = student.name || '';
+            if (ageSelect) ageSelect.value = student.age || 8;
+            if (courseInput) courseInput.value = student.course || '';
+            if (levelSelect) levelSelect.value = student.mathLevel || 1;
+            if (avatarInput) avatarInput.value = student.avatar || '👦';
+            
+            // Seleccionar género
+            const genderRadios = document.querySelectorAll('input[name="edit-gender"]');
+            genderRadios.forEach(radio => {
+                radio.checked = radio.value === student.gender;
+                if (radio.checked) {
+                    // Actualizar visual de la tarjeta
+                    const card = radio.closest('.gender-option').querySelector('.gender-card');
+                    if (card) {
+                        card.style.borderColor = '#3B82F6';
+                        card.style.backgroundColor = '#EFF6FF';
+                    }
+                }
+            });
+            
+            // Seleccionar intereses
+            const interestCheckboxes = document.querySelectorAll('input[name="edit-interests"]');
+            interestCheckboxes.forEach(checkbox => {
+                const isSelected = student.interests && student.interests.includes(checkbox.value);
+                checkbox.checked = isSelected;
+                
+                // Actualizar visual del pill
+                const pill = checkbox.closest('.interest-tag').querySelector('.interest-pill');
+                if (pill) {
+                    if (isSelected) {
+                        pill.style.background = '#DBEAFE';
+                        pill.style.borderColor = '#3B82F6';
+                        pill.style.color = '#1E40AF';
+                    } else {
+                        pill.style.background = '#F3F4F6';
+                        pill.style.borderColor = 'transparent';
+                        pill.style.color = '#374151';
+                    }
+                }
+            });
+            
+            // Actualizar avatar seleccionado
+            this.updateSelectedAvatar(student.avatar || '👦');
+            
+            console.log('✅ Formulario de edición llenado correctamente');
+        } catch (error) {
+            console.error('❌ Error llenando formulario de edición:', error);
+        }
+    }
+
+    // ✅ NUEVO: Configurar event listeners del formulario de edición
+    setupEditFormListeners(studentId) {
+        // Remover listeners anteriores para evitar duplicados
+        this.removeEditFormListeners();
+        
+        // Guardar cambios
+        const saveBtn = document.getElementById('save-edit-student');
+        const cancelBtn = document.getElementById('cancel-edit-student');
+        const closeBtn = document.getElementById('close-edit-student-modal');
+        const form = document.getElementById('edit-student-form');
+        
+        // Función para guardar cambios
+        this.handleEditFormSubmit = async (e) => {
+            e.preventDefault();
+            await this.saveStudentChanges(studentId);
+        };
+        
+        // Función para cancelar
+        this.handleEditFormCancel = () => {
+            this.closeEditModal();
+        };
+        
+        // Agregar listeners
+        if (form) form.addEventListener('submit', this.handleEditFormSubmit);
+        if (saveBtn) saveBtn.addEventListener('click', this.handleEditFormSubmit);
+        if (cancelBtn) cancelBtn.addEventListener('click', this.handleEditFormCancel);
+        if (closeBtn) closeBtn.addEventListener('click', this.handleEditFormCancel);
+        
+        // Listeners para género
+        document.querySelectorAll('input[name="edit-gender"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.gender-card').forEach(card => {
+                    card.style.borderColor = '#D1D5DB';
+                    card.style.backgroundColor = 'white';
+                });
+                
+                const selectedCard = radio.closest('.gender-option').querySelector('.gender-card');
+                if (selectedCard) {
+                    selectedCard.style.borderColor = '#3B82F6';
+                    selectedCard.style.backgroundColor = '#EFF6FF';
+                }
+            });
+        });
+        
+        // Listeners para intereses
+        document.querySelectorAll('input[name="edit-interests"]').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const pill = checkbox.closest('.interest-tag').querySelector('.interest-pill');
+                if (pill) {
+                    if (checkbox.checked) {
+                        pill.style.background = '#DBEAFE';
+                        pill.style.borderColor = '#3B82F6';
+                        pill.style.color = '#1E40AF';
+                    } else {
+                        pill.style.background = '#F3F4F6';
+                        pill.style.borderColor = 'transparent';
+                        pill.style.color = '#374151';
+                    }
+                }
+            });
+        });
+    }
+
+    // ✅ NUEVO: Remover listeners del formulario de edición
+    removeEditFormListeners() {
+        const form = document.getElementById('edit-student-form');
+        const saveBtn = document.getElementById('save-edit-student');
+        const cancelBtn = document.getElementById('cancel-edit-student');
+        const closeBtn = document.getElementById('close-edit-student-modal');
+        
+        if (form && this.handleEditFormSubmit) {
+            form.removeEventListener('submit', this.handleEditFormSubmit);
+        }
+        if (saveBtn && this.handleEditFormSubmit) {
+            saveBtn.removeEventListener('click', this.handleEditFormSubmit);
+        }
+        if (cancelBtn && this.handleEditFormCancel) {
+            cancelBtn.removeEventListener('click', this.handleEditFormCancel);
+        }
+        if (closeBtn && this.handleEditFormCancel) {
+            closeBtn.removeEventListener('click', this.handleEditFormCancel);
+        }
+    }
+
+    // ✅ NUEVO: Guardar cambios del estudiante
+    async saveStudentChanges(studentId) {
+        try {
+            // Obtener datos del formulario
+            const formData = this.getEditFormData();
+            
+            // Validar datos
+            if (!this.validateEditFormData(formData)) {
+                return;
+            }
+            
+            // Actualizar estudiante
+            const updatedStudent = await this.updateStudent(studentId, formData);
+            
+            // Cerrar modal
+            this.closeEditModal();
+            
+            // Mostrar éxito
+            if (typeof showSuccessToast === 'function') {
+                showSuccessToast(`✅ ${updatedStudent.name} actualizado correctamente`);
+            }
+            
+            // Actualizar UI si el modal de selección está abierto
+            if (this.selectionModal && this.selectionModal.estaAbierto && this.selectionModal.estaAbierto()) {
+                this.selectionModal.actualizarContenido();
+            }
+            
+            console.log('✅ Estudiante actualizado exitosamente');
+            
+        } catch (error) {
+            console.error('❌ Error guardando cambios del estudiante:', error);
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('Error al guardar los cambios');
+            }
+        }
+    }
+
+    // ✅ NUEVO: Obtener datos del formulario de edición
+    getEditFormData() {
+        const nameInput = document.getElementById('edit-student-name');
+        const ageSelect = document.getElementById('edit-student-age');
+        const courseInput = document.getElementById('edit-student-course');
+        const levelSelect = document.getElementById('edit-student-level');
+        const avatarInput = document.getElementById('selected-avatar');
+        
+        // Obtener género seleccionado
+        const genderRadio = document.querySelector('input[name="edit-gender"]:checked');
+        
+        // Obtener intereses seleccionados
+        const interestCheckboxes = document.querySelectorAll('input[name="edit-interests"]:checked');
+        const interests = Array.from(interestCheckboxes).map(cb => cb.value);
+        
+        return {
+            name: nameInput?.value?.trim() || '',
+            age: parseInt(ageSelect?.value) || 8,
+            gender: genderRadio?.value || 'niño',
+            course: courseInput?.value?.trim() || '',
+            mathLevel: parseInt(levelSelect?.value) || 1,
+            avatar: avatarInput?.value || '👦',
+            interests: interests,
+            lastActivity: new Date().toISOString()
+        };
+    }
+
+    // ✅ NUEVO: Validar datos del formulario de edición
+    validateEditFormData(data) {
+        if (!data.name || data.name.length < 2) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ El nombre debe tener al menos 2 caracteres');
+            }
+            return false;
+        }
+        
+        if (data.age < 5 || data.age > 12) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ La edad debe estar entre 5 y 12 años');
+            }
+            return false;
+        }
+        
+        if (!['niño', 'niña'].includes(data.gender)) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ Debe seleccionar un género');
+            }
+            return false;
+        }
+        
+        return true;
+    }
+
+    // ✅ NUEVO: Cerrar modal de edición
+    closeEditModal() {
+        const modal = document.getElementById('edit-student-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+        
+        // Limpiar listeners
+        this.removeEditFormListeners();
+        
+        console.log('✅ Modal de edición cerrado');
+    }
+
+    // ✅ NUEVO: Función para seleccionar avatar
+    selectAvatar(avatar) {
+        try {
+            // Actualizar valor oculto
+            const avatarInput = document.getElementById('selected-avatar');
+            if (avatarInput) {
+                avatarInput.value = avatar;
+            }
+            
+            // Actualizar visual
+            this.updateSelectedAvatar(avatar);
+            
+            console.log(`✅ Avatar seleccionado: ${avatar}`);
+        } catch (error) {
+            console.error('❌ Error seleccionando avatar:', error);
+        }
+    }
+
+    // ✅ NUEVO: Actualizar visual del avatar seleccionado
+    updateSelectedAvatar(avatar) {
+        try {
+            // Remover selección anterior
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.style.borderColor = '#D1D5DB';
+                option.style.backgroundColor = 'white';
+            });
+            
+            // Marcar avatar seleccionado
+            const selectedOption = document.querySelector(`[data-avatar="${avatar}"]`);
+            if (selectedOption) {
+                selectedOption.style.borderColor = '#3B82F6';
+                selectedOption.style.backgroundColor = '#DBEAFE';
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando avatar seleccionado:', error);
+        }
+    }
+
+    // ✅ NUEVO: Función de diagnóstico específico
+    async diagnoseSupabaseConnection() {
+        console.log('🔬 === DIAGNÓSTICO DETALLADO DE SUPABASE ===');
+        
+        // 1. Verificar disponibilidad de clientes
+        console.log('🔍 Verificando disponibilidad de clientes Supabase:');
+        console.log('  - window.supabase:', typeof window.supabase, window.supabase ? '✅' : '❌');
+        console.log('  - window.supabaseClient:', typeof window.supabaseClient, window.supabaseClient ? '✅' : '❌');
+        console.log('  - window.loginSystem:', typeof window.loginSystem, window.loginSystem ? '✅' : '❌');
+        console.log('  - window.loginSystem.supabase:', window.loginSystem?.supabase ? '✅' : '❌');
+        
+        // 2. Probar each uno que esté disponible
+        const availableClients = [];
+        
+        if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+            availableClients.push({ name: 'window.supabaseClient', client: window.supabaseClient });
+        }
+        
+        if (window.loginSystem?.supabase && typeof window.loginSystem.supabase.from === 'function') {
+            availableClients.push({ name: 'window.loginSystem.supabase', client: window.loginSystem.supabase });
+        }
+        
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            // No testear window.supabase directamente porque es la librería, no un cliente
+            console.log('  - window.supabase es la librería, no un cliente inicializado');
+        }
+        
+        console.log(`🔍 Clientes disponibles: ${availableClients.length}`);
+        
+        // 3. Probar cada cliente disponible
+        for (const { name, client } of availableClients) {
+            try {
+                console.log(`🧪 Probando ${name}...`);
+                
+                const { data, error } = await client
+                    .from('math_profiles')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    console.error(`❌ ${name} - Error:`, error.message);
+                } else {
+                    console.log(`✅ ${name} - Funciona correctamente`);
+                    
+                    // Verificar autenticación
+                    try {
+                        const { data: { session } } = await client.auth.getSession();
+                        if (session?.user) {
+                            console.log(`👤 ${name} - Usuario autenticado:`, session.user.email);
+                        } else {
+                            console.log(`👤 ${name} - Sin sesión de usuario`);
+                        }
+                    } catch (authError) {
+                        console.warn(`⚠️ ${name} - Error verificando auth:`, authError.message);
+                    }
+                }
+            } catch (testError) {
+                console.error(`❌ ${name} - Error en test:`, testError.message);
+            }
+        }
+        
+        // 4. Verificar datos locales
+        console.log('💾 Verificando datos locales:');
+        const userProfile = localStorage.getItem('matemagica-user-profile');
+        const isAuthenticated = localStorage.getItem('matemagica-authenticated');
+        const students = localStorage.getItem('matemagica_student_profiles');
+        
+        console.log('  - matemagica-user-profile:', userProfile ? '✅ Presente' : '❌ Ausente');
+        console.log('  - matemagica-authenticated:', isAuthenticated ? '✅ Presente' : '❌ Ausente');
+        console.log('  - matemagica_student_profiles:', students ? '✅ Presente' : '❌ Ausente');
+        
+        if (userProfile) {
+            try {
+                const profile = JSON.parse(userProfile);
+                console.log('  - User ID:', profile.user_id || 'NO ENCONTRADO');
+                console.log('  - Email:', profile.email || 'NO ENCONTRADO');
+                console.log('  - Role:', profile.user_role || 'NO ENCONTRADO');
+            } catch (parseError) {
+                console.error('  - Error parseando perfil:', parseError.message);
+            }
+        }
+        
+        console.log('🔬 === FIN DEL DIAGNÓSTICO ===');
+        
+        return availableClients.length > 0 ? availableClients[0] : null;
+    }
+    
+    // ✅ NUEVO: Actualizar estudiante existente
+    async updateStudent(studentId, newData) {
+        try {
+            const studentIndex = this.students.findIndex(s => s.id === studentId);
+            if (studentIndex === -1) {
+                throw new Error('Estudiante no encontrado');
+            }
+            
+            // Actualizar datos
+            const updatedStudent = {
+                ...this.students[studentIndex],
+                ...newData,
+                lastActivity: new Date().toISOString()
+            };
+            
+            this.students[studentIndex] = updatedStudent;
+            
+            // Si es el estudiante actual, actualizar referencia
+            if (this.currentStudent && this.currentStudent.id === studentId) {
+                this.currentStudent = updatedStudent;
+                this.updateCurrentStudentDisplay();
+            }
+            
+            // Guardar cambios
+            await this.saveToLocal();
+            
+            // Guardar en Supabase si está disponible
+            if (this.supabaseClient) {
+                await this.saveToSupabase(updatedStudent);
+            }
+            
+            console.log(`✅ Estudiante ${updatedStudent.name} actualizado`);
+            return updatedStudent;
+            
+        } catch (error) {
+            console.error('❌ Error actualizando estudiante:', error);
+            throw error;
+        }
+    }
+
+    // ✅ MÉTODO AUXILIAR: Obtener estudiante por ID
+    getStudentById(studentId) {
+        return this.students.find(s => s.id === studentId);
+    }
+
+    // ✅ MÉTODO AUXILIAR: Refrescar contenido del modal
+    refreshModalContent() {
+        try {
+            if (this.selectionModal && this.selectionModal.actualizarContenido) {
+                this.selectionModal.actualizarContenido();
+            }
+        } catch (error) {
+            console.error('❌ Error refrescando modal:', error);
+        }
+    }
+
+    // ✅ MÉTODO AUXILIAR: Resetear estilos del formulario
+    resetFormStyles() {
+        try {
+            // Resetear tarjetas de género
+            document.querySelectorAll('.gender-card').forEach(card => {
+                card.style.borderColor = '#D1D5DB';
+                card.style.backgroundColor = 'white';
+            });
+            
+            // Resetear pills de intereses
+            document.querySelectorAll('.interest-pill').forEach(pill => {
+                pill.style.background = '#F3F4F6';
+                pill.style.borderColor = 'transparent';
+                pill.style.color = '#374151';
+            });
+            
+            // Resetear tarjetas de nivel
+            document.querySelectorAll('.level-card').forEach(card => {
+                card.style.borderColor = '#D1D5DB';
+                card.style.backgroundColor = 'white';
+            });
+            
+            // Resetear avatares
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.style.borderColor = '#D1D5DB';
+                option.style.backgroundColor = 'white';
+            });
+        } catch (error) {
+            console.error('❌ Error reseteando estilos:', error);
+        }
+    }
+
+    // ✅ FALLBACK: Modal básico de selección
+    openStudentModalFallback() {
+        const modal = document.getElementById('student-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            this.populateStudentsList();
+        }
+    }
+
+    // ✅ FALLBACK: Poblar lista básica de estudiantes
+    populateStudentsList() {
+        const listContainer = document.getElementById('students-list');
+        if (!listContainer) return;
+        
+        if (this.students.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-4xl mb-2">👥</div>
+                    <p>No hay estudiantes registrados</p>
+                </div>
+            `;
+            return;
+        }
+        
+        listContainer.innerHTML = this.students.map(student => `
+            <div class="student-item ${this.currentStudent?.id === student.id ? 'selected' : ''}"
+                 onclick="window.studentManager.selectStudent('${student.id}').then(() => window.studentManager.closeModals())">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span class="text-lg">${student.avatar || (student.gender === 'niña' ? '👧' : '👦')}</span>
+                    </div>
+                    <div>
+                        <div class="font-medium">${student.name}</div>
+                        <div class="text-sm text-gray-500">${student.age} años • ${student.course || 'Sin curso'}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // ✅ MÉTODOS PÚBLICOS DE CONSULTA
+    getAllStudents() {
+        return [...this.students];
+    }
+    
+    getCurrentStudent() {
+        return this.currentStudent;
+    }
+    
+    getStudentCount() {
+        return this.students.length;
+    }
+    
+    isStudentSelected() {
+        return this.currentStudent !== null;
+    }
+    
+    // ✅ MÉTODOS DE ESTADÍSTICAS
+    async updateStudentStats(studentId, newStats) {
+        try {
+            const student = this.getStudentById(studentId);
+            if (!student) return false;
+            
+            student.stats = { ...student.stats, ...newStats };
+            student.lastActivity = new Date().toISOString();
+            
+            await this.saveToLocal();
+            
+            if (this.supabaseClient) {
+                await this.saveToSupabase(student);
+            }
+            
+            // Actualizar display si el estudiante actual
+            if (this.currentStudent?.id === studentId) {
+                this.currentStudent = student;
+                this.updateCurrentStudentDisplay();
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ Error actualizando estadísticas:', error);
+            return false;
+        }
+    }
+}
+
+// ✅ INICIAR SISTEMA GLOBALMENTE ACCESIBLE
+window.studentManagementSystem = new StudentManagementSystem();
+
+// ✅ EXPORTAR PARA PRUEBAS UNITARIAS
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StudentManagementSystem;
+}
+
+// ✅ CREAR INSTANCIA GLOBAL
+if (typeof window !== 'undefined') {
+    window.studentManager = new StudentManagementSystem();
+    console.log('✅ StudentManagementSystem disponible como window.studentManager');
+    
+    // ✅ NUEVO: Función global para diagnóstico
+    window.diagnoseStudentSystem = function() {
+        if (window.studentManager && window.studentManager.diagnoseSupabaseConnection) {
+            return window.studentManager.diagnoseSupabaseConnection();
+        } else {
+            console.error('❌ Sistema de estudiantes no disponible');
+        }
+    };
+    
+    // ✅ NUEVO: Función global para abrir modal desde HTML
+    window.openStudentModal = function() {
+        try {
+            if (window.studentManager && window.studentManager.isInitialized) {
+                window.studentManager.openStudentModal();
+            } else {
+                console.warn('⚠️ StudentManager no inicializado, intentando fallback');
+                // Fallback básico
+                const modal = document.getElementById('student-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex';
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error en openStudentModal global:', error);
+        }
+    };
+    
+    // ✅ NUEVO: Otras funciones globales necesarias
+    window.selectStudent = function(studentId) {
+        try {
+            if (window.studentManager && window.studentManager.isInitialized) {
+                return window.studentManager.selectStudent(studentId);
+            }
+        } catch (error) {
+            console.error('❌ Error en selectStudent global:', error);
+        }
+    };
+    
+    window.closeStudentModals = function() {
+        try {
+            if (window.studentManager && window.studentManager.isInitialized) {
+                window.studentManager.closeModals();
+            }
+        } catch (error) {
+            console.error('❌ Error en closeStudentModals global:', error);
+        }
+    };
+}

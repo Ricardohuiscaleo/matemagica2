@@ -81,13 +81,6 @@ class MathematicsNavigationModule {
         
         content.innerHTML = `
             <div class="p-6">
-                <!-- Botón volver -->
-                <div class="mb-6">
-                    <button onclick="mathematicsNavigation.goBackToDashboard()" class="text-blue-600 hover:text-blue-800 flex items-center transition-colors">
-                        <i class="fas fa-arrow-left mr-2"></i>Volver al Dashboard
-                    </button>
-                </div>
-                
                 <!-- Header del módulo con fondo más claro y amigable -->
                 <div class="bg-gradient-to-r from-blue-100 to-indigo-200 border border-blue-300 rounded-lg shadow-lg text-gray-800 p-6 mb-8">
                     <h2 class="text-2xl font-bold mb-2 text-blue-800">🧮 Matemáticas - 2° Básico</h2>
@@ -209,12 +202,11 @@ class MathematicsNavigationModule {
                 return;
             }
 
-            // Ocultar contenido de matemáticas
+            // ✅ CORREGIDO: Solo ocultar contenido de matemáticas, NO el dashboard
             const mathematicsContent = document.getElementById('matematicas-segundo-content');
-            const dashboardContent = document.getElementById('dashboard-content');
             
             if (mathematicsContent) mathematicsContent.classList.add('hidden');
-            if (dashboardContent) dashboardContent.classList.add('hidden');
+            // ✅ REMOVIDO: No ocultar dashboard-content para mantenerlo disponible
 
             // Renderizar interfaz del módulo
             await window.adicionSustraccionModule.renderFullscreenInterface(this.currentStudentData);
@@ -227,7 +219,7 @@ class MathematicsNavigationModule {
         }
     }
 
-    // ✅ VOLVER AL DASHBOARD PRINCIPAL - CORREGIDO
+    // ✅ VOLVER AL DASHBOARD PRINCIPAL - MEJORADO PARA NUEVA ESTRUCTURA
     goBackToDashboard() {
         try {
             console.log('🔙 Regresando al dashboard principal...');
@@ -242,14 +234,36 @@ class MathematicsNavigationModule {
             const dashboardContent = document.getElementById('dashboard-content');
             if (dashboardContent) {
                 dashboardContent.classList.remove('hidden');
+                
+                // ✅ NUEVO: Forzar reinicialización del dashboard.js en modo híbrido
+                setTimeout(() => {
+                    if (window.DASHBOARD_CONFIG) {
+                        window.DASHBOARD_CONFIG.isNewStructure = true;
+                        console.log('✅ Nueva estructura SaaS detectada - Modo híbrido activado');
+                    }
+                    
+                    // Disparar evento personalizado para que dashboard.js se reinicialice
+                    const dashboardEvent = new CustomEvent('dashboardReactivated', {
+                        detail: { 
+                            from: 'matematicas',
+                            timestamp: Date.now(),
+                            studentData: this.currentStudentData 
+                        }
+                    });
+                    document.dispatchEvent(dashboardEvent);
+                }, 100);
+                
             } else {
                 console.warn('⚠️ Elemento dashboard-content no encontrado, intentando fallback...');
                 
-                // Fallback: usar la función global showDashboard si existe
+                // Fallback mejorado
                 if (typeof showDashboard === 'function') {
                     showDashboard();
                 } else if (window.showDashboard) {
                     window.showDashboard();
+                } else if (window.volverAMatematicas) {
+                    // ✅ NUEVO: Usar la función global del dashboard
+                    window.volverAMatematicas();
                 } else {
                     // Último recurso: recargar página
                     console.log('🔄 Usando último recurso: recargar página');
@@ -264,14 +278,21 @@ class MathematicsNavigationModule {
             // Actualizar navegación del sidebar para destacar "Dashboard"
             this.updateSidebarNavigation();
             
+            // ✅ NUEVO: Actualizar estadísticas del dashboard si existen
+            if (typeof updateDashboardStats === 'function') {
+                updateDashboardStats();
+            }
+            
             console.log('✅ Dashboard principal mostrado correctamente');
             
         } catch (error) {
             console.error('❌ Error regresando al dashboard:', error);
             
-            // Fallback robusto
+            // Fallback robusto mejorado
             try {
-                if (typeof showDashboard === 'function') {
+                if (window.volverAMatematicas) {
+                    window.volverAMatematicas();
+                } else if (typeof showDashboard === 'function') {
                     showDashboard();
                 } else {
                     location.reload();

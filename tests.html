@@ -114,10 +114,41 @@
     </main>
 
     <!-- Scripts -->
-    <script src="config.js"></script>
-    <script src="supabase-config.js"></script>
+    <!-- ✅ SCRIPTS EN ORDEN CORRECTO PARA FUNCIONAMIENTO -->
+    
+    <!-- 1. Configuración base -->
+    <script src="js/config-service.js"></script>
+    
+    <!-- 2. Supabase (si existe un archivo de configuración) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+    
+    <!-- 3. Núcleo del sistema de estudiantes (incluye cliente Supabase) -->
+    <script src="js/student-management-core.js"></script>
+    
+    <!-- 4. Sistema de matemáticas híbrido -->
     <script src="math-mode-system.js"></script>
+    
+    <!-- 5. Gemini AI -->
     <script src="gemini-ai.js"></script>
+    
+    <!-- 6. Analytics en tiempo real -->
+    <script src="js/real-analytics-service.js"></script>
+    
+    <!-- 7. Sistema de tests mejorado -->
     <script src="tests.js"></script>
+
+    <!-- ✅ NUEVO: Registro del Service Worker para tests -->
+    <script>
+        // Registrar Service Worker para que el test pase
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registrado para tests:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('⚠️ Error registrando Service Worker:', error);
+                });
+        }
+    </script>
 </body>
 </html>

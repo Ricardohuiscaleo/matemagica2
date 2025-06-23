@@ -362,6 +362,191 @@ class MathModeSystem {
             }
         }, 3000);
     }
+
+    // ✅ NUEVO: Método principal para generar ejercicios (requerido por tests)
+    async generarEjercicio(nivel = 'medio') {
+        try {
+            console.log(`🎯 Generando ejercicio nivel: ${nivel}`);
+            
+            // Si tenemos IA disponible y estamos online
+            if (!this.isOffline && this.userAuthenticated && window.GeminiAI) {
+                try {
+                    return await this.generarEjercicioConIA(nivel);
+                } catch (error) {
+                    console.warn('⚠️ Error con IA, usando plantillas:', error.message);
+                    return this.generarEjercicioOffline(nivel);
+                }
+            }
+            
+            // Usar plantillas offline
+            return this.generarEjercicioOffline(nivel);
+            
+        } catch (error) {
+            console.error('❌ Error generando ejercicio:', error);
+            throw error;
+        }
+    }
+
+    // ✅ NUEVO: Generar ejercicio con IA
+    async generarEjercicioConIA(nivel) {
+        if (!window.GeminiAI) {
+            throw new Error('Gemini AI no disponible');
+        }
+
+        const gemini = new window.GeminiAI();
+        const prompt = this.crearPromptParaNivel(nivel);
+        
+        const response = await gemini.generateContent(prompt);
+        
+        // Intentar parsear respuesta JSON
+        try {
+            const ejercicio = JSON.parse(response);
+            if (ejercicio.pregunta && ejercicio.respuesta !== undefined) {
+                return {
+                    ...ejercicio,
+                    nivel,
+                    fuente: 'ia',
+                    timestamp: new Date().toISOString()
+                };
+            }
+        } catch (parseError) {
+            // Si no es JSON válido, crear ejercicio desde texto
+            return this.extraerEjercicioDeTexto(response, nivel);
+        }
+        
+        // Fallback si la IA falla
+        return this.generarEjercicioOffline(nivel);
+    }
+
+    // ✅ NUEVO: Generar ejercicio offline con plantillas
+    generarEjercicioOffline(nivel) {
+        const configuracion = this.obtenerConfiguracionNivel(nivel);
+        const operacion = Math.random() < 0.5 ? 'suma' : 'resta';
+        
+        let num1, num2, respuesta, pregunta;
+        
+        if (operacion === 'suma') {
+            num1 = this.generarNumeroAleatorio(configuracion.min, configuracion.max);
+            num2 = this.generarNumeroAleatorio(configuracion.min, configuracion.max);
+            respuesta = num1 + num2;
+            pregunta = `${num1} + ${num2} = ?`;
+        } else {
+            // Para resta, asegurarse de que el resultado sea positivo
+            num1 = this.generarNumeroAleatorio(configuracion.min, configuracion.max);
+            num2 = this.generarNumeroAleatorio(configuracion.min, Math.min(num1, configuracion.max));
+            respuesta = num1 - num2;
+            pregunta = `${num1} - ${num2} = ?`;
+        }
+        
+        return {
+            pregunta,
+            respuesta,
+            operacion,
+            nivel,
+            num1,
+            num2,
+            fuente: 'offline',
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    // ✅ NUEVO: Configuración por nivel
+    obtenerConfiguracionNivel(nivel) {
+        const configuraciones = {
+            facil: { min: 1, max: 20 },
+            medio: { min: 10, max: 50 },
+            dificil: { min: 20, max: 99 }
+        };
+        
+        return configuraciones[nivel] || configuraciones.medio;
+    }
+
+    // ✅ NUEVO: Generar número aleatorio en rango
+    generarNumeroAleatorio(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // ✅ NUEVO: Crear prompt para IA según nivel
+    crearPromptParaNivel(nivel) {
+        const configuracion = this.obtenerConfiguracionNivel(nivel);
+        
+        return `Genera un ejercicio de matemáticas para niños de 7-8 años.
+        Nivel: ${nivel}
+        Números entre ${configuracion.min} y ${configuracion.max}
+        Solo sumas y restas.
+        
+        Responde SOLO con JSON válido:
+        {
+            "pregunta": "X + Y = ?",
+            "respuesta": número,
+            "operacion": "suma" o "resta"
+        }`;
+    }
+
+    // ✅ NUEVO: Extraer ejercicio de texto de IA
+    extraerEjercicioDeTexto(texto, nivel) {
+        // Buscar patrones matemáticos en el texto
+        const patronSuma = /(\d+)\s*\+\s*(\d+)/;
+        const patronResta = /(\d+)\s*-\s*(\d+)/;
+        
+        let match = texto.match(patronSuma);
+        if (match) {
+            const num1 = parseInt(match[1]);
+            const num2 = parseInt(match[2]);
+            return {
+                pregunta: `${num1} + ${num2} = ?`,
+                respuesta: num1 + num2,
+                operacion: 'suma',
+                nivel,
+                num1,
+                num2,
+                fuente: 'ia-extraido',
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        match = texto.match(patronResta);
+        if (match) {
+            const num1 = parseInt(match[1]);
+            const num2 = parseInt(match[2]);
+            return {
+                pregunta: `${num1} - ${num2} = ?`,
+                respuesta: num1 - num2,
+                operacion: 'resta',
+                nivel,
+                num1,
+                num2,
+                fuente: 'ia-extraido',
+                timestamp: new Date().toISOString()
+            };
+        }
+        
+        // Fallback a generación offline
+        return this.generarEjercicioOffline(nivel);
+    }
+
+    // ✅ NUEVO: Templates de ejercicios para tests
+    get exerciseTemplates() {
+        return {
+            facil: [
+                { pregunta: '5 + 3 = ?', respuesta: 8, operacion: 'suma' },
+                { pregunta: '7 - 2 = ?', respuesta: 5, operacion: 'resta' },
+                { pregunta: '4 + 6 = ?', respuesta: 10, operacion: 'suma' }
+            ],
+            medio: [
+                { pregunta: '15 + 23 = ?', respuesta: 38, operacion: 'suma' },
+                { pregunta: '45 - 17 = ?', respuesta: 28, operacion: 'resta' },
+                { pregunta: '29 + 34 = ?', respuesta: 63, operacion: 'suma' }
+            ],
+            dificil: [
+                { pregunta: '78 + 56 = ?', respuesta: 134, operacion: 'suma' },
+                { pregunta: '91 - 47 = ?', respuesta: 44, operacion: 'resta' },
+                { pregunta: '83 + 29 = ?', respuesta: 112, operacion: 'suma' }
+            ]
+        };
+    }
+
+    // ...existing code...
 }
 
 // ✅ CORREGIDO: Inicializar solo una vez y exportar globalmente

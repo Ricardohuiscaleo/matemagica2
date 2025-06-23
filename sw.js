@@ -1,296 +1,184 @@
-// Service Worker para Matemágica PWA - VERSIÓN SEGURA
-// 🔄 Optimizado para el servidor backend seguro
-const CACHE_NAME = 'matematica-pwa-v6.0-secure';
-const CACHE_OLD_NAMES = ['matematica-pwa-v1.0', 'matematica-pwa-v2.0', 'matematica-pwa-v3.0', 'matematica-pwa-v4.0', 'matematica-pwa-v5.0'];
+// Service Worker actualizado para evitar problemas de caché
+const CACHE_NAME = 'matemagica-pwa-v' + Date.now(); // ✅ Versión dinámica para forzar actualización
+const CACHE_VERSION = '2.1.0'; // Incrementar cuando haya cambios críticos
 
-const urlsToCache = [
+// ✅ RECURSOS CRÍTICOS QUE SIEMPRE DEBEN ACTUALIZARSE
+const CRITICAL_RESOURCES = [
     '/',
     '/index.html',
+    '/buscar-teachers.html',
     '/dashboard.html',
     '/js/auth.js',
-    '/js/config-service.js',
-    '/js/dashboard.js',
-    '/js/dashboard-auth.js',
-    '/js/pdf-generator.js',
-    '/js/math-modules/adicion-sustraccion.js',
-    '/js/math-modules/mathematics-navigation.js',
-    '/curriculum-segundo-basico.js',
-    '/gemini-ai.js',
-    '/math-mode-system.js',
-    '/styles.css',
-    '/manifest.json',
-    '/favicon.ico',
-    '/icons/icon-72.png',
-    '/icons/icon-96.png',
-    '/icons/icon-128.png',
-    '/icons/icon-144.png',
-    '/icons/icon-152.png',
-    '/icons/icon-192.png',
-    '/icons/icon-384.png',
-    '/icons/icon-512.png',
-    // CDN resources con fallback
-    'https://unpkg.com/@supabase/supabase-js@2',
-    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
-    'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
+    '/js/config-service.js', 
+    '/js/skills-config.js',
+    '/js/skills-service.js',
+    '/test-sincronizacion.html'
 ];
 
-// 🧹 Instalación con limpieza mejorada
+// ✅ RECURSOS ESTÁTICOS QUE PUEDEN CACHEARSE
+const STATIC_RESOURCES = [
+    '/styles.css',
+    '/manifest.json',
+    '/icons/icon-192.png',
+    '/icons/icon-512.png'
+];
+
+// ✅ INSTALACIÓN: Cachear solo recursos estáticos
 self.addEventListener('install', event => {
-    console.log('🔧 SW Seguro: Instalando versión 6.0...');
+    console.log('🔧 SW: Instalando nueva versión', CACHE_NAME);
     
     event.waitUntil(
-        (async () => {
-            try {
-                // Limpiar caches antiguos
-                const cacheNames = await caches.keys();
-                await Promise.all(
-                    cacheNames.map(async cacheName => {
-                        if (CACHE_OLD_NAMES.includes(cacheName)) {
-                            console.log(`🗑️ Eliminando cache: ${cacheName}`);
-                            return caches.delete(cacheName);
-                        }
-                    })
-                );
-                
-                // Crear nuevo cache con manejo de errores
-                const cache = await caches.open(CACHE_NAME);
-                console.log('📦 SW: Cacheando recursos esenciales...');
-                
-                // Cachear recursos críticos primero
-                const criticalResources = [
-                    '/',
-                    '/index.html',
-                    '/dashboard.html',
-                    '/styles.css',
-                    '/manifest.json',
-                    '/favicon.ico'
-                ];
-                
-                await cache.addAll(criticalResources);
-                console.log('✅ Recursos críticos cacheados');
-                
-                // Cachear recursos opcionales con manejo de errores
-                for (const url of urlsToCache) {
-                    if (!criticalResources.includes(url)) {
-                        try {
-                            await cache.add(url);
-                        } catch (error) {
-                            console.warn(`⚠️ No se pudo cachear: ${url}`, error.message);
-                        }
-                    }
-                }
-                
-            } catch (error) {
-                console.error('❌ Error durante instalación SW:', error);
-            }
-        })()
+        caches.open(CACHE_NAME)
+            .then(cache => {
+                console.log('📦 SW: Cacheando recursos estáticos');
+                return cache.addAll(STATIC_RESOURCES);
+            })
+            .then(() => {
+                console.log('✅ SW: Recursos estáticos cacheados');
+                return self.skipWaiting(); // Activar inmediatamente
+            })
     );
-    
-    self.skipWaiting();
 });
 
-// 🌐 Interceptor de peticiones con mejor manejo SSL/CSP
-self.addEventListener('fetch', (event) => {
-    // No interceptar peticiones a APIs externas problemáticas
-    const url = new URL(event.request.url);
+// ✅ ACTIVACIÓN: Limpiar cachés antiguos
+self.addEventListener('activate', event => {
+    console.log('🚀 SW: Activando nueva versión');
     
-    // Lista de dominios que pueden causar problemas SSL
-    const problematicDomains = [
-        'fonts.googleapis.com',
-        'fonts.gstatic.com',
-        'accounts.google.com'
-    ];
+    event.waitUntil(
+        caches.keys()
+            .then(cacheNames => {
+                const deletePromises = cacheNames
+                    .filter(cacheName => {
+                        // Eliminar cachés que no sean la versión actual
+                        return cacheName.startsWith('matemagica-pwa-v') && cacheName !== CACHE_NAME;
+                    })
+                    .map(cacheName => {
+                        console.log('🗑️ SW: Eliminando caché antiguo:', cacheName);
+                        return caches.delete(cacheName);
+                    });
+                
+                return Promise.all(deletePromises);
+            })
+            .then(() => {
+                console.log('✅ SW: Cachés antiguos eliminados');
+                return self.clients.claim(); // Tomar control inmediatamente
+            })
+    );
+});
+
+// ✅ FETCH: Estrategia Network-First para recursos críticos
+self.addEventListener('fetch', event => {
+    const requestUrl = new URL(event.request.url);
     
-    if (problematicDomains.some(domain => url.hostname.includes(domain))) {
-        // Dejar que el navegador maneje estas peticiones directamente
+    // Solo manejar requests del mismo origen
+    if (requestUrl.origin !== location.origin) {
         return;
     }
     
-    event.respondWith(
-        (async () => {
-            try {
-                // Intentar obtener del cache primero
-                const cachedResponse = await caches.match(event.request);
-                if (cachedResponse) {
-                    console.log('📦 Cache hit:', url.pathname);
-                    return cachedResponse;
-                }
-                
-                // Si no está en cache, intentar red
-                console.log('🌐 Fetching:', url.pathname);
-                const networkResponse = await fetch(event.request);
-                
-                // Verificar respuesta válida
-                if (!networkResponse || networkResponse.status !== 200) {
-                    console.warn('⚠️ Respuesta no válida:', networkResponse?.status);
-                    return networkResponse || new Response('', { status: 404 });
-                }
-                
-                // Solo cachear recursos del mismo origen
-                if (url.origin === location.origin) {
-                    try {
-                        const cache = await caches.open(CACHE_NAME);
-                        await cache.put(event.request, networkResponse.clone());
-                        console.log('💾 Cacheado:', url.pathname);
-                    } catch (cacheError) {
-                        console.warn('⚠️ Error cacheando:', cacheError.message);
-                    }
-                }
-                
-                return networkResponse;
-                
-            } catch (error) {
-                console.error('❌ Fetch error:', error.message);
-                
-                // Fallbacks específicos
-                if (event.request.destination === 'document') {
-                    const indexCache = await caches.match('/index.html');
-                    if (indexCache) return indexCache;
-                }
-                
-                if (url.pathname.includes('/icons/')) {
-                    const defaultIcon = await caches.match('/icons/icon-192.png');
-                    if (defaultIcon) return defaultIcon;
-                }
-                
-                if (url.pathname === '/favicon.ico') {
-                    const favicon = await caches.match('/favicon.ico');
-                    if (favicon) return favicon;
-                    // Generar favicon simple en caso de emergencia
-                    return new Response(
-                        new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
-                        { headers: { 'Content-Type': 'image/png' } }
-                    );
-                }
-                
-                // Para CSS/JS críticos, devolver respuesta mínima
-                if (url.pathname.endsWith('.css')) {
-                    return new Response('/* Fallback CSS */', {
-                        headers: { 'Content-Type': 'text/css' }
-                    });
-                }
-                
-                if (url.pathname.endsWith('.js')) {
-                    return new Response('console.log("Fallback JS loaded");', {
-                        headers: { 'Content-Type': 'application/javascript' }
-                    });
-                }
-                
-                return new Response('Resource not available', { status: 404 });
-            }
-        })()
+    // Estrategia para recursos críticos: SIEMPRE desde red primero
+    const isCritical = CRITICAL_RESOURCES.some(resource => 
+        requestUrl.pathname === resource || requestUrl.pathname.endsWith(resource)
     );
-});
-
-// Actualizar Service Worker y limpiar caches antiguos
-self.addEventListener('activate', (event) => {
-  console.log('🔄 Service Worker: Activando...');
-  const cacheWhitelist = [CACHE_NAME];
-
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('🗑️ Eliminando cache antiguo:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      console.log('✅ Service Worker activado correctamente');
-      return self.clients.claim();
-    })
-  );
-});
-
-// Manejo de sincronización en segundo plano
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'background-sync') {
-    console.log('🔄 Realizando sincronización en segundo plano');
-    event.waitUntil(syncData());
-  }
-});
-
-// Función para sincronizar datos guardados localmente
-async function syncData() {
-  try {
-    // Aquí podrías sincronizar ejercicios guardados, progreso, etc.
-    console.log('📊 Sincronizando datos locales...');
     
-    // Ejemplo: enviar datos de progreso a Supabase
-    const savedProgress = localStorage.getItem('exerciseHistory');
-    if (savedProgress) {
-      // Lógica de sincronización aquí
-      console.log('💾 Datos de progreso encontrados para sincronizar');
+    if (isCritical) {
+        event.respondWith(networkFirstStrategy(event.request));
+    } else {
+        event.respondWith(cacheFirstStrategy(event.request));
     }
-    
-  } catch (error) {
-    console.error('❌ Error sincronizando datos:', error);
-  }
+});
+
+// ✅ ESTRATEGIA NETWORK-FIRST: Para recursos críticos
+async function networkFirstStrategy(request) {
+    try {
+        console.log('🌐 SW: Network-first para:', request.url);
+        
+        // Intentar obtener desde la red primero
+        const networkResponse = await fetch(request);
+        
+        if (networkResponse.ok) {
+            // Si es exitoso, actualizar caché
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+            console.log('✅ SW: Actualizado en caché:', request.url);
+        }
+        
+        return networkResponse;
+        
+    } catch (error) {
+        console.log('⚠️ SW: Red falló, intentando caché:', request.url);
+        
+        // Si la red falla, intentar caché
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            console.log('📦 SW: Servido desde caché:', request.url);
+            return cachedResponse;
+        }
+        
+        // Si no hay caché, devolver error básico
+        return new Response('Recurso no disponible offline', {
+            status: 503,
+            statusText: 'Service Unavailable'
+        });
+    }
 }
 
-// Notificaciones push (para futuras funcionalidades)
-self.addEventListener('push', (event) => {
-  console.log('🔔 Notificación push recibida');
-  
-  const options = {
-    body: event.data ? event.data.text() : '¡Tiempo de practicar matemáticas! 🧮',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1,
-      url: '/'
-    },
-    actions: [
-      {
-        action: 'practice',
-        title: '🎯 Practicar Ahora'
-      },
-      {
-        action: 'later',
-        title: '⏰ Más Tarde'
-      }
-    ]
-  };
+// ✅ ESTRATEGIA CACHE-FIRST: Para recursos estáticos
+async function cacheFirstStrategy(request) {
+    const cachedResponse = await caches.match(request);
+    
+    if (cachedResponse) {
+        console.log('📦 SW: Cache-first servido:', request.url);
+        return cachedResponse;
+    }
+    
+    try {
+        console.log('🌐 SW: No en caché, obteniendo de red:', request.url);
+        const networkResponse = await fetch(request);
+        
+        if (networkResponse.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+        }
+        
+        return networkResponse;
+        
+    } catch (error) {
+        console.log('❌ SW: Error en cache-first:', request.url, error);
+        return new Response('Recurso no disponible', {
+            status: 404,
+            statusText: 'Not Found'
+        });
+    }
+}
 
-  event.waitUntil(
-    self.registration.showNotification('Matemágica - ¡Hora de Practicar!', options)
-  );
+// ✅ MENSAJE: Manejar mensajes del cliente
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        console.log('🧹 SW: Recibida solicitud de limpiar caché');
+        
+        event.waitUntil(
+            caches.keys()
+                .then(cacheNames => {
+                    return Promise.all(
+                        cacheNames.map(cacheName => {
+                            console.log('🗑️ SW: Eliminando caché:', cacheName);
+                            return caches.delete(cacheName);
+                        })
+                    );
+                })
+                .then(() => {
+                    console.log('✅ SW: Todos los cachés eliminados');
+                    event.ports[0].postMessage({ success: true });
+                })
+        );
+    }
+    
+    if (event.data && event.data.type === 'GET_VERSION') {
+        event.ports[0].postMessage({ 
+            version: CACHE_VERSION,
+            cacheName: CACHE_NAME
+        });
+    }
 });
 
-// Manejo de clic en notificaciones
-self.addEventListener('notificationclick', (event) => {
-  console.log('👆 Notificación clickeada:', event.action);
-  event.notification.close();
-
-  if (event.action === 'practice') {
-    event.waitUntil(
-      clients.openWindow('/?action=practice')
-    );
-  } else if (event.action === 'later') {
-    // Programar recordatorio para más tarde
-    console.log('⏰ Recordatorio programado para más tarde');
-  } else {
-    // Click en el cuerpo de la notificación
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
-});
-
-// Manejo de errores del Service Worker
-self.addEventListener('error', (event) => {
-  console.error('❌ Error en Service Worker:', event.error);
-});
-
-// Manejo de errores no capturados
-self.addEventListener('unhandledrejection', (event) => {
-  console.error('❌ Promise rechazada no manejada en SW:', event.reason);
-});
-
-console.log('🚀 Service Worker cargado correctamente - Matemágica PWA');
+console.log('🚀 Service Worker cargado - Versión:', CACHE_VERSION);

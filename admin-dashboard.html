@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matemágica - Plataforma Educativa</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <meta name="theme-color" content="#3B82F6">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        /* ✅ ESTILOS OPTIMIZADOS Y LIMPIADOS */
+        
+        /* Fuentes del sistema para el texto */
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            font-weight: 400 !important;
+        }
+
+        /* REGLAS ESPECÍFICAS para eliminar bold solo de texto */
+        span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        p:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        button span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji),
+        div:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji) > span:not([class*="fa"]):not(.fas):not(.far):not(.fab):not(.fal):not(.icon):not(.emoji) {
+            font-weight: 400 !important;
+        }
+
+        /* ✅ FORZAR CORRECTAMENTE TODOS LOS ICONOS DE FONTAWESOME */
+        i, i[class*="fa"], .fas, .far, .fab, .fal, .fa,
+        i.fas, i.far, i.fab, i.fal, i.fa,
+        [class^="fa-"], [class*=" fa-"],
+        .module-group i, .nav-item i, .sidebar i,
+        nav i, button i, a i {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "Font Awesome 6 Pro" !important;
+            font-weight: 900 !important;
+            font-style: normal !important;
+            font-variant: normal !important;
+            text-rendering: auto !important;
+            line-height: 1 !important;
+            display: inline-block !important;
+        }
+
+        /* ÚNICA EXCEPCIÓN: Mantener "Matemágica" con cursiva */
+        h1[style*="Pacifico"], .magic-title {
+            font-family: 'Pacifico', cursive !important;
+            font-weight: 700 !important;
+            font-style: italic !important;
+        }
+
+        /* ✅ ANIMACIÓN DE CONFETI CSS */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header Principal -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <img class="h-8 w-8" src="icons/icon-192.png" alt="Matemágica">
+                    </div>
+                    <div class="ml-4">
+                        <h1 class="text-xl font-semibold text-gray-900">🔧 Dashboard Administrador</h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Estado del sistema -->
+                    <div class="hidden sm:flex items-center space-x-2 text-sm">
+                        <span class="h-2 w-2 bg-green-500 rounded-full"></span>
+                        <span class="text-gray-600">Sistema Activo</span>
+                    </div>
+                    
+                    <!-- Perfil admin -->
+                    <div class="flex items-center">
+                        <div class="text-right mr-3">
+                            <div class="text-sm font-medium text-gray-900" id="admin-nombre">Ricardo Huiscaleo</div>
+                            <div class="text-xs text-gray-500" id="admin-email">ricardo.huiscaleo@gmail.com</div>
+                        </div>
+                        <div class="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center">
+                            <span class="text-white text-sm font-bold">R</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón logout -->
+                    <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors">
+                        🚪 Salir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 🔧 DASHBOARD UNIFICADO - VISTA ÚNICA -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Banner de Bienvenida -->
+        <div class="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl shadow-lg p-8 mb-8 text-white">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">🔧 Panel de Administrador</h1>
+                    <p class="text-lg opacity-90">Control Total del Sistema Matemágica</p>
+                    <div class="mt-3">
+                        <span class="inline-flex items-center px-3 py-1 bg-white/20 text-white text-sm font-medium rounded-full">
+                            👑 SUPER ADMIN - RICARDO
+                        </span>
+                    </div>
+                </div>
+                <div class="mt-4 md:mt-0 text-right">
+                    <div class="text-xl font-semibold">Ricardo Huiscaleo</div>
+                    <div class="text-sm opacity-90">ricardo.huiscaleo@gmail.com</div>
+                    <div class="text-xs opacity-75 mt-1">Última conexión: Ahora</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📊 SECCIÓN 1: OVERVIEW DEL SISTEMA -->
+        <section class="mb-12">
+            <div class="flex items-center mb-6">
+                <span class="text-4xl mr-4">📊</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Overview del Sistema</h2>
+                    <p class="text-gray-600">Estadísticas principales y estado en tiempo real</p>
+                </div>
+            </div>
+
+            <!-- Stats Cards Principales -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Usuarios Totales</p>
+                            <p class="text-3xl font-bold text-blue-600" id="stat-total-users">166</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span class="text-green-600 text-sm font-medium">📈 Sistema activo</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Profesores</p>
+                            <p class="text-3xl font-bold text-green-600" id="stat-total-teachers">10</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chalkboard-teacher text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span class="text-blue-600 text-sm font-medium">👩‍🏫 Activos</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Apoderados</p>
+                            <p class="text-3xl font-bold text-purple-600" id="stat-total-parents">151</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-user-friends text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span class="text-purple-600 text-sm font-medium">👨‍👩‍👧‍👦 Familias</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Ejercicios</p>
+                            <p class="text-3xl font-bold text-orange-600" id="total-exercises">16</p>
+                        </div>
+                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calculator text-orange-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <span class="text-orange-600 text-sm font-medium">🧮 Generados</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado del Sistema y Acciones -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Estado en Tiempo Real -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        📡 Estado del Sistema
+                        <span class="ml-2 h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span class="text-green-600 mr-2">🟢</span>
+                                <span>Base de Datos</span>
+                            </div>
+                            <span class="text-green-600 font-medium" id="db-status">Conectada</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span class="text-green-600 mr-2">🟢</span>
+                                <span>IA Gemini</span>
+                            </div>
+                            <span class="text-green-600 font-medium" id="ai-status">Activa</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            <div class="flex items-center">
+                                <span class="text-blue-600 mr-2">🔧</span>
+                                <span>Versión</span>
+                            </div>
+                            <span class="text-blue-600 font-medium" id="stat-system-uptime">v2.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acciones Rápidas -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">⚡ Acciones Rápidas</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-refresh-stats" class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                            🔄 Actualizar
+                        </button>
+                        <button id="btn-export-data" class="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition-colors font-medium">
+                            📊 Exportar
+                        </button>
+                        <button id="btn-clear-cache" class="bg-orange-500 text-white p-3 rounded-lg hover:bg-orange-600 transition-colors font-medium">
+                            🧹 Cache
+                        </button>
+                        <button id="btn-debug-mode" class="bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 transition-colors font-medium">
+                            🐛 Debug
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico Principal -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">👥 Distribución de Usuarios</h3>
+                <div class="h-80">
+                    <canvas id="chart-roles-distribution"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 👥 SECCIÓN 2: VISTAS DE ROLES -->
+        <section class="mb-12">
+            <div class="flex items-center mb-6">
+                <span class="text-4xl mr-4">👥</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Vistas de Roles</h2>
+                    <p class="text-gray-600">Comparación y simulación de diferentes interfaces</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Vista Profesor -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                            👩‍🏫 Vista Profesor
+                        </h3>
+                        <button id="btn-simulate-teacher" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                            🔍 Simular
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <div class="font-semibold text-blue-900 mb-2">Características Principales:</div>
+                            <ul class="text-sm text-blue-800 space-y-1">
+                                <li class="flex items-center"><span class="mr-2">•</span>Gestión múltiples estudiantes</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Estadísticas grupales</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Comunicación con apoderados</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Reportes de clase</li>
+                            </ul>
+                        </div>
+                        <div class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                            <strong>Dashboard:</strong> <code>profesor-dashboard.html</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vista Apoderado -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                            👨‍👩‍👧‍👦 Vista Apoderado
+                        </h3>
+                        <button id="btn-simulate-parent" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors font-medium">
+                            🔍 Simular
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="p-4 bg-purple-50 rounded-lg">
+                            <div class="font-semibold text-purple-900 mb-2">Características Principales:</div>
+                            <ul class="text-sm text-purple-800 space-y-1">
+                                <li class="flex items-center"><span class="mr-2">•</span>Un estudiante (hijo/a)</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Progreso individual</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Cuentos matemáticos</li>
+                                <li class="flex items-center"><span class="mr-2">•</span>Ejercicios en casa</li>
+                            </ul>
+                        </div>
+                        <div class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                            <strong>Dashboard:</strong> <code>apoderado-dashboard.html</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla Comparativa -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">🔍 Comparación Detallada</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b-2 border-gray-200">
+                                <th class="text-left p-4 font-semibold">Característica</th>
+                                <th class="text-left p-4 font-semibold text-blue-600">👩‍🏫 Profesor</th>
+                                <th class="text-left p-4 font-semibold text-purple-600">👨‍👩‍👧‍👦 Apoderado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4 font-medium">Estudiantes</td>
+                                <td class="p-4">Múltiples (clase completa)</td>
+                                <td class="p-4">Uno (hijo/a)</td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4 font-medium">Estadísticas</td>
+                                <td class="p-4">Grupales + individuales</td>
+                                <td class="p-4">Solo individual</td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4 font-medium">Comunicación</td>
+                                <td class="p-4">Envía a apoderados</td>
+                                <td class="p-4">Recibe del profesor</td>
+                            </tr>
+                            <tr class="border-b border-gray-100">
+                                <td class="p-4 font-medium">Enfoque</td>
+                                <td class="p-4">Pedagógico/curricular</td>
+                                <td class="p-4">Apoyo familiar</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-medium">Reportes</td>
+                                <td class="p-4">Clase y estudiantes</td>
+                                <td class="p-4">Solo del hijo/a</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 👥 SECCIÓN 3: TODOS LOS PERFILES -->
+        <section class="mb-12">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <span class="text-4xl mr-4">👥</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Todos los Perfiles</h2>
+                        <p class="text-gray-600">Gestión completa de usuarios del sistema</p>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="btn-reload-students" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                        🔄 Recargar
+                    </button>
+                    <button id="btn-export-students" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium">
+                        📊 Exportar CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <!-- Estadísticas Rápidas -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-blue-600" id="students-total-count">-</div>
+                        <div class="text-sm text-blue-800 font-medium">Total</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-green-600" id="students-active-count">-</div>
+                        <div class="text-sm text-green-800 font-medium">Activos</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-purple-600" id="students-teacher-count">-</div>
+                        <div class="text-sm text-purple-800 font-medium">Profesores</div>
+                    </div>
+                    <div class="bg-orange-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-orange-600" id="students-parent-count">-</div>
+                        <div class="text-sm text-orange-800 font-medium">Apoderados</div>
+                    </div>
+                    <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                        <div class="text-2xl font-bold text-yellow-600" id="students-student-count">-</div>
+                        <div class="text-sm text-yellow-800 font-medium">Estudiantes</div>
+                    </div>
+                </div>
+
+                <!-- Filtros de Búsqueda -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                    <select id="filter-student-role" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">🔍 Todos los roles</option>
+                        <option value="admin">👑 Administradores</option>
+                        <option value="teacher">👨‍🏫 Profesores</option>
+                        <option value="parent">👨‍👩‍👧‍👦 Apoderados</option>
+                        <option value="student">🎓 Estudiantes</option>
+                    </select>
+                    <select id="filter-student-grade" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">📚 Todos los cursos</option>
+                        <option value="Pre-Kinder">🎨 Pre-Kinder</option>
+                        <option value="Kinder">🌟 Kinder</option>
+                        <option value="1° Básico">📚 1° Básico</option>
+                        <option value="2° Básico">🎯 2° Básico</option>
+                    </select>
+                    <input type="text" id="filter-student-search" placeholder="🔍 Buscar por nombre o email..." class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <button id="btn-clear-student-filters" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors font-medium">
+                        🗑️ Limpiar
+                    </button>
+                </div>
+
+                <!-- Gráficos de Análisis -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">📊 Distribución por Roles</h4>
+                        <div class="h-64">
+                            <canvas id="chart-profiles-by-role"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">📅 Registros por Mes</h4>
+                        <div class="h-64">
+                            <canvas id="chart-profiles-by-month"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Perfiles -->
+                <div class="border-t border-gray-200 pt-6">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">👥 Lista de Usuarios</h4>
+                    <div id="students-global-list" class="space-y-3">
+                        <div class="text-center py-8 text-gray-500">
+                            <div class="text-4xl mb-4">👥</div>
+                            <p class="text-lg">Cargando perfiles del sistema...</p>
+                            <div class="mt-4">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📚 SECCIÓN 4: MÓDULOS DEL SISTEMA -->
+        <section class="mb-12">
+            <div class="flex items-center mb-6">
+                <span class="text-4xl mr-4">📚</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Estado de Módulos</h2>
+                    <p class="text-gray-600">Gestión y monitoreo de módulos educativos</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Módulos Disponibles -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📚 Módulos Disponibles</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                            <div class="flex items-center">
+                                <span class="text-3xl mr-4">🧮</span>
+                                <div>
+                                    <div class="font-semibold text-green-900">Matemáticas 2° Básico</div>
+                                    <div class="text-sm text-green-700">Suma y resta con/sin reserva</div>
+                                </div>
+                            </div>
+                            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">🟢 Activo</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <div class="flex items-center">
+                                <span class="text-3xl mr-4">📚</span>
+                                <div>
+                                    <div class="font-semibold text-yellow-900">Lenguaje</div>
+                                    <div class="text-sm text-yellow-700">Lectura comprensiva</div>
+                                </div>
+                            </div>
+                            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">🟡 Desarrollo</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div class="flex items-center">
+                                <span class="text-3xl mr-4">🧪</span>
+                                <div>
+                                    <div class="font-semibold text-gray-900">Ciencias</div>
+                                    <div class="text-sm text-gray-700">Experimentos básicos</div>
+                                </div>
+                            </div>
+                            <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">⚪ Planificado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progreso de Usuarios -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Progreso de Usuarios</h3>
+                    <div id="modules-progress" class="space-y-4">
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+                            <p>Cargando progreso de módulos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📈 SECCIÓN 5: ANALYTICS REALES -->
+        <section class="mb-12">
+            <div class="flex items-center mb-6">
+                <span class="text-4xl mr-4">📈</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Analytics Reales</h2>
+                    <p class="text-gray-600">Datos en tiempo real desde Supabase</p>
+                </div>
+            </div>
+
+            <!-- Métricas Principales -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Sesiones Totales</p>
+                            <p class="text-3xl font-bold text-green-600" id="analytics-total-sessions">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Ejercicios Resueltos</p>
+                            <p class="text-3xl font-bold text-purple-600" id="analytics-total-exercises">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calculator text-purple-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Precisión Promedio</p>
+                            <p class="text-3xl font-bold text-blue-600" id="analytics-avg-accuracy">-%</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-target text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Tiempo Total</p>
+                            <p class="text-2xl font-bold text-orange-600" id="analytics-study-time">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-orange-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Detallados -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Top Estudiantes -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">🏆 Top Estudiantes</h3>
+                        <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">En Tiempo Real</span>
+                    </div>
+                    <div id="analytics-top-students-list" class="space-y-3">
+                        <div class="text-center py-6 text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                            <p>Cargando estudiantes destacados...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sesiones Recientes -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">📝 Actividad Reciente</h3>
+                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Últimas 10</span>
+                    </div>
+                    <div id="analytics-recent-sessions-list" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-center py-6 text-gray-500">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                            <p>Cargando actividad reciente...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🛠️ SECCIÓN 6: HERRAMIENTAS DE ADMINISTRACIÓN -->
+        <section class="mb-12">
+            <div class="flex items-center mb-6">
+                <span class="text-4xl mr-4">🛠️</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Herramientas de Administración</h2>
+                    <p class="text-gray-600">Herramientas avanzadas, diagnósticos y testing</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Herramientas del Sistema -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">🔧 Herramientas del Sistema</h3>
+                    <div class="space-y-3">
+                        <button id="btn-system-maintenance" class="w-full bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 transition-colors font-medium text-left">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-3">🔧</span>
+                                <div>
+                                    <div class="font-semibold">Modo Mantenimiento</div>
+                                    <div class="text-sm opacity-90">Pausar acceso al sistema</div>
+                                </div>
+                            </div>
+                        </button>
+                        <button id="btn-manage-users" class="w-full bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors font-medium text-left">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-3">👥</span>
+                                <div>
+                                    <div class="font-semibold">Gestión de Usuarios</div>
+                                    <div class="text-sm opacity-90">Administrar cuentas y permisos</div>
+                                </div>
+                            </div>
+                        </button>
+                        <button id="btn-view-logs" class="w-full bg-gray-500 text-white p-4 rounded-lg hover:bg-gray-600 transition-colors font-medium text-left">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-3">📋</span>
+                                <div>
+                                    <div class="font-semibold">Ver Logs Completos</div>
+                                    <div class="text-sm opacity-90">Historial detallado del sistema</div>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulador de Roles -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">🎭 Simulador de Roles</h3>
+                    <div class="space-y-3">
+                        <div class="p-4 bg-blue-50 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-blue-900">Vista Profesor</div>
+                                    <div class="text-sm text-blue-700">Dashboard pedagógico completo</div>
+                                </div>
+                                <button onclick="window.open('profesor-dashboard.html', '_blank')" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                    🔍 Abrir
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 bg-purple-50 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-purple-900">Vista Apoderado</div>
+                                    <div class="text-sm text-purple-700">Dashboard familiar personalizado</div>
+                                </div>
+                                <button onclick="window.open('apoderado-dashboard.html', '_blank')" class="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600">
+                                    🔍 Abrir
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-gray-900">Dashboard Legacy</div>
+                                    <div class="text-sm text-gray-700">Versión original del sistema</div>
+                                </div>
+                                <button onclick="window.open('dashboard-legacy.html', '_blank')" class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">
+                                    🔍 Abrir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🧪 NUEVA SECCIÓN: Herramientas de Diagnóstico y Testing -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">🧪 Herramientas de Diagnóstico y Testing</h3>
+                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Acceso Directo</span>
+                </div>
+                
+                <!-- Grid de Herramientas de Testing -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Diagnósticos Generales -->
+                    <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-green-900">🔍 Diagnóstico General</div>
+                            <button onclick="window.open('diagnostico.html', '_blank')" class="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-green-700">Estado completo del sistema</div>
+                    </div>
+
+                    <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-orange-900">🔐 OAuth Diagnóstico</div>
+                            <button onclick="window.open('oauth-diagnostics.html', '_blank')" class="bg-orange-500 text-white px-2 py-1 rounded text-xs hover:bg-orange-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-orange-700">Testing de autenticación</div>
+                    </div>
+
+                    <!-- Testing de Componentes -->
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-blue-900">📊 Test Estadísticas</div>
+                            <button onclick="window.open('test-estadisticas.html', '_blank')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-blue-700">Validar analytics y métricas</div>
+                    </div>
+
+                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-purple-900">🤖 Test Gemini IA</div>
+                            <button onclick="window.open('test-gemini.html', '_blank')" class="bg-purple-500 text-white px-2 py-1 rounded text-xs hover:bg-purple-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-purple-700">Testing de IA y generación</div>
+                    </div>
+
+                    <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-red-900">⚠️ Test Supabase 401</div>
+                            <button onclick="window.open('test-supabase-401.html', '_blank')" class="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-red-700">Debug errores de base de datos</div>
+                    </div>
+
+                    <div class="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-cyan-900">🔄 Test Sincronización</div>
+                            <button onclick="window.open('test-sincronizacion.html', '_blank')" class="bg-cyan-500 text-white px-2 py-1 rounded text-xs hover:bg-cyan-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-cyan-700">Validar sync de datos</div>
+                    </div>
+
+                    <!-- Suite General de Tests -->
+                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-gray-900">🧪 Suite General Tests</div>
+                            <button onclick="window.open('tests.html', '_blank')" class="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-700">Batería completa de pruebas</div>
+                    </div>
+
+                    <!-- Herramientas de Limpieza -->
+                    <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-yellow-900">🗑️ Limpiar Cache</div>
+                            <button onclick="window.open('limpiar-cache-completo.html', '_blank')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-yellow-700">Limpieza completa de cache</div>
+                    </div>
+
+                    <div class="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-pink-900">🚪 Limpiar Sesión</div>
+                            <button onclick="window.open('limpiar-sesion.html', '_blank')" class="bg-pink-500 text-white px-2 py-1 rounded text-xs hover:bg-pink-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-pink-700">Reset completo de sesión</div>
+                    </div>
+
+                    <!-- Consultas Especializadas -->
+                    <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-indigo-900">👨‍🏫 Query Profesores</div>
+                            <button onclick="window.open('query-profesores.html', '_blank')" class="bg-indigo-500 text-white px-2 py-1 rounded text-xs hover:bg-indigo-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-indigo-700">Consultas de base de profesores</div>
+                    </div>
+
+                    <!-- Páginas Especiales -->
+                    <div class="p-4 bg-teal-50 rounded-lg border border-teal-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-teal-900">📱 Historia Celular</div>
+                            <button onclick="window.open('historia-celular.html', '_blank')" class="bg-teal-500 text-white px-2 py-1 rounded text-xs hover:bg-teal-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-teal-700">Funcionalidades móviles</div>
+                    </div>
+
+                    <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-semibold text-emerald-900">🎨 Gaby Presentaciones</div>
+                            <button onclick="window.open('gaby-presentaciones.html', '_blank')" class="bg-emerald-500 text-white px-2 py-1 rounded text-xs hover:bg-emerald-600">
+                                Abrir
+                            </button>
+                        </div>
+                        <div class="text-xs text-emerald-700">Sistema de presentaciones</div>
+                    </div>
+                </div>
+
+                <!-- Acciones Rápidas del Testing -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="font-semibold text-gray-900 mb-3">🚀 Acciones Rápidas de Testing</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button id="btn-run-all-diagnostics" class="bg-blue-500 text-white p-2 rounded text-sm hover:bg-blue-600 transition-colors">
+                            🔍 Ejecutar Todos
+                        </button>
+                        <button id="btn-clear-all-cache" class="bg-orange-500 text-white p-2 rounded text-sm hover:bg-orange-600 transition-colors">
+                            🗑️ Limpiar Todo
+                        </button>
+                        <button id="btn-test-connections" class="bg-green-500 text-white p-2 rounded text-sm hover:bg-green-600 transition-colors">
+                            🔌 Test Conexiones
+                        </button>
+                        <button id="btn-generate-report" class="bg-purple-500 text-white p-2 rounded text-sm hover:bg-purple-600 transition-colors">
+                            📄 Generar Reporte
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs del Sistema -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">📋 Logs del Sistema</h3>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">Últimos 15</span>
+                        <button class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors">
+                            🔄 Actualizar
+                        </button>
+                    </div>
+                </div>
+                <div id="system-logs-list" class="space-y-2 max-h-80 overflow-y-auto bg-gray-50 rounded-lg p-4">
+                    <div class="text-center py-6 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Cargando logs del sistema...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div class="text-sm text-gray-600">
+                    © 2024 Matemágica v2.0 - Dashboard de Administrador
+                </div>
+                <div class="mt-2 md:mt-0 text-sm text-gray-500">
+                    Sistema de gestión educativa con IA
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ✅ MODALES SIMPLIFICADOS Y MODULARES -->
+    
+    <!-- Modal de Selección de Estudiante -->
+    <div id="student-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">👥 Seleccionar Estudiante</h3>
+                    <button id="close-student-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Buscar estudiante</label>
+                        <input type="text" id="student-search" placeholder="Escribir nombre..." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="max-h-48 overflow-y-auto" id="students-list">
+                        <!-- Lista de estudiantes se carga dinámicamente -->
+                    </div>
+                    
+                    <div class="pt-3 border-t border-gray-200">
+                        <button id="new-student-btn" class="w-full text-blue-600 hover:text-blue-800 text-sm font-medium py-2">
+                            <i class="fas fa-plus mr-1"></i>Agregar Nuevo Estudiante
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ LOS MODALES COMPLEJOS SE CARGAN DINÁMICAMENTE DESDE LOS MÓDULOS JS -->
+    <!-- Modal de Nuevo Estudiante: js/student-modal-system.js -->
+    <!-- Modal de Edición: js/student-modal-system.js -->
+    <!-- Modal de Configuración: js/dashboard.js -->
+
+    <!-- Toast de Notificaciones -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <!-- ✅ SCRIPTS ESENCIALES - ORDEN OPTIMIZADO CON SISTEMA MODULAR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Biblioteca de gráficos Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <!-- 🔐 SERVICIO DE CONFIGURACIÓN SEGURA -->
+    <script src="js/config-service.js"></script>
+    
+    <!-- 📊 SERVICIO DE ANALYTICS REALES -->
+    <script src="js/real-analytics-service.js"></script>
+    
+    <!-- 🎭 COMPONENTE DE PANTALLA DE CARGA -->
+    <script src="js/components/loading-screen.js"></script>
+    
+    <!-- ✅ SISTEMA MODULAR DE ESTUDIANTES DIVIDIDO -->
+    <script src="js/student-management-core.js"></script>
+    <script src="js/student-modal-system.js"></script>
+    
+    <!-- 👥 SISTEMA DE GESTIÓN DE PERFILES COMPLETO -->
+    <script src="js/student-profile-management.js"></script>
+    
+    <!-- ✅ MÓDULOS PRINCIPALES -->
+    <script src="js/pdf-generator.js"></script>
+    <script src="js/dashboard-auth.js"></script>
+    
+    <!-- ✅ MÓDULOS DE MATEMÁTICAS -->
+    <script src="js/math-modules/adicion-sustraccion.js"></script>
+    <script src="js/math-modules/mathematics-navigation.js"></script>
+    
+    <!-- 🔧 DASHBOARD ESPECÍFICO PARA ADMINISTRADOR -->
+    <script src="admin-dashboard.js"></script>
+    
+    <!-- ✅ CARGA CONDICIONAL DE SCRIPTS -->
+    <script>
+        console.log('🚀 Iniciando Dashboard de Administrador - Matemágica v2.0...');
+        
+        // Cargar scripts principales solo si no existen
+        if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+            const curriculumScript = document.createElement('script');
+            curriculumScript.src = 'curriculum-segundo-basico.js';
+            document.head.appendChild(curriculumScript);
+        }
+        
+        if (typeof GeminiAIService === 'undefined') {
+            const geminiScript = document.createElement('script');
+            geminiScript.src = 'gemini-ai.js';
+            document.head.appendChild(geminiScript);
+        }
+        
+        if (typeof MathModeSystem === 'undefined') {
+            const mathScript = document.createElement('script');
+            mathScript.src = 'math-mode-system.js';
+            document.head.appendChild(mathScript);
+        }
+    </script>
+    
+    <!-- ✅ CONFIGURACIÓN GLOBAL SIMPLIFICADA -->
+    <script>
+        // ✅ CONFIGURACIÓN GLOBAL DEL DASHBOARD
+        const matemáticaDashboardConfig = {
+            currentStudentData: null,
+            isInitialized: false,
+            version: '2.0-limpio'
+        };
+        
+        // ✅ INICIALIZACIÓN SIMPLIFICADA
+        async function initializeDashboard() {
+            try {
+                console.log('⏳ Inicializando dashboard limpio...');
+                
+                // Inicializar sistemas básicos
+                await initializeDashboardSystem();
+                setupBasicUI();
+                
+                // ✅ MOSTRAR SECCIÓN ESPECÍFICA SEGÚN ROL
+                await setupRoleBasedNavigation();
+                
+                matemáticaDashboardConfig.isInitialized = true;
+                console.log('✅ Dashboard limpio inicializado correctamente');
+                
+            } catch (error) {
+                console.error('❌ Error inicializando dashboard:', error);
+            }
+        }
+
+        // ✅ NUEVA FUNCIÓN: Configurar navegación basada en rol
+        async function setupRoleBasedNavigation() {
+            try {
+                const userProfile = localStorage.getItem('matemagica-user-profile');
+                if (userProfile) {
+                    const profile = JSON.parse(userProfile);
+                    const userRole = profile.user_role;
+                    
+                    console.log('🎭 Configurando navegación para rol:', userRole);
+                    
+                    if (userRole === 'teacher') {
+                        // Mostrar sección de profesores
+                        const teacherSection = document.getElementById('teacher-section');
+                        if (teacherSection) {
+                            teacherSection.classList.remove('hidden');
+                            console.log('👩‍🏫 Sección de profesor activada');
+                        }
+                        
+                        // Ocultar sección de apoderados
+                        const parentSection = document.getElementById('parent-section');
+                        if (parentSection) {
+                            parentSection.classList.add('hidden');
+                        }
+                    } else if (userRole === 'parent') {
+                        // Mostrar sección de apoderados
+                        const parentSection = document.getElementById('parent-section');
+                        if (parentSection) {
+                            parentSection.classList.remove('hidden');
+                            console.log('👨‍👩‍👧‍👦 Sección de apoderado activada');
+                        }
+                        
+                        // Ocultar sección de profesores
+                        const teacherSection = document.getElementById('teacher-section');
+                        if (teacherSection) {
+                            teacherSection.classList.add('hidden');
+                        }
+                    } else {
+                        // Rol desconocido - ocultar ambas secciones
+                        const teacherSection = document.getElementById('teacher-section');
+                        const parentSection = document.getElementById('parent-section');
+                        if (teacherSection) teacherSection.classList.add('hidden');
+                        if (parentSection) parentSection.classList.add('hidden');
+                        console.log('❓ Rol no reconocido, ocultando secciones específicas');
+                    }
+                } else {
+                    console.log('⚠️ No se encontró perfil de usuario');
+                }
+            } catch (error) {
+                console.error('❌ Error configurando navegación por rol:', error);
+            }
+        }
+
+        async function initializeDashboardSystem() {
+            try {
+                // Cargar estudiante actual si existe
+                if (window.studentCore && window.studentCore.isInitialized()) {
+                    const currentStudent = window.studentCore.getCurrentStudent();
+                    if (currentStudent) {
+                        matemáticaDashboardConfig.currentStudentData = currentStudent;
+                        console.log('✅ Estudiante cargado:', currentStudent.name);
+                    }
+                }
+                
+                updateDashboardStats();
+                initializeGlobalAIIndicator();
+                updateWelcomeMessage();
+                
+                console.log('✅ Sistemas básicos inicializados');
+            } catch (error) {
+                console.error('❌ Error en inicialización:', error);
+            }
+        }
+
+        function updateDashboardStats() {
+            try {
+                const progress = JSON.parse(localStorage.getItem('exercise_progress') || '[]');
+                const totalExercises = progress.length;
+                const correctAnswers = progress.filter(p => p.correct).length;
+
+                const statElements = {
+                    exercises: document.getElementById('stat-exercises'),
+                    points: document.getElementById('stat-points')
+                };
+
+                if (statElements.exercises) statElements.exercises.textContent = totalExercises;
+                if (statElements.points) statElements.points.textContent = correctAnswers * 10;
+
+                console.log('✅ Estadísticas actualizadas');
+            } catch (error) {
+                console.error('❌ Error actualizando estadísticas:', error);
+            }
+        }
+
+        function initializeGlobalAIIndicator() {
+            try {
+                const aiConfigured = window.geminiAI && window.geminiAI.configured;
+                console.log(`🤖 IA: ${aiConfigured ? 'ACTIVA' : 'OFFLINE'}`);
+            } catch (error) {
+                console.error('❌ Error inicializando indicador IA:', error);
+            }
+        }
+
+        function updateWelcomeMessage() {
+            try {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const dayName = now.toLocaleDateString('es-ES', { weekday: 'long' });
+
+                const welcomeElement = document.getElementById('welcome-message');
+                if (welcomeElement) {
+                    welcomeElement.textContent = `${dayName} ${timeString}`;
+                }
+
+                console.log(`✅ Mensaje de bienvenida: ${dayName} ${timeString}`);
+            } catch (error) {
+                console.error('❌ Error actualizando mensaje de bienvenida:', error);
+            }
+        }
+
+        function setupBasicUI() {
+            try {
+                setupNavigationListeners();
+                setupQuickActions();
+                setupLogoutButton(); // ✅ NUEVO: Configurar botón de logout
+                console.log('✅ UI básica configurada');
+           
+            } catch (error) {
+                console.error('❌ Error configurando UI básica:', error);
+            }
+        }
+
+        function setupNavigationListeners() {
+            // Navegación básica - los eventos específicos los maneja cada módulo
+            console.log('✅ Listeners de navegación configurados');
+        }
+
+        function setupQuickActions() {
+            const quickActions = document.querySelectorAll('.quick-action');
+            quickActions.forEach(action => {
+                action.addEventListener('click', () => {
+                    console.log('🚀 Acción rápida próximamente');
+                });
+            });
+        }
+
+        // ✅ NUEVA FUNCIÓN: Configurar botón de logout
+        function setupLogoutButton() {
+            try {
+                const logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', handleLogout);
+                    console.log('✅ Botón de logout configurado');
+                } else {
+                    console.warn('⚠️ Botón de logout no encontrado');
+                }
+            } catch (error) {
+                console.error('❌ Error configurando botón de logout:', error);
+            }
+        }
+
+        // ✅ FUNCIÓN PARA MANEJAR LOGOUT
+        function handleLogout() {
+            try {
+                console.log('🚪 Iniciando proceso de logout...');
+                
+                // Mostrar confirmación
+                if (!confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                    return;
+                }
+
+                // Intentar usar el sistema principal de autenticación si está disponible
+                if (window.loginSystem && typeof window.loginSystem.signOut === 'function') {
+                    console.log('🚪 Usando logout del sistema principal de auth.js...');
+                    window.loginSystem.signOut();
+                } else {
+                    // Fallback manual para cerrar sesión
+                    console.log('🚪 Usando logout manual de fallback...');
+                    performManualLogout();
+                }
+                
+            } catch (error) {
+                console.error('❌ Error durante logout:', error);
+                // Último recurso: logout manual
+                performManualLogout();
+            }
+        }
+
+        // ✅ FUNCIÓN DE LOGOUT MANUAL (FALLBACK)
+        function performManualLogout() {
+            try {
+                console.log('🧹 Limpiando datos de sesión...');
+                
+                // Limpiar localStorage
+                const itemsToRemove = [
+                    'matemagica-authenticated',
+                    'matemagica-user-profile', 
+                    'matemagica_selected_role',
+                    'matemagica_user',
+                    'matemagica_profile',
+                    'currentUser',
+                    'userProfile',
+                    'selectedRole'
+                ];
+                
+                itemsToRemove.forEach(item => {
+                    localStorage.removeItem(item);
+                });
+                
+                // Limpiar sessionStorage
+                sessionStorage.clear();
+                
+                // Cerrar sesión en Supabase si está disponible
+                if (window.supabase && window.supabase.auth) {
+                    window.supabase.auth.signOut().catch(err => {
+                        console.warn('⚠️ Error cerrando sesión en Supabase:', err);
+                    });
+                }
+                
+                console.log('✅ Datos de sesión limpiados');
+                
+                // Redireccionar al login
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Error en logout manual:', error);
+                // Último recurso: recargar página
+                window.location.reload();
+            }
+        }
+
+        // ✅ FUNCIÓN PARA ABRIR GESTIÓN DE PERFILES
+        function openProfileManagement() {
+            try {
+                console.log('👥 Abriendo sección de gestión de perfiles...');
+                
+                // ✅ CREAR INSTANCIA SI NO EXISTE
+                if (!window.studentProfileManagement) {
+                    console.log('🔧 Creando instancia del sistema de gestión de perfiles...');
+                    window.studentProfileManagement = StudentProfileFactory.create();
+                }
+                
+                if (window.studentProfileManagement && window.studentProfileManagement.isInitialized) {
+                    window.studentProfileManagement.renderFullSection();
+                } else if (window.studentProfileManagement) {
+                    // Inicializar si no está listo
+                    window.studentProfileManagement.init().then(() => {
+                        window.studentProfileManagement.renderFullSection();
+                    });
+                } else {
+                    console.error('❌ Sistema de gestión de perfiles no disponible');
+                    
+                    // ✅ FALLBACK: Intentar cargar el script dinámicamente
+                    const script = document.createElement('script');
+                    script.src = 'js/student-profile-management.js';
+                    script.onload = () => {
+                        setTimeout(() => {
+                            window.studentProfileManagement = StudentProfileFactory.create();
+                            window.studentProfileManagement.init().then(() => {
+                                window.studentProfileManagement.renderFullSection();
+                            });
+                        }, 100);
+                    };
+                    document.head.appendChild(script);
+                }
+            } catch (error) {
+                console.error('❌ Error abriendo gestión de perfiles:', error);
+                alert('Error abriendo gestión de perfiles. Por favor recarga la página.');
+            }
+        }
+
+        // ✅ FUNCIÓN PARA ABRIR MODAL DE ESTUDIANTE
+        function openStudentModal() {
+            try {
+                if (window.studentModalSystem && window.studentModalSystem.state.isInitialized) {
+                    console.log('👥 Abriendo modal de selección de estudiantes...');
+                    window.studentModalSystem.openModal('selection');
+                } else {
+                    console.warn('⚠️ Sistema modular de estudiantes no disponible');
+                    setTimeout(() => {
+                        if (window.studentModalSystem && window.studentModalSystem.state.isInitialized) {
+                            window.studentModalSystem.openModal('selection');
+                        } else {
+                            console.error('Sistema de estudiantes no disponible. Recarga la página.');
+                        }
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('❌ Error abriendo modal de estudiante:', error);
+            }
+        }
+
+        // ✅ FUNCIÓN PARA ACTUALIZAR ESTUDIANTE ACTIVO EN SIDEBAR
+        function updateActiveStudentDisplay(studentData) {
+            try {
+                console.log('👤 Actualizando display de estudiante activo:', studentData?.name);
+                
+                const activeStudentInfo = document.getElementById('active-student-info');
+                const activeStudentName = document.getElementById('active-student-name');
+                const activeStudentGrade = document.getElementById('active-student-grade');
+                const noStudentPrompt = document.getElementById('no-student-prompt');
+                
+                if (!activeStudentInfo) return;
+                
+                if (studentData) {
+                    // Hay un estudiante seleccionado
+                    const initial = studentData.name.charAt(0).toUpperCase();
+                    const colors = [
+                        'bg-purple-500', 'bg-blue-500', 'bg-green-500', 
+                        'bg-yellow-500', 'bg-red-500', 'bg-pink-500'
+                    ];
+                    const colorClass = colors[studentData.id % colors.length];
+                    
+                    activeStudentInfo.innerHTML = `
+                        <div class="w-8 h-8 ${colorClass} rounded-full flex items-center justify-center 
+                                    text-white font-medium text-sm">
+                            ${initial}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-800 text-sm">
+                                ${studentData.name}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                ${studentData.grade} • ${studentData.age} años
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Ocultar el prompt para seleccionar estudiante
+                    if (noStudentPrompt) {
+                        noStudentPrompt.classList.add('hidden');
+                    }
+                    
+                    // Actualizar configuración global
+                    matemáticaDashboardConfig.currentStudentData = studentData;
+                    
+                } else {
+                    // No hay estudiante seleccionado
+                    activeStudentInfo.innerHTML = `
+                        <div class="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center 
+                                    text-white font-medium text-sm">
+                            ?
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-600 text-sm">
+                                Sin estudiante seleccionado
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Selecciona desde Gestión de Perfiles
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Mostrar el prompt para seleccionar estudiante
+                    if (noStudentPrompt) {
+                        noStudentPrompt.classList.remove('hidden');
+                    }
+                    
+                    // Limpiar configuración global
+                    matemáticaDashboardConfig.currentStudentData = null;
+                }
+                
+                console.log('✅ Display de estudiante activo actualizado');
+                
+            } catch (error) {
+                console.error('❌ Error actualizando estudiante activo:', error);
+            }
+        }
+
+        // ✅ ESCUCHAR CAMBIOS DE ESTUDIANTE DESDE GESTIÓN DE PERFILES
+        document.addEventListener('studentSelected', (event) => {
+            console.log('📢 Evento studentSelected recibido:', event.detail);
+            updateActiveStudentDisplay(event.detail.student);
+        });
+
+        document.addEventListener('studentDeselected', () => {
+            console.log('📢 Evento studentDeselected recibido');
+            updateActiveStudentDisplay(null);
+        });
+
+        // ✅ INICIALIZAR AL CARGAR EL DOM
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+        
+        // ✅ MANEJAR REACTIVACIÓN DESDE MÓDULOS
+        document.addEventListener('dashboardReactivated', (event) => {
+            console.log('🔄 Dashboard reactivado desde:', event.detail.from);
+            if (event.detail.studentData) {
+                matemáticaDashboardConfig.currentStudentData = event.detail.studentData;
+                updateDashboardStats();
+            }
+        });
+    </script>
+    
+    <!-- ✅ MANTENER DASHBOARD.JS PARA COMPATIBILIDAD -->
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

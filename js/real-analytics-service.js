@@ -1,996 +1,1517 @@
-/**
- * 📊 Real Analytics Service para Presentaciones Gaby
- * Captura estadísticas reales de visitantes: IP, ubicación, dispositivo, etc.
- */
+// real-analytics-service.js - Servicio de Analytics Reales con Supabase para Matemágica
+console.log('📊 Inicializando Real Analytics Service...');
 
 class RealAnalyticsService {
     constructor() {
-        this.sessionId = this.generateUniqueSession();
-        this.visitorData = null;
-        this.supabaseUrl = null;
-        this.supabaseKey = null;
-        this.isOnline = navigator.onLine;
-        
-        // Inicializar configuración
-        this.initializeSupabase();
-        
-        // Capturar datos del visitante inmediatamente
-        this.captureVisitorData();
-        
-        // Setup listeners
-        this.setupEventListeners();
-        
-        console.log('🌍 Real Analytics Service inicializado');
+        this.supabase = null;
+        this.cache = new Map();
+        this.cacheExpiry = 5 * 60 * 1000; // 5 minutos
+        this.initialized = false;
+        this.retryCount = 0;
+        this.maxRetries = 10;
+        this.isConnected = false;
+        this.lastCacheUpdate = null;
     }
 
-    // Configuración de Supabase
-    async initializeSupabase() {
+    async initialize() {
         try {
-            // Esperar a que ConfigService esté disponible
-            await this.waitForConfigService();
+            // ✅ ESPERAR MÁS TIEMPO A QUE SUPABASE ESTÉ DISPONIBLE
+            const supabaseClient = await this.waitForSupabase();
             
-            // Cargar configuración desde ConfigService existente
-            if (window.ConfigService) {
-                const config = await window.ConfigService.loadConfig();
-                if (config.supabase?.url && config.supabase?.anonKey) {
-                    this.supabaseUrl = config.supabase.url;
-                    this.supabaseKey = config.supabase.anonKey;
-                    console.log('✅ Supabase configurado para analytics reales desde ConfigService');
-                    console.log(`🔗 URL: ${this.supabaseUrl}`);
-                    return;
-                }
-            }
-            
-            console.warn('⚠️ ConfigService no disponible, usando modo offline únicamente');
-            this.supabaseUrl = null;
-            this.supabaseKey = null;
-        } catch (error) {
-            console.warn('❌ Error configurando Supabase:', error);
-            this.supabaseUrl = null;
-            this.supabaseKey = null;
-        }
-    }
-
-    // Esperar a que ConfigService esté disponible
-    async waitForConfigService() {
-        let attempts = 0;
-        const maxAttempts = 20;
-        
-        while (!window.ConfigService && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-        
-        if (!window.ConfigService) {
-            console.warn('⚠️ ConfigService no se cargó después de 2 segundos');
-        }
-    }
-
-    // Generar ID único de sesión
-    generateUniqueSession() {
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substr(2, 9);
-        const fingerprint = this.generateFingerprint();
-        return `session_${timestamp}_${random}_${fingerprint}`;
-    }
-
-    // Generar fingerprint del navegador
-    generateFingerprint() {
-        const screen = `${window.screen.width}x${window.screen.height}`;
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const language = navigator.language;
-        const platform = navigator.platform;
-        
-        const data = `${screen}_${timezone}_${language}_${platform}`;
-        return this.simpleHash(data).substr(0, 8);
-    }
-
-    // Hash simple para fingerprinting
-    simpleHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return Math.abs(hash).toString(36);
-    }
-
-    // Capturar datos reales del visitante
-    async captureVisitorData() {
-        console.log('🔍 Capturando datos reales del visitante...');
-        
-        // Datos básicos del navegador
-        const basicData = {
-            sessionId: this.sessionId,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            language: navigator.language,
-            languages: navigator.languages?.join(',') || navigator.language,
-            platform: navigator.platform,
-            cookieEnabled: navigator.cookieEnabled,
-            onLine: navigator.onLine,
-            screen: {
-                width: window.screen.width,
-                height: window.screen.height,
-                colorDepth: window.screen.colorDepth,
-                pixelDepth: window.screen.pixelDepth
-            },
-            viewport: {
-                width: window.innerWidth,
-                height: window.innerHeight
-            },
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            referrer: document.referrer || 'direct',
-            url: window.location.href,
-            deviceType: this.detectDeviceType(),
-            browserInfo: this.getBrowserInfo()
-        };
-
-        // Intentar obtener IP y ubicación real
-        try {
-            const geoData = await this.getRealGeoLocation();
-            basicData.geo = geoData;
-        } catch (error) {
-            console.warn('⚠️ No se pudo obtener geolocalización:', error);
-        }
-
-        // Intentar obtener IP pública
-        try {
-            const ipData = await this.getRealIPAddress();
-            basicData.ip = ipData;
-        } catch (error) {
-            console.warn('⚠️ No se pudo obtener IP pública:', error);
-        }
-
-        this.visitorData = basicData;
-        console.log('📊 Datos del visitante capturados:', basicData);
-        
-        return basicData;
-    }
-
-    // Obtener IP real del visitante
-    async getRealIPAddress() {
-        try {
-            // Usar servicios que incluyen datos de ubicación
-            const ipServices = [
-                {
-                    url: 'https://ipapi.co/json/',
-                    parser: (data) => ({
-                        ip: data.ip,
-                        country: data.country_name,
-                        region: data.region,
-                        city: data.city,
-                        isp: data.org,
-                        countryCode: data.country_code,
-                        latitude: data.latitude,
-                        longitude: data.longitude
-                    })
-                },
-                {
-                    url: 'https://ip-api.com/json/',
-                    parser: (data) => ({
-                        ip: data.query,
-                        country: data.country,
-                        region: data.regionName,
-                        city: data.city,
-                        isp: data.isp,
-                        countryCode: data.countryCode,
-                        latitude: data.lat,
-                        longitude: data.lon
-                    })
-                },
-                {
-                    url: 'https://api.ipify.org?format=json',
-                    parser: (data) => ({
-                        ip: data.ip,
-                        country: 'No disponible',
-                        region: 'No disponible',
-                        city: 'No disponible',
-                        isp: 'No disponible'
-                    })
-                }
-            ];
-
-            for (const service of ipServices) {
-                try {
-                    console.log(`🌍 Probando servicio de IP: ${service.url}`);
-                    const response = await fetch(service.url);
-                    const data = await response.json();
-                    
-                    if (data && (data.ip || data.query)) {
-                        const parsedData = service.parser(data);
-                        const result = {
-                            ...parsedData,
-                            service: service.url,
-                            timestamp: new Date().toISOString()
-                        };
-                        
-                        console.log(`✅ IP y ubicación obtenida de ${service.url}:`, result);
-                        return result;
-                    }
-                } catch (serviceError) {
-                    console.warn(`❌ Falló servicio ${service.url}:`, serviceError);
-                    continue;
-                }
+            if (supabaseClient) {
+                this.supabase = supabaseClient;
+                this.initialized = true;
+                console.log('✅ Analytics Service conectado a Supabase exitosamente');
+                return true;
+            } else {
+                console.warn('⚠️ Supabase no disponible después de reintentos');
+                return false;
             }
         } catch (error) {
-            console.error('❌ Error obteniendo IP y ubicación:', error);
-        }
-        
-        return { 
-            ip: 'unknown', 
-            country: 'No disponible',
-            region: 'No disponible',
-            city: 'No disponible',
-            method: 'fallback' 
-        };
-    }
-
-    // Obtener geolocalización real (con permiso del usuario)
-    async getRealGeoLocation() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject('Geolocalización no soportada');
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy,
-                        timestamp: new Date(position.timestamp).toISOString()
-                    });
-                },
-                (error) => {
-                    // No rechazar, solo marcar como no disponible
-                    resolve({ 
-                        error: error.message, 
-                        permission: 'denied_or_unavailable' 
-                    });
-                },
-                {
-                    timeout: 10000,
-                    maximumAge: 300000, // 5 minutos
-                    enableHighAccuracy: false
-                }
-            );
-        });
-    }
-
-    // Detectar tipo de dispositivo real
-    detectDeviceType() {
-        const userAgent = navigator.userAgent.toLowerCase();
-        const width = window.innerWidth;
-        
-        if (/mobile|android|iphone|ipod|blackberry|windows phone/.test(userAgent)) {
-            return 'mobile';
-        } else if (/tablet|ipad|kindle|silk/.test(userAgent) || (width >= 768 && width <= 1024)) {
-            return 'tablet';
-        } else {
-            return 'desktop';
-        }
-    }
-
-    // Obtener información detallada del navegador
-    getBrowserInfo() {
-        const userAgent = navigator.userAgent;
-        let browser = 'unknown';
-        let version = 'unknown';
-
-        if (userAgent.indexOf('Chrome') > -1) {
-            browser = 'Chrome';
-            version = userAgent.match(/Chrome\/([0-9.]+)/)?.[1] || 'unknown';
-        } else if (userAgent.indexOf('Firefox') > -1) {
-            browser = 'Firefox';
-            version = userAgent.match(/Firefox\/([0-9.]+)/)?.[1] || 'unknown';
-        } else if (userAgent.indexOf('Safari') > -1) {
-            browser = 'Safari';
-            version = userAgent.match(/Version\/([0-9.]+)/)?.[1] || 'unknown';
-        } else if (userAgent.indexOf('Edge') > -1) {
-            browser = 'Edge';
-            version = userAgent.match(/Edge\/([0-9.]+)/)?.[1] || 'unknown';
-        }
-
-        return { browser, version, userAgent };
-    }
-
-    // Registrar visualización real de presentación
-    async registrarVisualizacionReal(presentacionId, titulo) {
-        console.log(`🎬 Registrando visualización REAL: ${presentacionId}`);
-        
-        // Asegurar que tenemos datos del visitante
-        if (!this.visitorData) {
-            await this.captureVisitorData();
-        }
-
-        const visualizacionData = {
-            presentacion_id: presentacionId,
-            titulo: titulo,
-            session_id: this.sessionId,
-            visitor_data: this.visitorData,
-            timestamp: new Date().toISOString(),
-            page_url: window.location.href,
-            referrer: document.referrer || 'direct'
-        };
-
-        try {
-            // Enviar a Supabase si está configurado
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                await this.enviarASupabaseReal(visualizacionData);
-                console.log('✅ Visualización enviada a Supabase');
-            }
-            
-            // También guardar localmente
-            this.guardarVisitaLocal(visualizacionData);
-            
-            return true;
-        } catch (error) {
-            console.error('❌ Error registrando visualización real:', error);
-            // Guardar localmente como fallback
-            this.guardarVisitaLocal(visualizacionData);
+            console.error('❌ Error inicializando Analytics Service:', error);
             return false;
         }
     }
 
-    // Enviar datos reales a Supabase (actualizado para función simplificada)
-    async enviarASupabaseReal(data) {
-        // Usar la función simplificada con parámetros correctos
-        const payload = {
-            presentacion_id_param: data.presentacion_id,
-            titulo_param: data.titulo
-        };
+    // 🔄 ESPERAR A QUE SUPABASE ESTÉ DISPONIBLE CON REINTENTOS - CORREGIDO
+    async waitForSupabase(maxWaitTime = 15000) {
+        return new Promise((resolve) => {
+            const checkInterval = 500; // Revisar cada 500ms
+            const maxChecks = maxWaitTime / checkInterval;
+            let checks = 0;
 
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/increment_presentation_view`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
-            },
-            body: JSON.stringify(payload)
-        });
+            const intervalId = setInterval(() => {
+                checks++;
+                
+                // ✅ BUSCAR SUPABASE EN MÚLTIPLES UBICACIONES Y VALIDAR
+                let supabaseClient = null;
 
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log('📊 Respuesta de Supabase:', result);
-        return result;
-    }
-
-    // Guardar visita localmente
-    guardarVisitaLocal(data) {
-        const visitas = JSON.parse(localStorage.getItem('gaby-visitas-reales') || '[]');
-        visitas.push(data);
-        
-        // Mantener solo las últimas 100 visitas localmente
-        if (visitas.length > 100) {
-            visitas.splice(0, visitas.length - 100);
-        }
-        
-        localStorage.setItem('gaby-visitas-reales', JSON.stringify(visitas));
-        
-        // También actualizar contador simple
-        const stats = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        stats[data.presentacion_id] = (stats[data.presentacion_id] || 0) + 1;
-        localStorage.setItem('gaby-presentaciones-stats', JSON.stringify(stats));
-    }
-
-    // Obtener estadísticas reales con manejo mejorado de errores
-    async obtenerEstadisticasReales() {
-        try {
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                // Intentar primero con la función RPC
-                let response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/get_all_presentation_stats`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': this.supabaseKey,
-                        'Authorization': `Bearer ${this.supabaseKey}`,
-                        'Prefer': 'return=representation'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    console.warn(`⚠️ Error RPC (${response.status}), intentando consulta directa...`);
-                    
-                    // Fallback: consulta directa a la tabla
-                    response = await fetch(`${this.supabaseUrl}/rest/v1/presentation_stats?select=*&order=total_visualizaciones.desc`, {
-                        method: 'GET',
-                        headers: {
-                            'apikey': this.supabaseKey,
-                            'Authorization': `Bearer ${this.supabaseKey}`
+                // Ubicación 1: window.supabaseClient
+                if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+                    supabaseClient = window.supabaseClient;
+                    console.log(`✅ Supabase encontrado en window.supabaseClient (intento ${checks})`);
+                }
+                // Ubicación 2: window.supabase
+                else if (window.supabase && typeof window.supabase.from === 'function') {
+                    supabaseClient = window.supabase;
+                    console.log(`✅ Supabase encontrado en window.supabase (intento ${checks})`);
+                }
+                // Ubicación 3: Dentro del core
+                else if (window.studentManagementCore?.supabase && typeof window.studentManagementCore.supabase.from === 'function') {
+                    supabaseClient = window.studentManagementCore.supabase;
+                    console.log(`✅ Supabase encontrado en studentManagementCore (intento ${checks})`);
+                }
+                // Ubicación 4: Variable global directa
+                else if (typeof window.createClient !== 'undefined' && window.supabaseUrl && window.supabaseAnonKey) {
+                    try {
+                        supabaseClient = window.createClient(window.supabaseUrl, window.supabaseAnonKey);
+                        if (typeof supabaseClient.from === 'function') {
+                            console.log(`✅ Supabase creado dinámicamente (intento ${checks})`);
+                        } else {
+                            supabaseClient = null;
                         }
-                    });
+                    } catch (error) {
+                        console.warn(`⚠️ Error creando cliente Supabase dinámicamente:`, error);
+                        supabaseClient = null;
+                    }
                 }
 
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('📊 Estadísticas reales obtenidas:', data);
+                // ✅ VALIDAR QUE EL CLIENTE TIENE LOS MÉTODOS/OBJETOS NECESARIOS - CORREGIDO
+                if (supabaseClient) {
+                    // Verificar que tenga el método 'from' (esencial para queries)
+                    const hasFromMethod = typeof supabaseClient.from === 'function';
                     
-                    // Normalizar formato si es necesario
-                    if (Array.isArray(data)) {
-                        return data.map(stat => ({
-                            presentacion_id: stat.presentacion_id,
-                            titulo: stat.titulo,
-                            total_visualizaciones: stat.total_visualizaciones || 0,
-                            source: 'supabase'
-                        }));
+                    // Verificar que tenga auth y storage (pueden ser objetos)
+                    const hasAuth = supabaseClient.auth && typeof supabaseClient.auth === 'object';
+                    const hasStorage = supabaseClient.storage && typeof supabaseClient.storage === 'object';
+
+                    if (hasFromMethod && hasAuth && hasStorage) {
+                        console.log(`✅ Cliente Supabase válido con todos los métodos requeridos`);
+                        clearInterval(intervalId);
+                        resolve(supabaseClient);
+                        return;
+                    } else {
+                        console.warn(`⚠️ Cliente Supabase encontrado pero incompleto:`, {
+                            from: typeof supabaseClient.from,
+                            auth: typeof supabaseClient.auth,
+                            storage: typeof supabaseClient.storage,
+                            hasFromMethod,
+                            hasAuth,
+                            hasStorage
+                        });
+                        
+                        // Si al menos tiene el método 'from', intentamos usarlo
+                        if (hasFromMethod) {
+                            console.log(`⚡ Usando cliente Supabase con método 'from' disponible`);
+                            clearInterval(intervalId);
+                            resolve(supabaseClient);
+                            return;
+                        }
+                    }
+                }
+
+                if (checks >= maxChecks) {
+                    console.warn(`⏰ Timeout esperando Supabase válido después de ${maxWaitTime}ms`);
+                    console.warn(`🔍 Estado final de búsqueda:`, {
+                        'window.supabaseClient': typeof window.supabaseClient,
+                        'window.supabase': typeof window.supabase,
+                        'core.supabase': typeof window.studentManagementCore?.supabase,
+                        'createClient': typeof window.createClient
+                    });
+                    clearInterval(intervalId);
+                    resolve(null);
+                }
+            }, checkInterval);
+        });
+    }
+
+    // ✅ REINICIALIZAR SI SUPABASE SE CONECTA DESPUÉS - MEJORADO
+    async reinitialize() {
+        if (!this.initialized) {
+            console.log('🔄 Intentando reinicializar Analytics Service...');
+            const success = await this.initialize();
+            if (success) {
+                console.log('🔄 Analytics Service reinicializado exitosamente');
+                
+                // ✅ VERIFICAR CONEXIÓN CON QUERY DE PRUEBA
+                try {
+                    const { data, error } = await this.supabase
+                        .from('math_profiles')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        console.error('❌ Error en query de prueba:', error);
+                        this.initialized = false;
+                        this.supabase = null;
+                        return false;
                     }
                     
-                    return data;
-                } else {
-                    console.warn(`⚠️ Error final obteniendo estadísticas: ${response.status}`);
+                    console.log('✅ Conexión Supabase verificada con query de prueba');
+                    return true;
+                } catch (testError) {
+                    console.error('❌ Error verificando conexión:', testError);
+                    this.initialized = false;
+                    this.supabase = null;
+                    return false;
                 }
             }
-        } catch (error) {
-            console.warn('⚠️ Error obteniendo estadísticas reales:', error);
+            return success;
         }
-
-        // Fallback: estadísticas locales
-        const statsLocal = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        return Object.entries(statsLocal).map(([id, views]) => ({
-            presentacion_id: id,
-            titulo: id === 'historia-celular' ? 'La Historia del Celular' : id,
-            total_visualizaciones: views,
-            source: 'local'
-        }));
-    }
-
-    // Registrar like en una presentación (ACTUALIZADO para Supabase)
-    async registrarLike(presentacionId, accion = 'like') {
-        console.log(`👍 Registrando ${accion}: ${presentacionId}`);
-        
-        const likeData = {
-            presentacion_id: presentacionId,
-            session_id: this.sessionId,
-            accion: accion,
-            ip_hash: this.simpleHash(this.visitorData?.ip?.ip || 'unknown'),
-            user_agent_hash: this.simpleHash(navigator.userAgent),
-            dispositivo: this.visitorData?.deviceType || 'desktop',
-            pais: this.visitorData?.ip?.country || null,
-            ciudad: this.visitorData?.ip?.city || null
-        };
-
-        try {
-            // Guardar localmente siempre (para UI inmediata)
-            this.guardarLikeLocal(likeData);
-            
-            // Enviar a Supabase si está configurado
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const resultado = await this.enviarLikeASupabase(likeData);
-                console.log('✅ Like enviado a Supabase:', resultado);
-                return resultado;
-            }
-            
-            return { success: true, source: 'local' };
-        } catch (error) {
-            console.error('❌ Error registrando like:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Registrar compartir (NUEVO)
-    async registrarCompartir(presentacionId, tipoCompartir) {
-        console.log(`📤 Registrando compartir ${tipoCompartir}: ${presentacionId}`);
-        
-        const compartirData = {
-            presentacion_id: presentacionId,
-            session_id: this.sessionId,
-            tipo_compartir: tipoCompartir,
-            ip_hash: this.simpleHash(this.visitorData?.ip?.ip || 'unknown'),
-            user_agent_hash: this.simpleHash(navigator.userAgent),
-            dispositivo: this.visitorData?.deviceType || 'desktop',
-            pais: this.visitorData?.ip?.country || null,
-            ciudad: this.visitorData?.ip?.city || null
-        };
-
-        try {
-            // Guardar localmente
-            this.guardarCompartirLocal(compartirData);
-            
-            // Enviar a Supabase si está configurado
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const resultado = await this.enviarCompartirASupabase(compartirData);
-                console.log('✅ Compartir enviado a Supabase:', resultado);
-                return resultado;
-            }
-            
-            return { success: true, source: 'local' };
-        } catch (error) {
-            console.error('❌ Error registrando compartir:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Enviar like a Supabase (ACTUALIZADO)
-    async enviarLikeASupabase(likeData) {
-        const payload = {
-            presentacion_id_param: likeData.presentacion_id,
-            session_id_param: likeData.session_id,
-            accion_param: likeData.accion,
-            ip_hash_param: likeData.ip_hash,
-            user_agent_hash_param: likeData.user_agent_hash,
-            dispositivo_param: likeData.dispositivo,
-            pais_param: likeData.pais,
-            ciudad_param: likeData.ciudad
-        };
-
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/registrar_like_presentacion`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    // Enviar compartir a Supabase (NUEVO)
-    async enviarCompartirASupabase(compartirData) {
-        const payload = {
-            presentacion_id_param: compartirData.presentacion_id,
-            session_id_param: compartirData.session_id,
-            tipo_compartir_param: compartirData.tipo_compartir,
-            ip_hash_param: compartirData.ip_hash,
-            user_agent_hash_param: compartirData.user_agent_hash,
-            dispositivo_param: compartirData.dispositivo,
-            pais_param: compartirData.pais,
-            ciudad_param: compartirData.ciudad
-        };
-
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/registrar_compartir_presentacion`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    // Guardar visita localmente
-    guardarVisitaLocal(data) {
-        const visitas = JSON.parse(localStorage.getItem('gaby-visitas-reales') || '[]');
-        visitas.push(data);
-        
-        // Mantener solo las últimas 100 visitas localmente
-        if (visitas.length > 100) {
-            visitas.splice(0, visitas.length - 100);
-        }
-        
-        localStorage.setItem('gaby-visitas-reales', JSON.stringify(visitas));
-        
-        // También actualizar contador simple
-        const stats = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        stats[data.presentacion_id] = (stats[data.presentacion_id] || 0) + 1;
-        localStorage.setItem('gaby-presentaciones-stats', JSON.stringify(stats));
-    }
-
-    // Obtener estadísticas reales con manejo mejorado de errores
-    async obtenerEstadisticasReales() {
-        try {
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                // Intentar primero con la función RPC
-                let response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/get_all_presentation_stats`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': this.supabaseKey,
-                        'Authorization': `Bearer ${this.supabaseKey}`,
-                        'Prefer': 'return=representation'
-                    },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    console.warn(`⚠️ Error RPC (${response.status}), intentando consulta directa...`);
-                    
-                    // Fallback: consulta directa a la tabla
-                    response = await fetch(`${this.supabaseUrl}/rest/v1/presentation_stats?select=*&order=total_visualizaciones.desc`, {
-                        method: 'GET',
-                        headers: {
-                            'apikey': this.supabaseKey,
-                            'Authorization': `Bearer ${this.supabaseKey}`
-                        }
-                    });
-                }
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('📊 Estadísticas reales obtenidas:', data);
-                    
-                    // Normalizar formato si es necesario
-                    if (Array.isArray(data)) {
-                        return data.map(stat => ({
-                            presentacion_id: stat.presentacion_id,
-                            titulo: stat.titulo,
-                            total_visualizaciones: stat.total_visualizaciones || 0,
-                            source: 'supabase'
-                        }));
-                    }
-                    
-                    return data;
-                } else {
-                    console.warn(`⚠️ Error final obteniendo estadísticas: ${response.status}`);
-                }
-            }
-        } catch (error) {
-            console.warn('⚠️ Error obteniendo estadísticas reales:', error);
-        }
-
-        // Fallback: estadísticas locales
-        const statsLocal = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        return Object.entries(statsLocal).map(([id, views]) => ({
-            presentacion_id: id,
-            titulo: id === 'historia-celular' ? 'La Historia del Celular' : id,
-            total_visualizaciones: views,
-            source: 'local'
-        }));
-    }
-
-    // Registrar like en una presentación (ACTUALIZADO para Supabase)
-    async registrarLike(presentacionId, accion = 'like') {
-        console.log(`👍 Registrando ${accion}: ${presentacionId}`);
-        
-        const likeData = {
-            presentacion_id: presentacionId,
-            session_id: this.sessionId,
-            accion: accion,
-            ip_hash: this.simpleHash(this.visitorData?.ip?.ip || 'unknown'),
-            user_agent_hash: this.simpleHash(navigator.userAgent),
-            dispositivo: this.visitorData?.deviceType || 'desktop',
-            pais: this.visitorData?.ip?.country || null,
-            ciudad: this.visitorData?.ip?.city || null
-        };
-
-        try {
-            // Guardar localmente siempre (para UI inmediata)
-            this.guardarLikeLocal(likeData);
-            
-            // Enviar a Supabase si está configurado
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const resultado = await this.enviarLikeASupabase(likeData);
-                console.log('✅ Like enviado a Supabase:', resultado);
-                return resultado;
-            }
-            
-            return { success: true, source: 'local' };
-        } catch (error) {
-            console.error('❌ Error registrando like:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Registrar compartir (NUEVO)
-    async registrarCompartir(presentacionId, tipoCompartir) {
-        console.log(`📤 Registrando compartir ${tipoCompartir}: ${presentacionId}`);
-        
-        const compartirData = {
-            presentacion_id: presentacionId,
-            session_id: this.sessionId,
-            tipo_compartir: tipoCompartir,
-            ip_hash: this.simpleHash(this.visitorData?.ip?.ip || 'unknown'),
-            user_agent_hash: this.simpleHash(navigator.userAgent),
-            dispositivo: this.visitorData?.deviceType || 'desktop',
-            pais: this.visitorData?.ip?.country || null,
-            ciudad: this.visitorData?.ip?.city || null
-        };
-
-        try {
-            // Guardar localmente
-            this.guardarCompartirLocal(compartirData);
-            
-            // Enviar a Supabase si está configurado
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const resultado = await this.enviarCompartirASupabase(compartirData);
-                console.log('✅ Compartir enviado a Supabase:', resultado);
-                return resultado;
-            }
-            
-            return { success: true, source: 'local' };
-        } catch (error) {
-            console.error('❌ Error registrando compartir:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Enviar like a Supabase (ACTUALIZADO)
-    async enviarLikeASupabase(likeData) {
-        const payload = {
-            presentacion_id_param: likeData.presentacion_id,
-            session_id_param: likeData.session_id,
-            accion_param: likeData.accion,
-            ip_hash_param: likeData.ip_hash,
-            user_agent_hash_param: likeData.user_agent_hash,
-            dispositivo_param: likeData.dispositivo,
-            pais_param: likeData.pais,
-            ciudad_param: likeData.ciudad
-        };
-
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/registrar_like_presentacion`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    // Enviar compartir a Supabase (NUEVO)
-    async enviarCompartirASupabase(compartirData) {
-        const payload = {
-            presentacion_id_param: compartirData.presentacion_id,
-            session_id_param: compartirData.session_id,
-            tipo_compartir_param: compartirData.tipo_compartir,
-            ip_hash_param: compartirData.ip_hash,
-            user_agent_hash_param: compartirData.user_agent_hash,
-            dispositivo_param: compartirData.dispositivo,
-            pais_param: compartirData.pais,
-            ciudad_param: compartirData.ciudad
-        };
-
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/registrar_compartir_presentacion`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-        }
-
-        return await response.json();
-    }
-
-    // Guardar like localmente (ACTUALIZADO)
-    guardarLikeLocal(likeData) {
-        const likes = JSON.parse(localStorage.getItem('gaby-likes') || '{}');
-        
-        if (!likes[likeData.presentacion_id]) {
-            likes[likeData.presentacion_id] = {
-                total: 0,
-                userLiked: false,
-                userDisliked: false,
-                history: []
-            };
-        }
-
-        const currentLike = likes[likeData.presentacion_id];
-
-        // Lógica de like/unlike/dislike
-        if (likeData.accion === 'like') {
-            if (!currentLike.userLiked) {
-                currentLike.total += 1;
-                currentLike.userLiked = true;
-                currentLike.userDisliked = false;
-            }
-        } else if (likeData.accion === 'unlike') {
-            if (currentLike.userLiked) {
-                currentLike.total = Math.max(0, currentLike.total - 1);
-                currentLike.userLiked = false;
-            }
-        } else if (likeData.accion === 'dislike') {
-            if (currentLike.userLiked) {
-                currentLike.total = Math.max(0, currentLike.total - 1);
-            }
-            currentLike.userLiked = false;
-            currentLike.userDisliked = true;
-        }
-
-        currentLike.history.push(likeData);
-        localStorage.setItem('gaby-likes', JSON.stringify(likes));
-    }
-
-    // Guardar compartir localmente (NUEVO)
-    guardarCompartirLocal(compartirData) {
-        const compartidos = JSON.parse(localStorage.getItem('gaby-compartidos') || '{}');
-        
-        if (!compartidos[compartirData.presentacion_id]) {
-            compartidos[compartirData.presentacion_id] = {
-                total: 0,
-                tipos: {},
-                history: []
-            };
-        }
-
-        const currentCompartido = compartidos[compartirData.presentacion_id];
-        currentCompartido.total += 1;
-        
-        if (!currentCompartido.tipos[compartirData.tipo_compartir]) {
-            currentCompartido.tipos[compartirData.tipo_compartir] = 0;
-        }
-        currentCompartido.tipos[compartirData.tipo_compartir] += 1;
-        
-        currentCompartido.history.push(compartirData);
-        localStorage.setItem('gaby-compartidos', JSON.stringify(compartidos));
-    }
-
-    // Obtener estadísticas completas desde Supabase (NUEVO)
-    async obtenerEstadisticasCompletas(presentacionId) {
-        try {
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/obtener_estadisticas_presentacion`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': this.supabaseKey,
-                        'Authorization': `Bearer ${this.supabaseKey}`
-                    },
-                    body: JSON.stringify({
-                        presentacion_id_param: presentacionId
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`📊 Estadísticas completas de ${presentacionId}:`, data);
-                    return data;
-                }
-            }
-        } catch (error) {
-            console.warn('⚠️ Error obteniendo estadísticas completas:', error);
-        }
-
-        // Fallback: estadísticas locales
-        return this.obtenerEstadisticasLocales(presentacionId);
-    }
-
-    // Obtener estadísticas locales (NUEVO)
-    obtenerEstadisticasLocales(presentacionId) {
-        const likes = JSON.parse(localStorage.getItem('gaby-likes') || '{}');
-        const compartidos = JSON.parse(localStorage.getItem('gaby-compartidos') || '{}');
-        const stats = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-
-        return {
-            presentacion_id: presentacionId,
-            visualizaciones: stats[presentacionId] || 0,
-            likes: likes[presentacionId]?.total || 0,
-            dislikes: 0, // No trackear dislikes localmente por simplicidad
-            compartidos: compartidos[presentacionId]?.total || 0,
-            engagement: 0,
-            source: 'local'
-        };
-    }
-
-    // Obtener likes de una presentación (ACTUALIZADO con datos de Supabase)
-    async obtenerLikes(presentacionId) {
-        try {
-            // Intentar obtener desde Supabase primero
-            if (this.supabaseUrl && this.supabaseKey && this.isOnline) {
-                const stats = await this.obtenerEstadisticasCompletas(presentacionId);
-                if (stats && stats.likes !== undefined) {
-                    return {
-                        total: stats.likes,
-                        userLiked: this.obtenerLikeUsuario(presentacionId),
-                        userDisliked: false,
-                        source: 'supabase'
-                    };
-                }
-            }
-        } catch (error) {
-            console.warn('⚠️ Error obteniendo likes desde Supabase:', error);
-        }
-
-        // Fallback: localStorage
-        const likes = JSON.parse(localStorage.getItem('gaby-likes') || '{}');
-        return likes[presentacionId] || { total: 0, userLiked: false, userDisliked: false, source: 'local' };
-    }
-
-    // Verificar si el usuario actual ya dio like
-    obtenerLikeUsuario(presentacionId) {
-        const likes = JSON.parse(localStorage.getItem('gaby-likes') || '{}');
-        return likes[presentacionId]?.userLiked || false;
-    }
-
-    // Registrar suscripción
-    registrarSuscripcion() {
-        const suscripcion = {
-            session_id: this.sessionId,
-            timestamp: new Date().toISOString(),
-            visitante_data: this.visitorData
-        };
-        
-        localStorage.setItem('gaby-suscripcion', JSON.stringify(suscripcion));
-        console.log('✅ Usuario suscrito a Presentaciones Gaby');
         return true;
     }
 
-    // Verificar si está suscrito
-    estaSuscrito() {
-        return localStorage.getItem('gaby-suscripcion') !== null;
-    }
-
-    // Setup event listeners
-    setupEventListeners() {
-        window.addEventListener('beforeunload', () => {
-            this.registrarSalidaReal();
-        });
-
-        window.addEventListener('online', () => {
-            this.isOnline = true;
-            this.sincronizarDatosPendientes();
-        });
-
-        window.addEventListener('offline', () => {
-            this.isOnline = false;
-        });
-
-        this.tiempoInicio = Date.now();
-    }
-
-    // Registrar salida real del visitante
-    registrarSalidaReal() {
-        const tiempoEnPagina = Math.round((Date.now() - this.tiempoInicio) / 1000);
-        
-        const salidaData = {
-            session_id: this.sessionId,
-            tiempo_en_pagina: tiempoEnPagina,
-            timestamp: new Date().toISOString()
-        };
-
-        if (navigator.sendBeacon && this.supabaseUrl) {
-            navigator.sendBeacon(
-                `${this.supabaseUrl}/rest/v1/visitor_sessions`,
-                JSON.stringify(salidaData)
-            );
-        }
-
-        localStorage.setItem('gaby-ultima-salida', JSON.stringify(salidaData));
-    }
-
-    // Sincronizar datos pendientes
-    async sincronizarDatosPendientes() {
-        const pendientes = JSON.parse(localStorage.getItem('gaby-visitas-reales') || '[]');
-        
-        if (pendientes.length === 0) return;
-
-        console.log(`🔄 Sincronizando ${pendientes.length} visitas reales pendientes...`);
-
-        for (const visita of pendientes) {
-            try {
-                await this.enviarASupabaseReal(visita);
-            } catch (error) {
-                console.warn('⚠️ Error sincronizando visita:', error);
-                break;
+    // ✅ FUNCIÓN PRINCIPAL: Obtener todas las estadísticas del sistema
+    async getSystemStats() {
+        try {
+            // Asegurar que estamos inicializados
+            if (!this.initialized) {
+                await this.reinitialize();
             }
+
+            if (!this.supabase) {
+                console.warn('⚠️ Supabase no disponible, usando fallback');
+                return this.getFallbackStats();
+            }
+
+            console.log('📊 Cargando estadísticas completas del sistema...');
+            
+            const [
+                userStats,
+                sessionStats, 
+                exerciseStats,
+                usageStats,
+                moduleStats
+            ] = await Promise.all([
+                this.getUserStats(),
+                this.getSessionStats(), 
+                this.getExerciseStats(),
+                this.getUsageStats(),
+                this.getModuleStats()
+            ]);
+
+            const combinedStats = {
+                ...userStats,
+                ...sessionStats,
+                ...exerciseStats,
+                ...usageStats,
+                ...moduleStats,
+                lastUpdate: new Date().toISOString(),
+                isRealData: true
+            };
+
+            console.log('✅ Estadísticas del sistema cargadas:', combinedStats);
+            return combinedStats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas del sistema:', error);
+            return this.getFallbackStats();
+        }
+    }
+
+    // 👥 ESTADÍSTICAS DE USUARIOS - CORREGIDO PARA USAR math_profiles
+    async getUserStats() {
+        try {
+            if (!this.supabase) throw new Error('Supabase no disponible');
+
+            console.log('👥 Consultando math_profiles para estadísticas de usuarios...');
+
+            // ✅ QUERY CORREGIDA - USAR SOLO COLUMNAS QUE EXISTEN
+            const { data: profiles, error: profilesError } = await this.supabase
+                .from('math_profiles')
+                .select('id, user_id, user_role, created_at, is_active, rating, total_reviews, email, full_name, nombre_completo, updated_at');
+
+            if (profilesError) {
+                console.error('❌ Error en query math_profiles:', profilesError);
+                throw profilesError;
+            }
+
+            console.log(`📊 Encontrados ${profiles?.length || 0} perfiles en math_profiles`);
+
+            const activeProfiles = profiles?.filter(p => p.is_active === true) || [];
+            
+            // ✅ ROLES CORRECTOS SEGÚN BD REAL
+            const teachers = activeProfiles.filter(p => 
+                p.user_role === 'teacher' || 
+                p.user_role === 'profesor'
+            );
+            
+            const parents = activeProfiles.filter(p => 
+                p.user_role === 'parent' || 
+                p.user_role === 'apoderado'
+            );
+
+            const students = activeProfiles.filter(p => 
+                p.user_role === 'student' || 
+                p.user_role === 'estudiante' ||
+                !p.user_role // Sin rol definido = estudiante por defecto
+            );
+
+            // Calcular rating promedio de profesores (solo si rating existe)
+            const teachersWithRating = teachers.filter(t => t.rating && t.rating > 0);
+            const avgTeacherRating = teachersWithRating.length > 0 
+                ? teachersWithRating.reduce((sum, t) => sum + (parseFloat(t.rating) || 0), 0) / teachersWithRating.length 
+                : 0;
+
+            // Usuarios nuevos esta semana
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const newUsersThisWeek = profiles?.filter(p => 
+                new Date(p.created_at) > weekAgo
+            ).length || 0;
+
+            const stats = {
+                totalUsers: profiles?.length || 0,
+                activeUsers: activeProfiles.length,
+                totalTeachers: teachers.length,
+                totalParents: parents.length,
+                totalStudents: students.length,
+                avgTeacherRating: Math.round(avgTeacherRating * 100) / 100,
+                newUsersThisWeek,
+                userGrowthRate: profiles?.length > 0 ? Math.round((newUsersThisWeek / profiles.length) * 100) : 0
+            };
+
+            console.log('✅ Estadísticas de usuarios:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de usuarios:', error);
+            return {
+                totalUsers: 0,
+                activeUsers: 0, 
+                totalTeachers: 0,
+                totalParents: 0,
+                totalStudents: 0,
+                avgTeacherRating: 0,
+                newUsersThisWeek: 0,
+                userGrowthRate: 0
+            };
+        }
+    }
+
+    // 🎯 ESTADÍSTICAS DE SESIONES - CORREGIDO PARA USAR math_sessions
+    async getSessionStats() {
+        try {
+            if (!this.supabase) throw new Error('Supabase no disponible');
+
+            console.log('🎯 Consultando math_sessions para estadísticas de sesiones...');
+
+            // ✅ USAR COLUMNAS REALES: id, user_id, student_name, level, exercise_count, correct_count, start_time, end_time, duration_minutes, created_at
+            const { data: sessions, error: sessionsError } = await this.supabase
+                .from('math_sessions')
+                .select('id, user_id, student_name, level, exercise_count, correct_count, start_time, end_time, duration_minutes, created_at')
+                .order('created_at', { ascending: false });
+
+            if (sessionsError) {
+                console.error('❌ Error en query math_sessions:', sessionsError);
+                throw sessionsError;
+            }
+
+            console.log(`📊 Encontradas ${sessions?.length || 0} sesiones en math_sessions`);
+
+            if (!sessions || sessions.length === 0) {
+                return {
+                    totalSessions: 0,
+                    sessionsToday: 0,
+                    sessionsThisWeek: 0,
+                    avgSessionDuration: 0,
+                    avgExercisesPerSession: 0,
+                    avgAccuracyPerSession: 0,
+                    totalSessionTime: 0,
+                    sessionTimeFormatted: '0h 0m',
+                    recentSessions: []
+                };
+            }
+
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+
+            // ✅ USAR NOMBRES CORRECTOS DE COLUMNAS
+            const sessionsToday = sessions.filter(s => 
+                new Date(s.created_at) >= today
+            ).length;
+
+            const sessionsThisWeek = sessions.filter(s => 
+                new Date(s.created_at) >= weekAgo
+            ).length;
+
+            // Duraciones y ejercicios
+            const totalDuration = sessions.reduce((sum, s) => 
+                sum + (parseInt(s.duration_minutes) || 0), 0);
+
+            const totalExercises = sessions.reduce((sum, s) => 
+                sum + (parseInt(s.exercise_count) || 0), 0);
+
+            const totalCorrect = sessions.reduce((sum, s) => 
+                sum + (parseInt(s.correct_count) || 0), 0);
+
+            const avgSessionDuration = sessions.length > 0 
+                ? Math.round(totalDuration / sessions.length) 
+                : 0;
+
+            const avgExercisesPerSession = sessions.length > 0 
+                ? Math.round(totalExercises / sessions.length) 
+                : 0;
+
+            const avgAccuracyPerSession = totalExercises > 0 
+                ? Math.round((totalCorrect / totalExercises) * 100) 
+                : 0;
+
+            // Sesiones recientes (últimas 10)
+            const recentSessions = sessions.slice(0, 10).map(s => ({
+                id: s.id,
+                studentName: s.student_name || 'Sin nombre',
+                level: s.level || 'N/A',
+                exerciseCount: s.exercise_count || 0,
+                correctCount: s.correct_count || 0,
+                accuracy: s.exercise_count > 0 
+                    ? Math.round((s.correct_count / s.exercise_count) * 100) 
+                    : 0,
+                duration: s.duration_minutes || 0,
+                date: s.created_at
+            }));
+
+            const stats = {
+                totalSessions: sessions.length,
+                sessionsToday,
+                sessionsThisWeek,
+                avgSessionDuration,
+                avgExercisesPerSession,
+                avgAccuracyPerSession,
+                totalSessionTime: totalDuration,
+                sessionTimeFormatted: this.formatTime(totalDuration),
+                recentSessions
+            };
+
+            console.log('✅ Estadísticas de sesiones reales:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de sesiones:', error);
+            return {
+                totalSessions: 0,
+                sessionsToday: 0,
+                sessionsThisWeek: 0,
+                avgSessionDuration: 0,
+                avgExercisesPerSession: 0,
+                avgAccuracyPerSession: 0,
+                totalSessionTime: 0,
+                sessionTimeFormatted: '0h 0m',
+                recentSessions: []
+            };
+        }
+    }
+
+    // 🧮 ESTADÍSTICAS DE EJERCICIOS - CORREGIDAS CON TIPOS REALES
+    async getExerciseStats() {
+        try {
+            if (!this.supabase) throw new Error('Supabase no disponible');
+
+            console.log('🧮 Consultando ejercicios desde math_exercises...');
+
+            // ✅ CORREGIDO: Usar SOLO columnas que existen realmente en math_exercises
+            const { data: exercises, error } = await this.supabase
+                .from('math_exercises')
+                .select('id, operation, level, number1, number2, correct_answer, difficulty_tags, is_story_problem, created_at, updated_at');
+
+            if (error) {
+                console.error('❌ Error en query ejercicios:', error);
+                throw error;
+            }
+
+            const totalExercises = exercises?.length || 0;
+            
+            // Calcular ejercicios por operación
+            const sumaExercises = exercises?.filter(e => e.operation === '+').length || 0;
+            const restaExercises = exercises?.filter(e => e.operation === '-').length || 0;
+            
+            // ✅ CORREGIDO: level es INTEGER, no string
+            const exercisesByLevel = {
+                level1: exercises?.filter(e => e.level === 1).length || 0,
+                level2: exercises?.filter(e => e.level === 2).length || 0,
+                level3: exercises?.filter(e => e.level === 3).length || 0
+            };
+
+            // Ejercicios con problemas de historia
+            const storyProblems = exercises?.filter(e => e.is_story_problem === true).length || 0;
+
+            // Ejercicios de hoy
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayExercises = exercises?.filter(e => 
+                new Date(e.created_at) >= today
+            ).length || 0;
+
+            // Ejercicios de esta semana
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            const weekExercises = exercises?.filter(e => 
+                new Date(e.created_at) >= weekAgo
+            ).length || 0;
+
+            // Precisión estimada basada en nivel y dificultad
+            let accuracy = 85; // Base para nivel 1
+            if (exercisesByLevel.level2 > exercisesByLevel.level1) accuracy = 75;
+            if (exercisesByLevel.level3 > exercisesByLevel.level1) accuracy = 65;
+
+            const stats = {
+                totalExercises,
+                totalCorrect: Math.floor(totalExercises * (accuracy / 100)),
+                accuracy,
+                exercisesByLevel,
+                todayExercises,
+                weekExercises,
+                mostPopularLevel: this.getMostPopularLevel(exercisesByLevel),
+                // Estadísticas adicionales específicas
+                operationStats: {
+                    suma: sumaExercises,
+                    resta: restaExercises
+                },
+                storyProblems,
+                // Estadísticas de distribución
+                levelDistribution: {
+                    facil: exercisesByLevel.level1,
+                    medio: exercisesByLevel.level2,
+                    dificil: exercisesByLevel.level3
+                }
+            };
+
+            console.log('✅ Estadísticas de ejercicios con tipos correctos:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de ejercicios:', error);
+            return {
+                totalExercises: 0,
+                totalCorrect: 0,
+                accuracy: 0,
+                exercisesByLevel: { level1: 0, level2: 0, level3: 0 },
+                todayExercises: 0,
+                weekExercises: 0,
+                mostPopularLevel: 1,
+                operationStats: { suma: 0, resta: 0 },
+                storyProblems: 0,
+                levelDistribution: { facil: 0, medio: 0, dificil: 0 }
+            };
+        }
+    }
+
+    // ⏱️ ESTADÍSTICAS DE USO - USANDO COLUMNAS REALES de math_user_progress
+    async getUsageStats() {
+        try {
+            if (!this.supabase) throw new Error('Supabase no disponible');
+
+            console.log('⏱️ Consultando math_user_progress...');
+
+            // ✅ USAR COLUMNAS REALES: id, user_id, nivel, ejercicios_completados, ejercicios_correctos, tiempo_total_estudio, racha_actual, racha_maxima, ultima_sesion, logros, created_at, updated_at
+            const { data: progress, error } = await this.supabase
+                .from('math_user_progress')
+                .select('user_id, nivel, ejercicios_completados, ejercicios_correctos, tiempo_total_estudio, ultima_sesion, created_at, updated_at');
+
+            if (error) {
+                console.error('❌ Error en query math_user_progress:', error);
+                return {
+                    activeToday: 0,
+                    activeThisWeek: 0,
+                    activeThisMonth: 0,
+                    estimatedDevices: 0,
+                    retentionRate: 0,
+                    totalStudyTime: 0,
+                    avgExercisesPerUser: 0
+                };
+            }
+
+            console.log(`📊 Encontrados ${progress?.length || 0} registros de progreso`);
+
+            // Si no hay datos, devolver ceros
+            if (!progress || progress.length === 0) {
+                return {
+                    activeToday: 0,
+                    activeThisWeek: 0,
+                    activeThisMonth: 0,
+                    estimatedDevices: 0,
+                    retentionRate: 0,
+                    totalStudyTime: 0,
+                    avgExercisesPerUser: 0
+                };
+            }
+
+            const now = new Date();
+            const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            // Usar ultima_sesion para actividad reciente
+            const activeToday = progress.filter(p => 
+                p.ultima_sesion && new Date(p.ultima_sesion) > dayAgo).length;
+            const activeThisWeek = progress.filter(p => 
+                p.ultima_sesion && new Date(p.ultima_sesion) > weekAgo).length;
+            const activeThisMonth = progress.filter(p => 
+                p.ultima_sesion && new Date(p.ultima_sesion) > monthAgo).length;
+
+            // Calcular totales reales
+            const totalStudyTime = progress.reduce((sum, p) => 
+                sum + (parseInt(p.tiempo_total_estudio) || 0), 0);
+
+            const totalExercises = progress.reduce((sum, p) => 
+                sum + (parseInt(p.ejercicios_completados) || 0), 0);
+
+            const avgExercisesPerUser = progress.length > 0 
+                ? Math.round(totalExercises / progress.length) 
+                : 0;
+
+            const stats = {
+                activeToday,
+                activeThisWeek, 
+                activeThisMonth,
+                estimatedDevices: Math.floor(activeThisMonth * 1.2),
+                retentionRate: progress.length > 0 
+                    ? Math.round((activeThisWeek / progress.length) * 100) 
+                    : 0,
+                totalStudyTime,
+                avgExercisesPerUser
+            };
+
+            console.log('✅ Estadísticas de uso reales:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de uso:', error);
+            return {
+                activeToday: 0,
+                activeThisWeek: 0,
+                activeThisMonth: 0,
+                estimatedDevices: 0,
+                retentionRate: 0,
+                totalStudyTime: 0,
+                avgExercisesPerUser: 0
+            };
+        }
+    }
+
+    // 📊 ESTADÍSTICAS DE PROGRESO - NUEVA FUNCIÓN FALTANTE
+    async getProgressStats() {
+        try {
+            console.log('📊 Cargando estadísticas de progreso...');
+            
+            if (!this.supabase) {
+                throw new Error('Cliente Supabase no disponible');
+            }
+
+            // ✅ OBTENER PROGRESO DE TODOS LOS USUARIOS
+            const { data: progress, error } = await this.supabase
+                .from('math_user_progress')
+                .select('user_id, nivel, ejercicios_completados, ejercicios_correctos, tiempo_total_estudio, racha_actual, racha_maxima, ultima_sesion, created_at, updated_at');
+
+            if (error) {
+                console.error('❌ Error en query math_user_progress:', error);
+                throw error;
+            }
+
+            console.log(`📊 Encontrados ${progress?.length || 0} registros de progreso`);
+
+            if (!progress || progress.length === 0) {
+                return {
+                    totalUsers: 0,
+                    avgExercisesCompleted: 0,
+                    avgAccuracy: 0,
+                    totalStudyTime: 0,
+                    avgStudyTime: 0,
+                    topPerformers: [],
+                    levelDistribution: { nivel1: 0, nivel2: 0, nivel3: 0 },
+                    streakStats: { avgStreak: 0, maxStreak: 0, activeStreaks: 0 },
+                    recentActivity: 0
+                };
+            }
+
+            // Calcular estadísticas agregadas
+            const totalExercises = progress.reduce((sum, p) => sum + (parseInt(p.ejercicios_completados) || 0), 0);
+            const totalCorrect = progress.reduce((sum, p) => sum + (parseInt(p.ejercicios_correctos) || 0), 0);
+            const totalStudyTime = progress.reduce((sum, p) => sum + (parseInt(p.tiempo_total_estudio) || 0), 0);
+            
+            const avgExercisesCompleted = progress.length > 0 ? Math.round(totalExercises / progress.length) : 0;
+            const avgAccuracy = totalExercises > 0 ? Math.round((totalCorrect / totalExercises) * 100) : 0;
+            const avgStudyTime = progress.length > 0 ? Math.round(totalStudyTime / progress.length) : 0;
+
+            // Distribución por niveles
+            const levelDistribution = {
+                nivel1: progress.filter(p => p.nivel === 1 || p.nivel === '1').length,
+                nivel2: progress.filter(p => p.nivel === 2 || p.nivel === '2').length,
+                nivel3: progress.filter(p => p.nivel === 3 || p.nivel === '3').length
+            };
+
+            // Estadísticas de rachas
+            const streaks = progress.map(p => parseInt(p.racha_actual) || 0);
+            const maxStreaks = progress.map(p => parseInt(p.racha_maxima) || 0);
+            const avgStreak = streaks.length > 0 ? Math.round(streaks.reduce((a, b) => a + b, 0) / streaks.length) : 0;
+            const maxStreak = maxStreaks.length > 0 ? Math.max(...maxStreaks) : 0;
+            const activeStreaks = streaks.filter(s => s > 0).length;
+
+            // Actividad reciente (últimas 24 horas)
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const recentActivity = progress.filter(p => 
+                p.ultima_sesion && new Date(p.ultima_sesion) > yesterday
+            ).length;
+
+            // Top performers (usuarios con mejor precisión)
+            const topPerformers = progress
+                .filter(p => (parseInt(p.ejercicios_completados) || 0) > 5) // Solo usuarios con actividad mínima
+                .map(p => {
+                    const completados = parseInt(p.ejercicios_completados) || 0;
+                    const correctos = parseInt(p.ejercicios_correctos) || 0;
+                    return {
+                        userId: p.user_id,
+                        exercisesCompleted: completados,
+                        accuracy: completados > 0 ? Math.round((correctos / completados) * 100) : 0,
+                        level: parseInt(p.nivel) || 1,
+                        streak: parseInt(p.racha_actual) || 0
+                    };
+                })
+                .sort((a, b) => b.accuracy - a.accuracy || b.exercisesCompleted - a.exercisesCompleted)
+                .slice(0, 10);
+
+            const stats = {
+                totalUsers: progress.length,
+                avgExercisesCompleted,
+                avgAccuracy,
+                totalStudyTime,
+                avgStudyTime,
+                topPerformers,
+                levelDistribution,
+                streakStats: {
+                    avgStreak,
+                    maxStreak,
+                    activeStreaks
+                },
+                recentActivity,
+                isRealData: true,
+                lastUpdate: new Date().toISOString()
+            };
+
+            console.log('✅ Estadísticas de progreso completas:', stats);
+            return stats;
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de progreso:', error);
+            
+            // Fallback con datos vacíos
+            return {
+                totalUsers: 0,
+                avgExercisesCompleted: 0,
+                avgAccuracy: 0,
+                totalStudyTime: 0,
+                avgStudyTime: 0,
+                topPerformers: [],
+                levelDistribution: { nivel1: 0, nivel2: 0, nivel3: 0 },
+                streakStats: { avgStreak: 0, maxStreak: 0, activeStreaks: 0 },
+                recentActivity: 0,
+                isRealData: false,
+                lastUpdate: new Date().toISOString()
+            };
+        }
+    }
+
+    // 📚 ESTADÍSTICAS DE MÓDULOS - USANDO DATOS REALES CON TIPOS CORRECTOS
+    async getModuleStats() {
+        try {
+            if (!this.supabase) throw new Error('Supabase no disponible');
+
+            // ✅ USAR math_exercises PARA ESTADÍSTICAS DE MÓDULOS
+            const { data: exercises, error } = await this.supabase
+                .from('math_exercises')
+                .select('level, operation, created_at');
+
+            if (error) {
+                console.error('❌ Error en query math_exercises para módulos:', error);
+                // Fallback usando math_sessions básico
+                const { data: sessions, error: sessionsError } = await this.supabase
+                    .from('math_sessions')
+                    .select('id, created_at');
+
+                if (sessionsError) throw sessionsError;
+
+                return {
+                    moduleUsage: {
+                        matematicas_nivel1: Math.floor(sessions?.length * 0.5) || 0,
+                        matematicas_nivel2: Math.floor(sessions?.length * 0.3) || 0,
+                        matematicas_nivel3: Math.floor(sessions?.length * 0.2) || 0
+                    },
+                    mostUsedModule: 'matematicas_nivel1',
+                    totalModulesSessions: sessions?.length || 0
+                };
+            }
+
+            // ✅ CORREGIDO: Popularidad por nivel basado en ejercicios reales (INTEGER)
+            const moduleUsage = {
+                matematicas_nivel1: exercises?.filter(e => e.level === 1).length || 0,
+                matematicas_nivel2: exercises?.filter(e => e.level === 2).length || 0,
+                matematicas_nivel3: exercises?.filter(e => e.level === 3).length || 0
+            };
+
+            const mostUsedModule = Object.entries(moduleUsage)
+                .sort(([,a], [,b]) => b - a)[0]?.[0] || 'matematicas_nivel1';
+
+            console.log('✅ Estadísticas de módulos con tipos correctos:', {
+                moduleUsage,
+                mostUsedModule,
+                totalExercises: exercises?.length || 0
+            });
+
+            return {
+                moduleUsage,
+                mostUsedModule,
+                totalModulesSessions: exercises?.length || 0
+            };
+
+        } catch (error) {
+            console.error('❌ Error cargando estadísticas de módulos:', error);
+            return {
+                moduleUsage: {
+                    matematicas_nivel1: 0,
+                    matematicas_nivel2: 0,
+                    matematicas_nivel3: 0
+                },
+                mostUsedModule: 'matematicas_nivel1',
+                totalModulesSessions: 0
+            };
+        }
+    }
+
+    // 📈 OBTENER USUARIOS DETALLADOS PARA ADMIN - USANDO TABLA REAL Y COLUMNAS CORRECTAS
+    async getDetailedUsers() {
+        try {
+            console.log('👥 Obteniendo usuarios detallados del sistema...');
+            
+            if (!this.supabase) {
+                throw new Error('Cliente Supabase no disponible');
+            }
+
+            // ✅ USAR SOLO COLUMNAS QUE EXISTEN EN math_profiles
+            const { data: profiles, error } = await this.supabase
+                .from('math_profiles')
+                .select('id, user_id, email, full_name, nombre_completo, user_role, created_at, updated_at, edad, is_active, rating, total_reviews, avatar_url, parent_id, teacher_id')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('❌ Error consultando perfiles:', error);
+                throw error;
+            }
+
+            if (!profiles || profiles.length === 0) {
+                console.log('📊 No se encontraron perfiles de usuario');
+                return [];
+            }
+
+            console.log(`📊 Encontrados ${profiles.length} perfiles de usuario`);
+
+            const users = profiles.map(profile => ({
+                id: profile.id,
+                name: profile.full_name || profile.nombre_completo || `Usuario ${profile.id}`,
+                email: profile.email || `usuario${profile.id}@matemagica.com`,
+                role: profile.user_role || 'student',
+                status: profile.is_active ? 'active' : 'inactive',
+                lastLogin: profile.updated_at || profile.created_at,
+                rating: profile.rating || 0,
+                reviews: profile.total_reviews || 0,
+                joinDate: profile.created_at,
+                // Datos adicionales que SÍ existen
+                age: profile.edad,
+                userId: profile.user_id,
+                avatarUrl: profile.avatar_url,
+                parentId: profile.parent_id,
+                teacherId: profile.teacher_id,
+                isRealData: true
+            }));
+
+            console.log(`✅ ${users.length} usuarios detallados procesados exitosamente`);
+            return users;
+
+        } catch (error) {
+            console.error('❌ Error obteniendo usuarios detallados:', error);
+            
+            // Fallback a usuarios simulados
+            return [
+                {
+                    id: 'admin_1',
+                    name: 'Administrador Sistema',
+                    email: 'admin@matemagica.com',
+                    role: 'admin',
+                    status: 'active',
+                    lastLogin: new Date().toISOString(),
+                    rating: 5,
+                    reviews: 0,
+                    joinDate: new Date().toISOString(),
+                    isRealData: false
+                },
+                {
+                    id: 'teacher_1',
+                    name: 'Profesor Demo',
+                    email: 'profesor@matemagica.com', 
+                    role: 'teacher',
+                    status: 'active',
+                    lastLogin: new Date().toISOString(),
+                    rating: 4.8,
+                    reviews: 15,
+                    joinDate: new Date().toISOString(),
+                    isRealData: false
+                },
+                {
+                    id: 'student_1',
+                    name: 'Estudiante Demo',
+                    email: 'estudiante@matemagica.com',
+                    role: 'student', 
+                    status: 'active',
+                    lastLogin: new Date().toISOString(),
+                    rating: 0,
+                    reviews: 0,
+                    joinDate: new Date().toISOString(),
+                    isRealData: false
+                }
+            ];
+        }
+    }
+
+    // ✅ OBTENER ESTUDIANTES GLOBALES - NUEVO MÉTODO
+    async getGlobalStudents() {
+        try {
+            console.log('🎓 Obteniendo estudiantes globales del sistema...');
+            
+            if (!this.supabase) {
+                throw new Error('Cliente Supabase no disponible');
+            }
+
+            // ✅ OBTENER ESTUDIANTES DE math_profiles
+            const { data: profiles, error } = await this.supabase
+                .from('math_profiles')
+                .select('id, user_id, email, full_name, nombre_completo, user_role, created_at, edad, is_active, parent_id, teacher_id')
+                .in('user_role', ['student', 'estudiante'])
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('❌ Error consultando estudiantes:', error);
+                throw error;
+            }
+
+            if (!profiles || profiles.length === 0) {
+                console.log('📊 No se encontraron estudiantes');
+                return [];
+            }
+
+            // ✅ OBTENER PROGRESO DE CADA ESTUDIANTE
+            const { data: progressData, error: progressError } = await this.supabase
+                .from('math_user_progress')
+                .select('user_id, nivel, ejercicios_completados, ejercicios_correctos, tiempo_total_estudio, racha_actual, ultima_sesion');
+
+            if (progressError) {
+                console.warn('⚠️ Error obteniendo progreso:', progressError);
+            }
+
+            const progressMap = new Map();
+            if (progressData) {
+                progressData.forEach(p => {
+                    progressMap.set(p.user_id, p);
+                });
+            }
+
+            const students = profiles.map(profile => {
+                const progress = progressMap.get(profile.user_id) || {};
+                const accuracy = progress.ejercicios_completados > 0 
+                    ? Math.round((progress.ejercicios_correctos / progress.ejercicios_completados) * 100)
+                    : 0;
+
+                return {
+                    id: profile.id,
+                    userId: profile.user_id,
+                    name: profile.full_name || profile.nombre_completo || `Estudiante ${profile.id}`,
+                    email: profile.email || `estudiante${profile.id}@matemagica.com`,
+                    age: profile.edad || 8,
+                    level: progress.nivel || 1,
+                    exercisesCompleted: progress.ejercicios_completados || 0,
+                    accuracy: accuracy,
+                    studyTime: progress.tiempo_total_estudio || 0,
+                    streak: progress.racha_actual || 0,
+                    lastSession: progress.ultima_sesion,
+                    joinDate: profile.created_at,
+                    parentId: profile.parent_id,
+                    teacherId: profile.teacher_id,
+                    isRealData: true
+                };
+            });
+
+            console.log(`✅ ${students.length} estudiantes globales procesados`);
+            return students;
+
+        } catch (error) {
+            console.error('❌ Error obteniendo estudiantes globales:', error);
+            
+            // Fallback a estudiantes simulados
+            return [
+                {
+                    id: 'student_demo_1',
+                    userId: 'demo_user_1',
+                    name: 'Ana García',
+                    email: 'ana@demo.com',
+                    age: 8,
+                    level: 2,
+                    exercisesCompleted: 45,
+                    accuracy: 87,
+                    studyTime: 180,
+                    streak: 5,
+                    lastSession: new Date().toISOString(),
+                    joinDate: new Date().toISOString(),
+                    isRealData: false
+                },
+                {
+                    id: 'student_demo_2',
+                    userId: 'demo_user_2',
+                    name: 'Carlos López',
+                    email: 'carlos@demo.com',
+                    age: 7,
+                    level: 1,
+                    exercisesCompleted: 23,
+                    accuracy: 92,
+                    studyTime: 120,
+                    streak: 3,
+                    lastSession: new Date().toISOString(),
+                    joinDate: new Date().toISOString(),
+                    isRealData: false
+                }
+            ];
+        }
+    }
+
+    // 📝 OBTENER SESIONES RECIENTES - USANDO TABLA REAL
+    async getSessions(limit = 20) {
+        try {
+            console.log(`📝 Obteniendo últimas ${limit} sesiones...`);
+            
+            if (!this.supabase) {
+                throw new Error('Cliente Supabase no disponible');
+            }
+
+            const { data: sessions, error } = await this.supabase
+                .from('math_sessions')
+                .select('id, user_id, student_name, level, exercise_count, correct_count, start_time, end_time, duration_minutes, created_at')
+                .order('created_at', { ascending: false })
+                .limit(limit);
+
+            if (error) {
+                console.error('❌ Error consultando sesiones:', error);
+                throw error;
+            }
+
+            if (!sessions || sessions.length === 0) {
+                console.log('📊 No se encontraron sesiones');
+                return [];
+            }
+
+            const processedSessions = sessions.map(session => ({
+                id: session.id,
+                userId: session.user_id,
+                studentName: session.student_name || 'Sin nombre',
+                level: session.level || 1,
+                exerciseCount: session.exercise_count || 0,
+                correctCount: session.correct_count || 0,
+                accuracy: session.exercise_count > 0 
+                    ? Math.round((session.correct_count / session.exercise_count) * 100)
+                    : 0,
+                duration: session.duration_minutes || 0,
+                startTime: session.start_time,
+                endTime: session.end_time,
+                date: session.created_at,
+                isRealData: true
+            }));
+
+            console.log(`✅ ${processedSessions.length} sesiones procesadas`);
+            return processedSessions;
+
+        } catch (error) {
+            console.error('❌ Error obteniendo sesiones:', error);
+            
+            // Fallback a sesiones simuladas
+            const now = new Date();
+            return [
+                {
+                    id: 'session_demo_1',
+                    userId: 'demo_user_1',
+                    studentName: 'Ana García',
+                    level: 2,
+                    exerciseCount: 15,
+                    correctCount: 13,
+                    accuracy: 87,
+                    duration: 25,
+                    startTime: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+                    endTime: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+                    date: new Date().toISOString(),
+                    isRealData: false
+                },
+                {
+                    id: 'session_demo_2',
+                    userId: 'demo_user_2',
+                    studentName: 'Carlos López',
+                    level: 1,
+                    exerciseCount: 10,
+                    correctCount: 9,
+                    accuracy: 90,
+                    duration: 18,
+                    startTime: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+                    endTime: new Date(now.getTime() - 42 * 60 * 1000).toISOString(),
+                    date: new Date(now.getTime() - 40 * 60 * 1000).toISOString(),
+                    isRealData: false
+                }
+            ];
+        }
+    }
+
+    // 🏆 OBTENER TOP ESTUDIANTES - BASADO EN PROGRESO REAL
+    async getTopStudents(limit = 10) {
+        try {
+            console.log(`🏆 Obteniendo top ${limit} estudiantes...`);
+            
+            if (!this.supabase) {
+                throw new Error('Cliente Supabase no disponible');
+            }
+
+            // ✅ OBTENER ESTUDIANTES CON SU PROGRESO
+            const { data: profiles, error: profilesError } = await this.supabase
+                .from('math_profiles')
+                .select('id, user_id, full_name, nombre_completo, edad')
+                .in('user_role', ['student', 'estudiante'])
+                .eq('is_active', true);
+
+            if (profilesError) {
+                console.error('❌ Error consultando perfiles:', profilesError);
+                throw profilesError;
+            }
+
+            const { data: progress, error: progressError } = await this.supabase
+                .from('math_user_progress')
+                .select('user_id, nivel, ejercicios_completados, ejercicios_correctos, tiempo_total_estudio, racha_actual')
+                .order('ejercicios_correctos', { ascending: false })
+                .limit(limit * 2); // Obtener más para filtrar después
+
+            if (progressError) {
+                console.error('❌ Error consultando progreso:', progressError);
+                throw progressError;
+            }
+
+            if (!profiles || !progress) {
+                return [];
+            }
+
+            // Combinar datos de perfil y progreso
+            const topStudents = [];
+            const profileMap = new Map();
+            profiles.forEach(p => profileMap.set(p.user_id, p));
+
+            progress.forEach(p => {
+                const profile = profileMap.get(p.user_id);
+                if (profile && topStudents.length < limit) {
+                    const accuracy = p.ejercicios_completados > 0 
+                        ? Math.round((p.ejercicios_correctos / p.ejercicios_completados) * 100)
+                        : 0;
+
+                    topStudents.push({
+                        id: profile.id,
+                        name: profile.full_name || profile.nombre_completo || `Estudiante ${profile.id}`,
+                        age: profile.edad || 8,
+                        level: p.nivel || 1,
+                        exercisesCompleted: p.ejercicios_completados || 0,
+                        correctAnswers: p.ejercicios_correctos || 0,
+                        accuracy: accuracy,
+                        studyTime: p.tiempo_total_estudio || 0,
+                        streak: p.racha_actual || 0,
+                        rank: topStudents.length + 1,
+                        isRealData: true
+                    });
+                }
+            });
+
+            console.log(`✅ Top ${topStudents.length} estudiantes procesados`);
+            return topStudents;
+
+        } catch (error) {
+            console.error('❌ Error obteniendo top estudiantes:', error);
+            
+            // Fallback
+            return [
+                {
+                    id: 'top_1',
+                    name: 'Ana García',
+                    age: 8,
+                    level: 3,
+                    exercisesCompleted: 150,
+                    correctAnswers: 142,
+                    accuracy: 95,
+                    studyTime: 480,
+                    streak: 12,
+                    rank: 1,
+                    isRealData: false
+                },
+                {
+                    id: 'top_2',
+                    name: 'Carlos López',
+                    age: 7,
+                    level: 2,
+                    exercisesCompleted: 120,
+                    correctAnswers: 108,
+                    accuracy: 90,
+                    studyTime: 360,
+                    streak: 8,
+                    rank: 2,
+                    isRealData: false
+                }
+            ];
+        }
+    }
+
+    // 📋 OBTENER LOGS DEL SISTEMA - USANDO DATOS SIMULADOS YA QUE LA TABLA NO EXISTE
+    async getSystemLogs(limit = 50) {
+        console.log('📋 Consultando logs del sistema desde Supabase...');
+        
+        // ✅ USAR LOGS SIMULADOS YA QUE math_system_logs NO EXISTE EN EL ESQUEMA
+        return this.getSimulatedSystemLogs(limit);
+    }
+
+    // 📝 GENERAR LOGS SIMULADOS PARA EL SISTEMA
+    getSimulatedSystemLogs(limit = 50) {
+        const now = new Date();
+        const logs = [];
+        
+        const levels = ['info', 'warning', 'error', 'success'];
+        const modules = ['auth', 'exercises', 'analytics', 'dashboard', 'core'];
+        const messages = [
+            'Usuario autenticado exitosamente',
+            'Dashboard cargado correctamente',
+            'Ejercicios generados por IA',
+            'Estadísticas actualizadas',
+            'Sesión de estudio completada',
+            'Error de conexión recuperado',
+            'Cache limpiado automáticamente',
+            'Backup de datos realizado',
+            'Sistema optimizado',
+            'Conexión a base de datos estable'
+        ];
+
+        for (let i = 0; i < Math.min(limit, 20); i++) {
+            const timestamp = new Date(now.getTime() - (i * 5 * 60 * 1000)); // Cada 5 minutos hacia atrás
+            const level = levels[Math.floor(Math.random() * levels.length)];
+            const module = modules[Math.floor(Math.random() * modules.length)];
+            const message = messages[Math.floor(Math.random() * messages.length)];
+
+            logs.push({
+                id: `sim_log_${i + 1}`,
+                timestamp: timestamp,
+                level: level,
+                message: message,
+                module: module,
+                details: { 
+                    simulated: true, 
+                    version: '2.0',
+                    environment: 'development'
+                },
+                isRealData: false
+            });
         }
 
-        localStorage.removeItem('gaby-visitas-reales');
-        console.log('✅ Visitas reales sincronizadas');
+        console.log(`✅ ${logs.length} logs del sistema simulados generados`);
+        return logs;
+    }
+
+    // 📝 REGISTRAR LOG REAL DEL SISTEMA
+    async logSystemEvent(level, message, module, details = {}) {
+        try {
+            if (!this.supabase) {
+                console.warn('⚠️ No se puede registrar log: Supabase no disponible');
+                return false;
+            }
+
+            if (!['info', 'warning', 'error', 'debug'].includes(level)) {
+                console.warn(`⚠️ Nivel de log inválido: ${level}. Usando 'info'`);
+                level = 'info';
+            }
+
+            // Validar y preparar los datos
+            const logEntry = {
+                level: level,
+                message: message || 'Log del sistema sin mensaje',
+                module: module || 'core',
+                details: details || {},
+                timestamp: new Date().toISOString()
+            };
+
+            console.log(`📝 Registrando log [${level}] en módulo ${module}: ${message}`);
+            
+            // Verificar si la tabla existe antes de intentar insertar
+            try {
+                // Insertar en Supabase
+                const { data, error } = await this.supabase
+                    .from('math_system_logs')
+                    .insert([logEntry]);
+
+                if (error) {
+                    // Si la tabla no existe, guardar en localStorage para sincronizar después
+                    if (error.code === '42P01') {
+                        this.savePendingLogLocally(logEntry);
+                        return false;
+                    }
+                    
+                    console.error('❌ Error registrando log en Supabase:', error);
+                    return false;
+                }
+                
+                console.log('✅ Log registrado exitosamente en Supabase');
+                return true;
+            } catch (insertError) {
+                console.error('❌ Error intentando registrar log:', insertError);
+                
+                // Guardar localmente si hay error
+                this.savePendingLogLocally(logEntry);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error general registrando log:', error);
+            return false;
+        }
+    }
+
+    // 💾 GUARDAR LOG PENDIENTE LOCALMENTE
+    savePendingLogLocally(logEntry) {
+        try {
+            // Obtener logs pendientes actuales o crear array vacío
+            const pendingLogs = JSON.parse(localStorage.getItem('pendingSystemLogs') || '[]');
+            
+            // Añadir nuevo log
+            pendingLogs.push({
+                ...logEntry,
+                savedAt: new Date().toISOString()
+            });
+            
+            // Limitar a máximo 100 logs pendientes para no saturar localStorage
+            const trimmedLogs = pendingLogs.slice(-100);
+            
+            // Guardar en localStorage
+            localStorage.setItem('pendingSystemLogs', JSON.stringify(trimmedLogs));
+            
+            console.log('💾 Log guardado localmente para sincronización futura');
+            return true;
+        } catch (error) {
+            console.error('❌ Error guardando log localmente:', error);
+            return false;
+        }
+    }
+
+    // 🔄 SINCRONIZAR LOGS PENDIENTES
+    async syncPendingLogs() {
+        try {
+            if (!this.supabase) {
+                console.warn('⚠️ No se pueden sincronizar logs: Supabase no disponible');
+                return false;
+            }
+            
+            // Obtener logs pendientes
+            const pendingLogsString = localStorage.getItem('pendingSystemLogs');
+            if (!pendingLogsString) {
+                return true; // No hay logs pendientes
+            }
+            
+            const pendingLogs = JSON.parse(pendingLogsString);
+            if (pendingLogs.length === 0) {
+                return true; // Array vacío
+            }
+            
+            console.log(`🔄 Sincronizando ${pendingLogs.length} logs pendientes...`);
+            
+            // Verificar si la tabla existe antes de intentar insertar
+            try {
+                // Intentar inserción en batch (máx 100 registros)
+                const { data, error } = await this.supabase
+                    .from('math_system_logs')
+                    .insert(pendingLogs.slice(0, 100));
+                
+                if (error) {
+                    if (error.code === '42P01') {
+                        console.warn('⚠️ No se pueden sincronizar logs: Tabla no existe');
+                        return false;
+                    }
+                    console.error('❌ Error sincronizando logs pendientes:', error);
+                    return false;
+                }
+                
+                // Éxito - limpiar logs pendientes
+                localStorage.removeItem('pendingSystemLogs');
+                console.log('✅ Logs pendientes sincronizados exitosamente');
+                return true;
+            } catch (syncError) {
+                console.error('❌ Error intentando sincronizar logs:', syncError);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error general sincronizando logs:', error);
+            return false;
+        }
+    }
+
+    // 🛠️ MÉTODOS AUXILIARES
+
+    getMostPopularLevel(exercisesByLevel) {
+        const levels = Object.entries(exercisesByLevel);
+        if (levels.length === 0) return 1;
+        
+        const maxLevel = levels.reduce((max, [level, count]) => 
+            count > max.count ? { level: parseInt(level.replace('level', '')), count } : max, 
+            { level: 1, count: 0 }
+        );
+        
+        return maxLevel.level;
+    }
+
+    formatTime(minutes) {
+        if (!minutes || minutes === 0) return '0h 0m';
+        
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        
+        if (hours === 0) return `${mins}m`;
+        if (mins === 0) return `${hours}h`;
+        return `${hours}h ${mins}m`;
+    }
+
+    // 📊 FALLBACK STATS CUANDO NO HAY CONEXIÓN
+    getFallbackStats() {
+        console.log('📊 Usando estadísticas fallback (sin conexión)');
+        
+        return {
+            // Usuarios
+            totalUsers: 0,
+            activeUsers: 0,
+            totalTeachers: 0,
+            totalParents: 0,
+            totalStudents: 0,
+            avgTeacherRating: 0,
+            newUsersThisWeek: 0,
+            userGrowthRate: 0,
+
+            // Sesiones
+            totalSessions: 0,
+            sessionsToday: 0,
+            sessionsThisWeek: 0,
+            avgSessionDuration: 0,
+            avgExercisesPerSession: 0,
+            avgAccuracyPerSession: 0,
+            totalSessionTime: 0,
+            sessionTimeFormatted: '0h 0m',
+            recentSessions: [],
+
+            // Ejercicios
+            totalExercises: 0,
+            totalCorrect: 0,
+            accuracy: 0,
+            exercisesByLevel: { level1: 0, level2: 0, level3: 0 },
+            todayExercises: 0,
+            weekExercises: 0,
+            mostPopularLevel: 1,
+            operationStats: { suma: 0, resta: 0 },
+            storyProblems: 0,
+            levelDistribution: { facil: 0, medio: 0, dificil: 0 },
+
+            // Uso
+            activeToday: 0,
+            activeThisWeek: 0,
+            activeThisMonth: 0,
+            estimatedDevices: 0,
+            retentionRate: 0,
+            totalStudyTime: 0,
+            avgExercisesPerUser: 0,
+
+            // Módulos
+            moduleUsage: {
+                matematicas_nivel1: 0,
+                matematicas_nivel2: 0,
+                matematicas_nivel3: 0
+            },
+            mostUsedModule: 'matematicas_nivel1',
+            totalModulesSessions: 0,
+
+            // Metadata
+            lastUpdate: new Date().toISOString(),
+            isRealData: false,
+            isOffline: true
+        };
+    }
+
+    // 🔄 LIMPIAR CACHE
+    clearCache() {
+        this.cache.clear();
+        this.lastCacheUpdate = null;
+        console.log('🗑️ Cache de analytics limpiado');
+    }
+
+    // 📊 VERIFICAR ESTADO DE CONEXIÓN
+    async checkConnection() {
+        try {
+            if (!this.supabase) {
+                return false;
+            }
+
+            const { data, error } = await this.supabase
+                .from('math_profiles')
+                .select('count')
+                .limit(1);
+
+            return !error;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // 🎯 MÉTODO PÚBLICO PARA VERIFICAR INICIALIZACIÓN
+    isInitialized() {
+        return this.initialized && this.supabase !== null;
     }
 }
 
-// Crear instancia global
-window.RealAnalyticsService = new RealAnalyticsService();
+// 🌟 CREAR INSTANCIA GLOBAL
+console.log('🔧 Creando instancia global de RealAnalyticsService...');
+window.realAnalyticsService = new RealAnalyticsService();
+
+// 🚀 AUTO-INICIALIZACIÓN CUANDO EL DOCUMENTO ESTÉ LISTO
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('📄 DOM cargado, inicializando RealAnalyticsService...');
+    
+    const success = await window.realAnalyticsService.initialize();
+    
+    if (success) {
+        console.log('✅ RealAnalyticsService inicializado exitosamente');
+        // Disparar evento personalizado para notificar inicialización
+        window.dispatchEvent(new CustomEvent('realAnalyticsReady', {
+            detail: { service: window.realAnalyticsService }
+        }));
+    } else {
+        console.warn('⚠️ RealAnalyticsService falló inicialización, usando modo fallback');
+        // Intentar reinicializar cada 5 segundos
+        setInterval(async () => {
+            if (!window.realAnalyticsService.isInitialized()) {
+                console.log('🔄 Reintentando inicialización de RealAnalyticsService...');
+                const retrySuccess = await window.realAnalyticsService.reinitialize();
+                if (retrySuccess) {
+                    console.log('✅ RealAnalyticsService reconectado exitosamente');
+                    window.dispatchEvent(new CustomEvent('realAnalyticsReconnected', {
+                        detail: { service: window.realAnalyticsService }
+                    }));
+                }
+            }
+        }, 5000);
+    }
+});
+
+// 🔗 EXPORTAR PARA COMPATIBILIDAD
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = RealAnalyticsService;
+}
+
+console.log('✅ Real Analytics Service cargado completamente');

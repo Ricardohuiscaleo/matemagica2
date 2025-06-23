@@ -526,3 +526,15 @@ class GeminiAIService {
 
 // Inicializar servicio de IA
 window.geminiAI = new GeminiAIService();
+
+// ✅ COMPATIBILIDAD: Exportar también como GeminiAI para tests
+window.GeminiAI = GeminiAIService;
+
+// ✅ COMPATIBILIDAD: Crear instancia global con ambos nombres
+window.GeminiAI = class extends GeminiAIService {
+    constructor() {
+        super();
+    }
+};
+
+console.log('✅ Gemini AI Service disponible globalmente como GeminiAI y GeminiAIService');

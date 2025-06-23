@@ -1374,6 +1374,20 @@ Responde SOLO con el contenido pedagógico, sin formato adicional.`;
         }
     }
 
+    // ✅ NUEVO: Determinar si una resta necesita préstamo (borrowing)
+    needsBorrowingHelp(exercise) {
+        if (exercise.operation !== '-') {
+            return false;
+        }
+        
+        // Una resta necesita préstamo cuando el dígito de las unidades del minuendo
+        // es menor que el dígito de las unidades del sustraendo
+        const minuendoUnidades = exercise.num1 % 10;
+        const sustraendoUnidades = exercise.num2 % 10;
+        
+        return minuendoUnidades < sustraendoUnidades;
+    }
+
     // 🔄 NUEVO: Feedback progresivo unificado
     async showProgressiveFeedback(exerciseId, attemptCount) {
         const exercise = this.currentExercises.find(ex => ex.id === exerciseId);
@@ -1742,6 +1756,43 @@ Responde SOLO con el contenido pedagógico, sin formato adicional.`;
             // Fallback seguro: recargar página
             console.log('🔄 Recargando página por error...');
             location.reload();
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Volver al dashboard con pantalla de carga elegante
+    goBackToDashboard() {
+        try {
+            console.log('🏠 Navegando directamente al dashboard...');
+            
+            // ✅ LIMPIAR listeners del módulo para evitar conflictos
+            if (this.resizeListener) {
+                window.removeEventListener('resize', this.resizeListener);
+                this.resizeListener = null;
+                console.log('✅ Listeners del módulo removidos');
+            }
+            
+            // ✅ LIMPIAR variables del módulo
+            this.currentExercises = [];
+            
+            // ✅ USAR la nueva pantalla de carga elegante
+            if (typeof showLoadingAndReload === 'function') {
+                console.log('✅ Usando pantalla de carga elegante');
+                showLoadingAndReload('🏠 Regresando al Dashboard...');
+            } else {
+                console.log('⚠️ Pantalla de carga no disponible, usando recarga directa');
+                // Fallback directo si no está disponible la función
+                window.location.href = 'dashboard.html#dashboard';
+            }
+            
+            console.log('✅ Navegación al dashboard iniciada correctamente');
+            
+        } catch (error) {
+            console.error('❌ Error navegando al dashboard:', error);
+            console.error('❌ Stack trace:', error.stack);
+            
+            // ✅ FALLBACK SEGURO: Recargar dashboard.html directamente
+            console.log('🔄 Fallback: Recargando dashboard.html...');
+            window.location.href = 'dashboard.html#dashboard';
         }
     }
 }

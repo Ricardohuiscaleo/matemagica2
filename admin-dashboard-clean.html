@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Matemágica</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">🧮 Dashboard Admin - Matemágica</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="refresh-data" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                        🔄 Actualizar
+                    </button>
+                    <button id="export-data" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
+                        📤 Exportar
+                    </button>
+                    <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        🚪 Salir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button id="nav-overview" class="py-4 px-2 border-b-2 border-blue-500 text-blue-600 font-medium text-sm">
+                    📊 Resumen
+                </button>
+                <button id="nav-users" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                    👥 Usuarios
+                </button>
+                <button id="nav-exercises" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                    🧮 Ejercicios
+                </button>
+                <button id="nav-sessions" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                    📚 Sesiones
+                </button>
+                <button id="nav-progress" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                    📈 Progreso
+                </button>
+                <button id="nav-skills" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                    🎯 Habilidades
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <!-- Error Container -->
+        <div id="error-container" class="mb-4"></div>
+
+        <!-- Overview Section -->
+        <section id="overview-section" class="space-y-6">
+            <h2 class="text-2xl font-bold text-gray-900">📊 Resumen del Sistema</h2>
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">👥</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Usuarios</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="total-users">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">🧮</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Ejercicios</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="total-exercises">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">📚</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Sesiones</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="total-sessions">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">🎯</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Precisión Promedio</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="avg-accuracy">0%</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">⚡</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Estudiantes Activos</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="active-students">0</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <div class="text-3xl">⏱️</div>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Tiempo Total Estudio</dt>
+                                    <dd class="text-3xl font-semibold text-gray-900" id="total-study-time">0 min</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="users-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-900">👥 Usuarios del Sistema</h2>
+            </div>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div id="users-table" class="p-6">
+                    <div class="text-center py-8">
+                        <div class="text-gray-500">Cargando usuarios...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exercises Section -->
+        <section id="exercises-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-900">🧮 Ejercicios Generados</h2>
+            </div>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div id="exercises-table" class="p-6">
+                    <div class="text-center py-8">
+                        <div class="text-gray-500">Cargando ejercicios...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sessions Section -->
+        <section id="sessions-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-900">📚 Sesiones de Estudio</h2>
+            </div>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div id="sessions-table" class="p-6">
+                    <div class="text-center py-8">
+                        <div class="text-gray-500">Cargando sesiones...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress Section -->
+        <section id="progress-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-900">📈 Progreso de Estudiantes</h2>
+            </div>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div id="progress-table" class="p-6">
+                    <div class="text-center py-8">
+                        <div class="text-gray-500">Cargando progreso...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Skills Section -->
+        <section id="skills-section" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-900">🎯 Catálogo de Habilidades</h2>
+            </div>
+            
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div id="skills-table" class="p-6">
+                    <div class="text-center py-8">
+                        <div class="text-gray-500">Cargando habilidades...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="section-analytics" class="space-y-6" style="display: none;">
+            <h2 class="text-2xl font-bold text-gray-900">📈 Analytics Avanzados</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-4">📊 Distribución por Niveles</h3>
+                    <div id="levels-chart" class="h-64 flex items-center justify-center text-gray-500">
+                        Gráfico de niveles (pendiente)
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-4">🎯 Precisión por Operación</h3>
+                    <div id="operations-chart" class="h-64 flex items-center justify-center text-gray-500">
+                        Gráfico de operaciones (pendiente)
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <div class="text-gray-700">Cargando datos...</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config-service.js"></script>
+    <script>
+        // 🔧 PREPARAR ENTORNO PARA SUPABASE REAL
+        console.log('🔧 Preparando entorno para conexión real a Supabase...');
+        
+        // Verificar que tenemos la configuración
+        if (window.SUPABASE_CONFIG) {
+            console.log('✅ Configuración Supabase disponible para conexión real');
+            console.log('🌐 URL:', window.SUPABASE_CONFIG.url);
+        } else {
+            console.error('❌ No se encontró configuración de Supabase');
+        }
+        
+        // ✅ NO CREAR CLIENTE MOCK - Dejar que admin-dashboard-clean.js maneje la conexión real
+        console.log('🎯 Dashboard usará conexión real a Supabase');
+    </script>
+    <script src="admin-dashboard-clean.js"></script>
+    
+    <script>
+        // 🎨 Funciones de UI adicionales
+        function showToast(message, type = 'info') {
+            const colors = {
+                info: 'bg-blue-500',
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // Animación de entrada
+            setTimeout(() => toast.classList.add('translate-y-0'), 100);
+            
+            // Auto-remover
+            setTimeout(() => {
+                toast.classList.add('translate-y-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Función global para mostrar loading
+        function showLoading(show = true) {
+            const indicator = document.getElementById('loading-indicator');
+            if (indicator) {
+                indicator.style.display = show ? 'flex' : 'none';
+            }
+        }
+
+        // Manejar errores globales
+        window.addEventListener('error', (event) => {
+            console.error('Error global:', event.error);
+            showToast('Error en la aplicación. Ver consola para detalles.', 'error');
+        });
+
+        // Prevenir formularios vacíos
+        window.addEventListener('beforeunload', (event) => {
+            if (window.adminDashboard && window.adminDashboard.isInitialized) {
+                // Limpiar recursos si es necesario
+                console.log('🧹 Limpiando recursos del dashboard...');
+            }
+        });
+    </script>
+</body>
+</html>

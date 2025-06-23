@@ -1,0 +1,587 @@
+/**
+ * ✏️ COMPONENTE: MODAL DE EDICIÓN DE ESTUDIANTES
+ * Responsabilidad ÚNICA: Editar estudiante existente
+ * NO maneja selección ni creación - solo edición
+ */
+
+class StudentEditModal {
+    constructor(studentManager) {
+        this.studentManager = studentManager;
+        this.isOpen = false;
+        this.currentStudentId = null;
+        this.modalId = 'edit-student-modal-dynamic';
+        
+        // Configuración específica para EDICIÓN únicamente
+        this.config = {
+            enableAvatarSelection: true,
+            enableInterestsEdit: true,
+            enableLevelChange: true,
+            validateOnInput: true
+        };
+    }
+
+    // ✅ FUNCIÓN ESPECÍFICA: Solo para editar estudiante existente
+    open(studentId) {
+        if (this.isOpen) {
+            console.warn('⚠️ Modal de edición ya está abierto');
+            return;
+        }
+        
+        const student = this.studentManager.getStudentById(studentId);
+        if (!student) {
+            console.error('❌ Estudiante no encontrado para editar');
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('Estudiante no encontrado');
+            }
+            return;
+        }
+        
+        this.currentStudentId = studentId;
+        this.createEditModal();
+        this.populateFormWithStudent(student);
+        this.setupEditListeners();
+        this.showModal();
+        
+        this.isOpen = true;
+        console.log(`✏️ Modal de EDICIÓN abierto para: ${student.name}`);
+    }
+
+    // ✅ CREAR MODAL ESPECÍFICO PARA EDICIÓN
+    createEditModal() {
+        this.removeExistingModal();
+
+        const modalHTML = `
+            <div id="${this.modalId}" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <!-- Header específico para edición -->
+                    <div class="bg-gradient-to-r from-green-500 to-teal-600 text-white p-4 rounded-t-xl">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-lg font-bold">✏️ Editar Estudiante</h3>
+                                <p class="text-green-100 text-sm">Actualiza la información</p>
+                            </div>
+                            <button id="close-edit-modal" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Formulario específico para edición -->
+                    <form id="edit-student-form-dynamic" class="p-6 space-y-5">
+                        ${this.renderFormFields()}
+                        
+                        <!-- Botones de acción específicos para edición -->
+                        <div class="flex space-x-3 pt-6 border-t border-gray-200">
+                            <button type="button" id="cancel-edit-btn" 
+                                class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors">
+                                <i class="fas fa-times mr-2"></i>Cancelar
+                            </button>
+                            <button type="submit" id="save-edit-btn"
+                                class="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <i class="fas fa-save mr-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    // ✅ RENDERIZAR CAMPOS ESPECÍFICOS PARA EDICIÓN
+    renderFormFields() {
+        return `
+            <!-- Avatar selector específico para edición -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-smile text-yellow-500 mr-2"></i>
+                    Avatar
+                </label>
+                <div class="grid grid-cols-6 gap-2" id="avatar-selector">
+                    ${this.renderAvatarOptions()}
+                </div>
+                <input type="hidden" id="edit-selected-avatar" name="avatar" value="👦">
+            </div>
+            
+            <!-- Nombre -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-user text-blue-500 mr-2"></i>
+                    Nombre completo *
+                </label>
+                <input type="text" id="edit-student-name-input" required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
+            </div>
+            
+            <!-- Edad -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-birthday-cake text-purple-500 mr-2"></i>
+                    Edad *
+                </label>
+                <select id="edit-student-age-select" required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
+                    ${this.renderAgeOptions()}
+                </select>
+            </div>
+            
+            <!-- Género -->
+            <div class="space-y-3">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-child text-pink-500 mr-2"></i>
+                    Género *
+                </label>
+                <div class="grid grid-cols-2 gap-3" id="gender-selector">
+                    ${this.renderGenderOptions()}
+                </div>
+            </div>
+            
+            <!-- Curso -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-school text-green-500 mr-2"></i>
+                    Curso
+                </label>
+                <input type="text" id="edit-student-course-input"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
+            </div>
+            
+            <!-- Intereses -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-heart text-red-500 mr-2"></i>
+                    Intereses
+                </label>
+                <div class="grid grid-cols-2 gap-2" id="interests-selector">
+                    ${this.renderInterestOptions()}
+                </div>
+            </div>
+            
+            <!-- Nivel matemático -->
+            <div class="space-y-2">
+                <label class="flex items-center text-sm font-semibold text-gray-700">
+                    <i class="fas fa-chart-line text-orange-500 mr-2"></i>
+                    Nivel matemático
+                </label>
+                <select id="edit-student-level-select"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
+                    <option value="1">🟢 Fácil (Sin reserva)</option>
+                    <option value="2">🟡 Medio (Con reserva)</option>
+                    <option value="3">🔴 Difícil (Mixto)</option>
+                </select>
+            </div>
+        `;
+    }
+
+    // ✅ OPCIONES DE AVATAR PARA EDICIÓN
+    renderAvatarOptions() {
+        const avatars = ['👧', '👦', '🧒', '👩‍🎓', '👨‍🎓', '😊'];
+        return avatars.map(avatar => 
+            `<button type="button" class="avatar-edit-option p-2 border-2 border-gray-200 rounded-lg hover:border-green-300 transition-all" 
+                     data-avatar="${avatar}" onclick="window.studentEditModal.selectAvatar('${avatar}')">
+                <span class="text-2xl">${avatar}</span>
+            </button>`
+        ).join('');
+    }
+
+    // ✅ OPCIONES DE EDAD PARA EDICIÓN
+    renderAgeOptions() {
+        const ages = [
+            {value: 5, label: '5 años (Pre-Kinder)'},
+            {value: 6, label: '6 años (Kinder)'},
+            {value: 7, label: '7 años (1° Básico)'},
+            {value: 8, label: '8 años (2° Básico)'},
+            {value: 9, label: '9 años (3° Básico)'},
+            {value: 10, label: '10 años (4° Básico)'},
+            {value: 11, label: '11 años (5° Básico)'},
+            {value: 12, label: '12 años (6° Básico)'}
+        ];
+        
+        return ages.map(age => 
+            `<option value="${age.value}">${age.label}</option>`
+        ).join('');
+    }
+
+    // ✅ OPCIONES DE GÉNERO PARA EDICIÓN
+    renderGenderOptions() {
+        return `
+            <label class="gender-edit-option cursor-pointer">
+                <input type="radio" name="edit-gender-radio" value="niña" required class="hidden">
+                <div class="gender-edit-card p-4 border-2 border-gray-200 rounded-lg text-center hover:border-pink-300 transition-all">
+                    <div class="text-3xl mb-2">👧</div>
+                    <div class="font-medium text-gray-700">Niña</div>
+                </div>
+            </label>
+            <label class="gender-edit-option cursor-pointer">
+                <input type="radio" name="edit-gender-radio" value="niño" required class="hidden">
+                <div class="gender-edit-card p-4 border-2 border-gray-200 rounded-lg text-center hover:border-blue-300 transition-all">
+                    <div class="text-3xl mb-2">👦</div>
+                    <div class="font-medium text-gray-700">Niño</div>
+                </div>
+            </label>
+        `;
+    }
+
+    // ✅ OPCIONES DE INTERESES PARA EDICIÓN
+    renderInterestOptions() {
+        const interests = [
+            {value: 'animales', label: '🐶 Animales'},
+            {value: 'deportes', label: '⚽ Deportes'},
+            {value: 'princesas', label: '👸 Princesas'},
+            {value: 'superhéroes', label: '🦸 Superhéroes'},
+            {value: 'carros', label: '🚗 Carros'},
+            {value: 'música', label: '🎵 Música'}
+        ];
+        
+        return interests.map(interest => 
+            `<label class="interest-edit-tag cursor-pointer">
+                <input type="checkbox" name="edit-interests-check" value="${interest.value}" class="hidden">
+                <span class="interest-edit-pill inline-block w-full text-center py-2 px-3 bg-gray-100 border-2 border-transparent rounded-lg transition-all hover:bg-gray-200">
+                    ${interest.label}
+                </span>
+            </label>`
+        ).join('');
+    }
+
+    // ✅ LLENAR FORMULARIO CON DATOS DEL ESTUDIANTE
+    populateFormWithStudent(student) {
+        try {
+            // Datos básicos
+            const nameInput = document.getElementById('edit-student-name-input');
+            const ageSelect = document.getElementById('edit-student-age-select');
+            const courseInput = document.getElementById('edit-student-course-input');
+            const levelSelect = document.getElementById('edit-student-level-select');
+            const avatarInput = document.getElementById('edit-selected-avatar');
+            
+            if (nameInput) nameInput.value = student.name || '';
+            if (ageSelect) ageSelect.value = student.age || 8;
+            if (courseInput) courseInput.value = student.course || '';
+            if (levelSelect) levelSelect.value = student.mathLevel || 1;
+            if (avatarInput) avatarInput.value = student.avatar || '👦';
+            
+            // Seleccionar avatar
+            this.selectAvatar(student.avatar || '👦');
+            
+            // Seleccionar género
+            const genderRadio = document.querySelector(`input[name="edit-gender-radio"][value="${student.gender}"]`);
+            if (genderRadio) {
+                genderRadio.checked = true;
+                this.updateGenderVisual(student.gender);
+            }
+            
+            // Seleccionar intereses
+            if (student.interests && Array.isArray(student.interests)) {
+                student.interests.forEach(interest => {
+                    const checkbox = document.querySelector(`input[name="edit-interests-check"][value="${interest}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        this.updateInterestVisual(checkbox, true);
+                    }
+                });
+            }
+            
+            console.log('✅ Formulario de edición poblado con datos del estudiante');
+        } catch (error) {
+            console.error('❌ Error poblando formulario:', error);
+        }
+    }
+
+    // ✅ CONFIGURAR LISTENERS ESPECÍFICOS PARA EDICIÓN
+    setupEditListeners() {
+        // Cerrar modal
+        const closeBtn = document.getElementById('close-edit-modal');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
+        
+        [closeBtn, cancelBtn].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => this.close());
+            }
+        });
+
+        // Guardar cambios
+        const form = document.getElementById('edit-student-form-dynamic');
+        const saveBtn = document.getElementById('save-edit-btn');
+        
+        const handleSave = (e) => {
+            e.preventDefault();
+            this.saveChanges();
+        };
+        
+        if (form) form.addEventListener('submit', handleSave);
+        if (saveBtn) saveBtn.addEventListener('click', handleSave);
+
+        // Listeners para género
+        document.querySelectorAll('input[name="edit-gender-radio"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                this.updateGenderVisual(radio.value);
+            });
+        });
+        
+        // Listeners para intereses
+        document.querySelectorAll('input[name="edit-interests-check"]').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateInterestVisual(checkbox, checkbox.checked);
+            });
+        });
+
+        // Validación en tiempo real
+        if (this.config.validateOnInput) {
+            this.setupRealTimeValidation();
+        }
+    }
+
+    // ✅ SELECCIONAR AVATAR ESPECÍFICO PARA EDICIÓN
+    selectAvatar(avatar) {
+        // Actualizar input oculto
+        const avatarInput = document.getElementById('edit-selected-avatar');
+        if (avatarInput) avatarInput.value = avatar;
+        
+        // Actualizar visual
+        document.querySelectorAll('.avatar-edit-option').forEach(option => {
+            option.style.borderColor = '#D1D5DB';
+            option.style.backgroundColor = 'white';
+        });
+        
+        const selectedOption = document.querySelector(`[data-avatar="${avatar}"]`);
+        if (selectedOption) {
+            selectedOption.style.borderColor = '#10B981';
+            selectedOption.style.backgroundColor = '#ECFDF5';
+        }
+    }
+
+    // ✅ ACTUALIZAR VISUAL DE GÉNERO
+    updateGenderVisual(selectedGender) {
+        document.querySelectorAll('.gender-edit-card').forEach(card => {
+            card.style.borderColor = '#D1D5DB';
+            card.style.backgroundColor = 'white';
+        });
+        
+        const selectedCard = document.querySelector(`input[value="${selectedGender}"]`)?.closest('.gender-edit-option')?.querySelector('.gender-edit-card');
+        if (selectedCard) {
+            selectedCard.style.borderColor = selectedGender === 'niña' ? '#EC4899' : '#3B82F6';
+            selectedCard.style.backgroundColor = selectedGender === 'niña' ? '#FDF2F8' : '#EFF6FF';
+        }
+    }
+
+    // ✅ ACTUALIZAR VISUAL DE INTERESES
+    updateInterestVisual(checkbox, isSelected) {
+        const pill = checkbox.closest('.interest-edit-tag').querySelector('.interest-edit-pill');
+        if (pill) {
+            if (isSelected) {
+                pill.style.backgroundColor = '#DBEAFE';
+                pill.style.borderColor = '#3B82F6';
+                pill.style.color = '#1E40AF';
+            } else {
+                pill.style.backgroundColor = '#F3F4F6';
+                pill.style.borderColor = 'transparent';
+                pill.style.color = '#374151';
+            }
+        }
+    }
+
+    // ✅ GUARDAR CAMBIOS ESPECÍFICO PARA EDICIÓN
+    async saveChanges() {
+        try {
+            if (!this.currentStudentId) {
+                throw new Error('No hay estudiante para editar');
+            }
+            
+            // Obtener datos del formulario
+            const formData = this.getFormData();
+            
+            // Validar datos
+            if (!this.validateFormData(formData)) {
+                return;
+            }
+            
+            // Actualizar estudiante
+            const updatedStudent = await this.studentManager.updateStudent(this.currentStudentId, formData);
+            
+            // Mostrar éxito
+            if (typeof showSuccessToast === 'function') {
+                showSuccessToast(`✅ ${updatedStudent.name} actualizado correctamente`);
+            }
+            
+            // Cerrar modal
+            this.close();
+            
+            console.log('✅ Cambios guardados exitosamente');
+            
+        } catch (error) {
+            console.error('❌ Error guardando cambios:', error);
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('Error al guardar los cambios');
+            }
+        }
+    }
+
+    // ✅ OBTENER DATOS DEL FORMULARIO ESPECÍFICO PARA EDICIÓN
+    getFormData() {
+        const nameInput = document.getElementById('edit-student-name-input');
+        const ageSelect = document.getElementById('edit-student-age-select');
+        const courseInput = document.getElementById('edit-student-course-input');
+        const levelSelect = document.getElementById('edit-student-level-select');
+        const avatarInput = document.getElementById('edit-selected-avatar');
+        
+        const genderRadio = document.querySelector('input[name="edit-gender-radio"]:checked');
+        const interestCheckboxes = document.querySelectorAll('input[name="edit-interests-check"]:checked');
+        const interests = Array.from(interestCheckboxes).map(cb => cb.value);
+        
+        return {
+            name: nameInput?.value?.trim() || '',
+            age: parseInt(ageSelect?.value) || 8,
+            gender: genderRadio?.value || 'niño',
+            course: courseInput?.value?.trim() || '',
+            mathLevel: parseInt(levelSelect?.value) || 1,
+            avatar: avatarInput?.value || '👦',
+            interests: interests,
+            lastActivity: new Date().toISOString()
+        };
+    }
+
+    // ✅ VALIDAR DATOS ESPECÍFICO PARA EDICIÓN
+    validateFormData(data) {
+        if (!data.name || data.name.length < 2) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ El nombre debe tener al menos 2 caracteres');
+            }
+            return false;
+        }
+        
+        if (data.age < 5 || data.age > 12) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ La edad debe estar entre 5 y 12 años');
+            }
+            return false;
+        }
+        
+        if (!['niño', 'niña'].includes(data.gender)) {
+            if (typeof showErrorToast === 'function') {
+                showErrorToast('❌ Debe seleccionar un género');
+            }
+            return false;
+        }
+        
+        return true;
+    }
+
+    // ✅ VALIDACIÓN EN TIEMPO REAL
+    setupRealTimeValidation() {
+        const nameInput = document.getElementById('edit-student-name-input');
+        if (nameInput) {
+            nameInput.addEventListener('input', (e) => {
+                const isValid = e.target.value.trim().length >= 2;
+                e.target.style.borderColor = isValid ? '#10B981' : '#EF4444';
+            });
+        }
+    }
+
+    // ✅ MÉTODOS DE CONTROL DEL MODAL
+    showModal() {
+        const modal = document.getElementById(this.modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            
+            // Enfocar en nombre
+            setTimeout(() => {
+                const nameInput = document.getElementById('edit-student-name-input');
+                if (nameInput) nameInput.focus();
+            }, 100);
+        }
+    }
+
+    close() {
+        if (!this.isOpen) return;
+        
+        const modal = document.getElementById(this.modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+        
+        this.removeExistingModal();
+        this.currentStudentId = null;
+        this.isOpen = false;
+        console.log('✏️ Modal de EDICIÓN cerrado');
+    }
+
+    removeExistingModal() {
+        const existingModal = document.getElementById(this.modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+    }
+
+    // ✅ MÉTODOS PÚBLICOS
+    isModalOpen() {
+        return this.isOpen;
+    }
+
+    getCurrentStudentId() {
+        return this.currentStudentId;
+    }
+}
+
+// ✅ CREAR INSTANCIA GLOBAL DEL MODAL DE EDICIÓN
+if (typeof window !== 'undefined') {
+    // Función para inicializar el modal cuando studentManager esté listo
+    window.initializeStudentEditModal = function() {
+        if (window.studentManager && !window.studentEditModal) {
+            window.studentEditModal = new StudentEditModal(window.studentManager);
+            console.log('✅ Modal de Edición de Estudiantes disponible globalmente');
+            return true;
+        }
+        return false;
+    };
+
+    // Intentar inicializar inmediatamente
+    document.addEventListener('DOMContentLoaded', () => {
+        // Verificar si ya está inicializado
+        if (window.studentEditModal) {
+            console.log('✅ Modal de edición ya inicializado');
+            return;
+        }
+        
+        // Esperar un poco para que studentManager se inicialice
+        setTimeout(() => {
+            if (!window.initializeStudentEditModal()) {
+                // Si no está listo, seguir intentando
+                let attempts = 0;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (window.initializeStudentEditModal() || attempts >= 20) {
+                        clearInterval(interval);
+                        if (attempts >= 20 && !window.studentEditModal) {
+                            console.warn('⚠️ Timeout esperando studentManager para el modal de edición');
+                        }
+                    }
+                }, 250);
+            }
+        }, 300);
+    });
+    
+    // ✅ FUNCIÓN GLOBAL PARA ABRIR MODAL DE EDICIÓN DESDE HTML
+    window.openEditStudentModal = function(studentId) {
+        try {
+            if (window.studentEditModal && window.studentEditModal.open) {
+                window.studentEditModal.open(studentId);
+            } else {
+                console.warn('⚠️ Modal de edición no disponible');
+                if (typeof showErrorToast === 'function') {
+                    showErrorToast('Modal de edición no disponible');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error abriendo modal de edición:', error);
+        }
+    };
+}
+
+// ✅ EXPORTAR PARA MÓDULOS
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { StudentEditModal };
+}
+
+console.log('✅ Componente Modal de Edición de Estudiantes cargado completamente');

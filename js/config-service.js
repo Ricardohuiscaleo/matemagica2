@@ -13,11 +13,59 @@ const isLocalDevelopment = window.location.hostname === 'localhost' ||
 window.ConfigService = {
     // Configuración por defecto
     defaults: {
-        geminiApiKey: '',
+        geminiApiKey: 'AIzaSyDNOl8-P5Bt6dhjYPM-zGo6E8tNqVlXeHQ', // ✅ API Key real
         offlineMode: false,
         numberFormat: 'standard',
         studentData: null,
         exerciseLevel: 'medio'
+    },
+
+    // ✅ NUEVO: Método de inicialización que los tests necesitan
+    async initialize() {
+        try {
+            console.log('🔄 Inicializando ConfigService...');
+            
+            // Cargar configuración base
+            const config = await this.loadConfig();
+            
+            // ✅ CREAR CONFIGURACIONES GLOBALES
+            window.MATEMAGICA_CONFIG = {
+                mode: isLocalDevelopment ? 'DESARROLLO LOCAL' : 'PRODUCCIÓN',
+                supabase: config.supabase,
+                gemini: {
+                    apiKey: this.defaults.geminiApiKey,
+                    model: 'gemini-2.0-flash',
+                    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+                },
+                environment: config.environment,
+                offlineMode: this.get('offlineMode'),
+                features: {
+                    aiGeneration: true,
+                    offlineTemplates: true,
+                    pdfExport: true,
+                    analytics: true
+                }
+            };
+            
+            // ✅ CREAR SUPABASE_CONFIG GLOBAL
+            window.SUPABASE_CONFIG = {
+                url: config.supabase.url,
+                anon_key: config.supabase.anonKey
+            };
+            
+            console.log('✅ MATEMAGICA_CONFIG y SUPABASE_CONFIG creados globalmente');
+            console.log('📊 Configuración cargada:', {
+                mode: window.MATEMAGICA_CONFIG.mode,
+                supabaseUrl: window.SUPABASE_CONFIG.url.substring(0, 30) + '...',
+                geminiConfigured: !!window.MATEMAGICA_CONFIG.gemini.apiKey
+            });
+            
+            return window.MATEMAGICA_CONFIG;
+            
+        } catch (error) {
+            console.error('❌ Error inicializando ConfigService:', error);
+            throw error;
+        }
     },
 
     // ✅ CORREGIDO: Método para cargar configuración en todos los entornos
@@ -37,7 +85,7 @@ window.ConfigService = {
             return {
                 supabase: {
                     url: "https://uznvakpuuxnpdhoejrog.supabase.co",
-                    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
+                    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9zZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg"
                 },
                 environment: 'production'
             };
@@ -112,6 +160,16 @@ window.ConfigService = {
         }
     }
 };
+
+// ✅ INICIALIZACIÓN AUTOMÁTICA AL CARGAR
+window.ConfigService.initialize().then(() => {
+    console.log('✅ Servicio de configuración listo - Modo:', window.MATEMAGICA_CONFIG.mode);
+}).catch(error => {
+    console.error('❌ Error en inicialización automática:', error);
+    // Crear configuraciones mínimas como fallback
+    window.MATEMAGICA_CONFIG = { mode: 'FALLBACK' };
+    window.SUPABASE_CONFIG = { url: '', anon_key: '' };
+});
 
 // Hacer disponible para window.configService
 window.configService = window.ConfigService;

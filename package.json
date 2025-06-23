@@ -11,6 +11,9 @@
     "build": "npm run build-css-prod",
     "dev": "npm run build-css & npm run serve",
     "deploy": "npm run build && echo 'Listo para deployment'",
+    "optimize": "npm run build-css-prod && node scripts/optimize-html.js",
+    "update-browsers": "npx update-browserslist-db@latest",
+    "lint-css": "npx stylelint src/**/*.css",
     "icons": "echo 'Convert SVG icons to PNG manually or use online tool'"
   },
   "keywords": [
@@ -28,7 +31,9 @@
     "url": "git+https://github.com/tu-usuario/matematica-pwa.git"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.50.0"
+    "@supabase/supabase-js": "^2.50.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",

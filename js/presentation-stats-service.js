@@ -86,169 +86,239 @@ class PresentationStatsService {
             user_agent_hash: this.simpleHash(navigator.userAgent),
             duracion_segundos: duracionSegundos,
             dispositivo: this.getDeviceType(),
-            referrer: document.referrer || null
+            timestamp: new Date().toISOString(),
+            referrer: document.referrer || 'direct',
+            viewport: `${window.innerWidth}x${window.innerHeight}`
         };
 
         try {
-            if (this.isOnline && this.supabaseUrl && this.supabaseKey) {
-                // Enviar a Supabase si está online
-                await this.enviarASupabase(datosVisualizacion);
+            if (this.isOnline) {
+                await this.enviarASupabase('presentacion_stats', datosVisualizacion);
+                console.log('✅ Visualización registrada en Supabase');
             } else {
-                // Guardar offline para sincronizar después
-                this.guardarOffline(datosVisualizacion);
+                this.guardarOffline('visualizaciones', datosVisualizacion);
+                console.log('💾 Visualización guardada offline');
             }
-
-            // Siempre actualizar LocalStorage para UI inmediata
-            this.actualizarLocalStorage(presentacionId);
-
-            return true;
         } catch (error) {
             console.warn('⚠️ Error registrando visualización:', error);
-            // Fallback: solo LocalStorage
-            this.guardarOffline(datosVisualizacion);
-            this.actualizarLocalStorage(presentacionId);
-            return false;
+            this.guardarOffline('visualizaciones', datosVisualizacion);
+        }
+    }
+
+    // Registrar interacción del usuario
+    async registrarInteraccion(tipo, elemento, valor = null) {
+        const datosInteraccion = {
+            session_id: this.sessionId,
+            tipo_interaccion: tipo,
+            elemento: elemento,
+            valor: valor,
+            timestamp: new Date().toISOString(),
+            dispositivo: this.getDeviceType()
+        };
+
+        try {
+            if (this.isOnline) {
+                await this.enviarASupabase('interacciones_stats', datosInteraccion);
+            } else {
+                this.guardarOffline('interacciones', datosInteraccion);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error registrando interacción:', error);
+            this.guardarOffline('interacciones', datosInteraccion);
+        }
+    }
+
+    // Registrar tiempo en página/slide
+    async registrarTiempoEnPagina(pagina, tiempoSegundos) {
+        const datosTiempo = {
+            session_id: this.sessionId,
+            pagina: pagina,
+            tiempo_segundos: tiempoSegundos,
+            timestamp: new Date().toISOString(),
+            dispositivo: this.getDeviceType()
+        };
+
+        try {
+            if (this.isOnline) {
+                await this.enviarASupabase('tiempo_pagina_stats', datosTiempo);
+            } else {
+                this.guardarOffline('tiempos', datosTiempo);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error registrando tiempo:', error);
+            this.guardarOffline('tiempos', datosTiempo);
         }
     }
 
     // Enviar datos a Supabase
-    async enviarASupabase(datos) {
-        const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/increment_presentation_view`, {
+    async enviarASupabase(tabla, datos) {
+        const response = await fetch(`${this.supabaseUrl}/rest/v1/${tabla}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'apikey': this.supabaseKey,
-                'Authorization': `Bearer ${this.supabaseKey}`
+                'Authorization': `Bearer ${this.supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
             },
-            body: JSON.stringify({
-                presentacion_id_param: datos.presentacion_id,
-                titulo_param: datos.titulo
-            })
+            body: JSON.stringify(datos)
         });
 
         if (!response.ok) {
             throw new Error(`Error HTTP: ${response.status}`);
         }
 
-        return await response.json();
+        return response;
     }
 
-    // Guardar offline para sincronizar después
-    guardarOffline(datos) {
-        const pendientes = JSON.parse(localStorage.getItem('gaby-stats-pendientes') || '[]');
-        pendientes.push({
-            ...datos,
-            timestamp: Date.now()
-        });
-        localStorage.setItem('gaby-stats-pendientes', JSON.stringify(pendientes));
-    }
-
-    // Actualizar LocalStorage para UI inmediata
-    actualizarLocalStorage(presentacionId) {
-        const estadisticas = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        estadisticas[presentacionId] = (estadisticas[presentacionId] || 0) + 1;
-        localStorage.setItem('gaby-presentaciones-stats', JSON.stringify(estadisticas));
-    }
-
-    // Sincronizar estadísticas pendientes cuando vuelva la conexión
-    async sincronizarEstadisticasPendientes() {
-        const pendientes = JSON.parse(localStorage.getItem('gaby-stats-pendientes') || '[]');
-        
-        if (pendientes.length === 0) return;
-
-        console.log(`🔄 Sincronizando ${pendientes.length} estadísticas pendientes...`);
-
-        for (const datos of pendientes) {
-            try {
-                await this.enviarASupabase(datos);
-            } catch (error) {
-                console.warn('⚠️ Error sincronizando:', error);
-                return; // Detener si hay errores
+    // Guardar datos offline
+    guardarOffline(categoria, datos) {
+        try {
+            const key = `stats_${categoria}_offline`;
+            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+            existing.push({
+                ...datos,
+                _offline_timestamp: Date.now()
+            });
+            
+            // Mantener solo los últimos 100 registros por categoría
+            if (existing.length > 100) {
+                existing.splice(0, existing.length - 100);
             }
+            
+            localStorage.setItem(key, JSON.stringify(existing));
+        } catch (error) {
+            console.warn('⚠️ Error guardando offline:', error);
         }
-
-        // Limpiar pendientes si todo salió bien
-        localStorage.removeItem('gaby-stats-pendientes');
-        console.log('✅ Sincronización completada');
     }
 
-    // Obtener estadísticas desde Supabase
-    async obtenerEstadisticasOnline() {
-        if (!this.isOnline || !this.supabaseUrl || !this.supabaseKey) {
+    // Sincronizar estadísticas pendientes
+    async sincronizarEstadisticasPendientes() {
+        const categorias = ['visualizaciones', 'interacciones', 'tiempos'];
+        
+        for (const categoria of categorias) {
+            await this.sincronizarCategoria(categoria);
+        }
+    }
+
+    // Sincronizar una categoría específica
+    async sincronizarCategoria(categoria) {
+        try {
+            const key = `stats_${categoria}_offline`;
+            const datos = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            if (datos.length === 0) return;
+
+            const tablaMap = {
+                'visualizaciones': 'presentacion_stats',
+                'interacciones': 'interacciones_stats',
+                'tiempos': 'tiempo_pagina_stats'
+            };
+
+            const tabla = tablaMap[categoria];
+            if (!tabla) return;
+
+            console.log(`🔄 Sincronizando ${datos.length} registros de ${categoria}`);
+
+            // Enviar en lotes pequeños
+            const loteSize = 10;
+            for (let i = 0; i < datos.length; i += loteSize) {
+                const lote = datos.slice(i, i + loteSize);
+                
+                for (const registro of lote) {
+                    // Remover metadatos offline
+                    const { _offline_timestamp, ...registroLimpio } = registro;
+                    
+                    try {
+                        await this.enviarASupabase(tabla, registroLimpio);
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Pequeña pausa
+                    } catch (error) {
+                        console.warn(`⚠️ Error sincronizando registro de ${categoria}:`, error);
+                        // Si falla, mantener los datos para el próximo intento
+                        return;
+                    }
+                }
+            }
+
+            // Si llegamos aquí, todo se sincronizó exitosamente
+            localStorage.removeItem(key);
+            console.log(`✅ ${categoria} sincronizada exitosamente`);
+
+        } catch (error) {
+            console.warn(`⚠️ Error sincronizando ${categoria}:`, error);
+        }
+    }
+
+    // Obtener IP del cliente (fallback)
+    getClientIP() {
+        // En un entorno real, esto se obtendría del servidor
+        return 'unknown';
+    }
+
+    // Obtener estadísticas básicas offline
+    obtenerEstadisticasOffline() {
+        try {
+            const stats = {
+                visualizaciones: JSON.parse(localStorage.getItem('stats_visualizaciones_offline') || '[]').length,
+                interacciones: JSON.parse(localStorage.getItem('stats_interacciones_offline') || '[]').length,
+                tiempos: JSON.parse(localStorage.getItem('stats_tiempos_offline') || '[]').length,
+                sesion_actual: this.sessionId,
+                dispositivo: this.getDeviceType(),
+                online: this.isOnline
+            };
+
+            return stats;
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo estadísticas offline:', error);
             return null;
         }
+    }
 
+    // Limpiar datos offline antiguos
+    limpiarDatosAntiguos(diasAntiguedad = 7) {
+        const categorias = ['visualizaciones', 'interacciones', 'tiempos'];
+        const tiempoLimite = Date.now() - (diasAntiguedad * 24 * 60 * 60 * 1000);
+        
+        categorias.forEach(categoria => {
+            try {
+                const key = `stats_${categoria}_offline`;
+                const datos = JSON.parse(localStorage.getItem(key) || '[]');
+                const datosFiltrados = datos.filter(item => 
+                    item._offline_timestamp && item._offline_timestamp > tiempoLimite
+                );
+                
+                if (datosFiltrados.length !== datos.length) {
+                    localStorage.setItem(key, JSON.stringify(datosFiltrados));
+                    console.log(`🧹 Limpiados ${datos.length - datosFiltrados.length} registros antiguos de ${categoria}`);
+                }
+            } catch (error) {
+                console.warn(`⚠️ Error limpiando datos de ${categoria}:`, error);
+            }
+        });
+    }
+
+    // Método para testing/debugging
+    async testConexion() {
         try {
-            const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/get_all_presentation_stats`, {
-                method: 'POST',
+            const response = await fetch(`${this.supabaseUrl}/rest/v1/`, {
                 headers: {
-                    'Content-Type': 'application/json',
                     'apikey': this.supabaseKey,
                     'Authorization': `Bearer ${this.supabaseKey}`
                 }
             });
-
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
-            }
-
-            return await response.json();
+            
+            console.log('🔍 Test de conexión Supabase:', response.ok ? '✅ OK' : '❌ Error');
+            return response.ok;
         } catch (error) {
-            console.warn('⚠️ Error obteniendo estadísticas online:', error);
-            return null;
+            console.warn('⚠️ Error en test de conexión:', error);
+            return false;
         }
-    }
-
-    // Obtener estadísticas combinadas (online + offline)
-    async obtenerEstadisticasCombinadas() {
-        const estadisticasLocal = JSON.parse(localStorage.getItem('gaby-presentaciones-stats') || '{}');
-        
-        // Intentar obtener estadísticas online
-        const estadisticasOnline = await this.obtenerEstadisticasOnline();
-        
-        if (estadisticasOnline && Array.isArray(estadisticasOnline)) {
-            // Combinar estadísticas online con locales
-            const resultado = {
-                'historia-celular': estadisticasLocal['historia-celular'] || 0,
-                'ciencias-naturales': estadisticasLocal['ciencias-naturales'] || 0,
-                'literatura': estadisticasLocal['literatura'] || 0,
-                total: 0,
-                online: estadisticasOnline,
-                isOnline: true
-            };
-
-            // Agregar datos online si están disponibles
-            estadisticasOnline.forEach(stat => {
-                if (resultado[stat.presentacion_id] !== undefined) {
-                    resultado[stat.presentacion_id] = stat.total_visualizaciones;
-                }
-            });
-
-            resultado.total = resultado['historia-celular'] + 
-                           resultado['ciencias-naturales'] + 
-                           resultado['literatura'];
-
-            return resultado;
-        } else {
-            // Solo estadísticas locales
-            const total = Object.values(estadisticasLocal).reduce((sum, val) => sum + val, 0);
-            return {
-                'historia-celular': estadisticasLocal['historia-celular'] || 0,
-                'ciencias-naturales': estadisticasLocal['ciencias-naturales'] || 0,
-                'literatura': estadisticasLocal['literatura'] || 0,
-                total,
-                online: null,
-                isOnline: false
-            };
-        }
-    }
-
-    // Obtener IP del cliente (método simple)
-    getClientIP() {
-        // En producción esto se haría mejor, pero para demo es suficiente
-        return 'client_' + this.sessionId;
     }
 }
 
 // Crear instancia global
 window.PresentationStatsService = new PresentationStatsService();
+
+// Auto-limpiar datos antiguos al inicializar
+window.PresentationStatsService.limpiarDatosAntiguos();
+
+console.log('📊 PresentationStatsService inicializado');

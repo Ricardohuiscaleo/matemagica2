@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧹 Limpieza Completa de Caché - Matemágica</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .success { background: rgba(34, 197, 94, 0.3); }
+        .warning { background: rgba(251, 191, 36, 0.3); }
+        .error { background: rgba(239, 68, 68, 0.3); }
+        .info { background: rgba(59, 130, 246, 0.3); }
+        button {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+        .danger { background: linear-gradient(135deg, #ef4444, #dc2626) !important; }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Limpieza Completa de Caché - Matemágica PWA</h1>
+        <p>Esta herramienta limpiará completamente el caché, Service Workers y datos almacenados para resolver problemas de múltiples instancias de auth y errores 406.</p>
+        
+        <div class="status info">
+            <strong>ℹ️ Estado:</strong> <span id="status">Listo para limpiar</span>
+        </div>
+        
+        <div>
+            <button onclick="limpiezaCompleta()">🧹 Limpieza Completa</button>
+            <button onclick="limpiarServiceWorker()">🔧 Solo Service Worker</button>
+            <button onclick="limpiarStorage()">💾 Solo LocalStorage</button>
+            <button onclick="limpiarCache()" class="danger">⚠️ Limpiar Todo el Caché</button>
+        </div>
+        
+        <div class="log" id="log">
+            [Iniciado] Sistema de limpieza listo...<br>
+        </div>
+        
+        <div>
+            <button onclick="verificarEstado()">📊 Verificar Estado</button>
+            <button onclick="reiniciarApp()">🔄 Reiniciar App</button>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+            log.innerHTML += `[${timestamp}] ${icons[type]} ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.parentElement.className = `status ${type}`;
+        }
+
+        async function limpiezaCompleta() {
+            updateStatus('Ejecutando limpieza completa...', 'warning');
+            logMessage('🚀 Iniciando limpieza completa del sistema');
+            
+            try {
+                // 1. Desregistrar Service Workers
+                await limpiarServiceWorker(false);
+                
+                // 2. Limpiar todo el almacenamiento
+                await limpiarStorage(false);
+                
+                // 3. Limpiar caché del navegador
+                await limpiarCache(false);
+                
+                // 4. Limpiar específicamente datos de Matemágica
+                await limpiarDatosMatematica();
+                
+                updateStatus('Limpieza completa exitosa', 'success');
+                logMessage('✅ Limpieza completa terminada. Recarga la página en 3 segundos...', 'success');
+                
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 3000);
+                
+            } catch (error) {
+                updateStatus('Error en limpieza', 'error');
+                logMessage(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function limpiarServiceWorker(standalone = true) {
+            if (standalone) {
+                updateStatus('Limpiando Service Workers...', 'warning');
+                logMessage('🔧 Iniciando limpieza de Service Workers');
+            }
+            
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        logMessage(`🗑️ Service Worker desregistrado: ${registration.scope}`);
+                    }
+                    
+                    logMessage(`✅ ${registrations.length} Service Workers eliminados`);
+                } else {
+                    logMessage('⚠️ Service Workers no soportados en este navegador');
+                }
+                
+                if (standalone) {
+                    updateStatus('Service Workers limpiados', 'success');
+                }
+            } catch (error) {
+                logMessage(`❌ Error limpiando Service Workers: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function limpiarStorage(standalone = true) {
+            if (standalone) {
+                updateStatus('Limpiando almacenamiento...', 'warning');
+                logMessage('💾 Iniciando limpieza de almacenamiento');
+            }
+            
+            try {
+                // LocalStorage
+                const localKeys = Object.keys(localStorage);
+                localStorage.clear();
+                logMessage(`🗑️ LocalStorage limpiado (${localKeys.length} elementos)`);
+                
+                // SessionStorage
+                const sessionKeys = Object.keys(sessionStorage);
+                sessionStorage.clear();
+                logMessage(`🗑️ SessionStorage limpiado (${sessionKeys.length} elementos)`);
+                
+                // IndexedDB (si existe)
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        for (const db of databases) {
+                            if (db.name) {
+                                indexedDB.deleteDatabase(db.name);
+                                logMessage(`🗑️ IndexedDB eliminada: ${db.name}`);
+                            }
+                        }
+                    } catch (idbError) {
+                        logMessage(`⚠️ Error con IndexedDB: ${idbError.message}`, 'warning');
+                    }
+                }
+                
+                if (standalone) {
+                    updateStatus('Almacenamiento limpiado', 'success');
+                }
+            } catch (error) {
+                logMessage(`❌ Error limpiando almacenamiento: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function limpiarCache(standalone = true) {
+            if (standalone) {
+                updateStatus('Limpiando caché...', 'warning');
+                logMessage('🗂️ Iniciando limpieza de caché');
+            }
+            
+            try {
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        logMessage(`🗑️ Caché eliminado: ${cacheName}`);
+                    }
+                    
+                    logMessage(`✅ ${cacheNames.length} cachés eliminados`);
+                } else {
+                    logMessage('⚠️ Cache API no soportada en este navegador');
+                }
+                
+                if (standalone) {
+                    updateStatus('Caché limpiado', 'success');
+                }
+            } catch (error) {
+                logMessage(`❌ Error limpiando caché: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function limpiarDatosMatematica() {
+            logMessage('🎯 Limpiando datos específicos de Matemágica');
+            
+            try {
+                // Limpiar cookies relacionadas
+                if (document.cookie) {
+                    const cookies = document.cookie.split(';');
+                    for (let cookie of cookies) {
+                        const [name] = cookie.split('=');
+                        if (name.trim().includes('matemagica') || name.trim().includes('supabase')) {
+                            document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+                            logMessage(`🍪 Cookie eliminada: ${name.trim()}`);
+                        }
+                    }
+                }
+                
+                // Verificar y limpiar storage keys específicas
+                const keysToRemove = [
+                    'matemagica-user-profile',
+                    'matemagica-authenticated', 
+                    'matemagica-supabase-auth',
+                    'matemagica-unified-auth',
+                    'matemagica-skills-auth',
+                    'supabase.auth.token',
+                    'sb-auth-token',
+                    'ultima_sincronizacion',
+                    'ultimo_error_sincronizacion'
+                ];
+                
+                keysToRemove.forEach(key => {
+                    if (localStorage.getItem(key)) {
+                        localStorage.removeItem(key);
+                        logMessage(`🔑 Clave específica eliminada: ${key}`);
+                    }
+                    if (sessionStorage.getItem(key)) {
+                        sessionStorage.removeItem(key);
+                        logMessage(`🔑 Clave de sesión eliminada: ${key}`);
+                    }
+                });
+                
+                logMessage('✅ Datos específicos de Matemágica limpiados');
+                
+            } catch (error) {
+                logMessage(`❌ Error limpiando datos específicos: ${error.message}`, 'error');
+            }
+        }
+
+        async function verificarEstado() {
+            updateStatus('Verificando estado...', 'info');
+            logMessage('📊 Verificando estado del sistema');
+            
+            try {
+                // Verificar Service Workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    logMessage(`🔧 Service Workers activos: ${registrations.length}`);
+                } else {
+                    logMessage('⚠️ Service Workers no disponibles');
+                }
+                
+                // Verificar almacenamiento
+                const localCount = Object.keys(localStorage).length;
+                const sessionCount = Object.keys(sessionStorage).length;
+                logMessage(`💾 LocalStorage: ${localCount} elementos`);
+                logMessage(`💾 SessionStorage: ${sessionCount} elementos`);
+                
+                // Verificar caché
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    logMessage(`🗂️ Cachés activos: ${cacheNames.length}`);
+                    cacheNames.forEach(name => logMessage(`   - ${name}`));
+                }
+                
+                // Verificar elementos específicos de Matemágica
+                const matematicaKeys = Object.keys(localStorage).filter(key => 
+                    key.includes('matemagica') || key.includes('supabase') || key.includes('math_')
+                );
+                
+                if (matematicaKeys.length > 0) {
+                    logMessage('🎯 Datos de Matemágica encontrados:', 'warning');
+                    matematicaKeys.forEach(key => logMessage(`   - ${key}`));
+                } else {
+                    logMessage('✅ No se encontraron datos de Matemágica', 'success');
+                }
+                
+                updateStatus('Verificación completada', 'success');
+                
+            } catch (error) {
+                updateStatus('Error en verificación', 'error');
+                logMessage(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function reiniciarApp() {
+            logMessage('🔄 Reiniciando aplicación...');
+            updateStatus('Reiniciando...', 'info');
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        }
+
+        // Verificar estado inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            logMessage('🚀 Sistema de limpieza iniciado');
+            verificarEstado();
+        });
+    </script>
+</body>
+</html>

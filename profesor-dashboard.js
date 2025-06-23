@@ -8,11 +8,47 @@ let ejerciciosHistorial = []; // Historial de ejercicios generados
 let estudianteSeleccionado = null; // Estudiante actualmente seleccionado
 let classData = null;
 
-// Elementos DOM principales
-const seccionEstudiantes = document.getElementById('seccion-estudiantes');
-const seccionGenerador = document.getElementById('seccion-generador');
-const seccionResultados = document.getElementById('seccion-resultados');
-const seccionEstadisticas = document.getElementById('seccion-estadisticas');
+// ✅ FUNCIÓN AUXILIAR PARA MANIPULAR DOM TOLERANTE
+function updateElementSafely(elementId, action) {
+    const element = document.getElementById(elementId);
+    if (element && action) {
+        try {
+            action(element);
+            return true;
+        } catch (error) {
+            console.warn(`⚠️ No se pudo actualizar elemento ${elementId}:`, error);
+            return false;
+        }
+    } else {
+        console.log(`ℹ️ Elemento ${elementId} no encontrado - continuando sin errores`);
+        return false;
+    }
+}
+
+function setTextSafely(elementId, text) {
+    return updateElementSafely(elementId, (el) => el.textContent = text);
+}
+
+function addClassSafely(elementId, className) {
+    return updateElementSafely(elementId, (el) => el.classList.add(className));
+}
+
+function removeClassSafely(elementId, className) {
+    return updateElementSafely(elementId, (el) => el.classList.remove(className));
+}
+
+function setValueSafely(elementId, value) {
+    return updateElementSafely(elementId, (el) => el.value = value);
+}
+
+function getElementValueSafely(elementId, defaultValue = '') {
+    const element = document.getElementById(elementId);
+    if (element) {
+        return element.value || defaultValue;
+    }
+    console.log(`ℹ️ Elemento ${elementId} no encontrado - usando valor por defecto: ${defaultValue}`);
+    return defaultValue;
+}
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
@@ -40,22 +76,34 @@ async function initializeProfesorDashboard() {
 }
 
 function checkAuthentication() {
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('currentUser');
+    // ✅ USAR EL SISTEMA NUEVO DE AUTENTICACIÓN
+    const isAuthenticated = localStorage.getItem('matemagica-authenticated');
+    const userProfile = localStorage.getItem('matemagica-user-profile');
     
-    if (isAuthenticated !== 'true' || !userData) {
+    if (isAuthenticated !== 'true' || !userProfile) {
         console.warn('⚠️ Usuario no autenticado, redirigiendo...');
         window.location.href = '/index.html';
         return false;
     }
     
     try {
-        currentUser = JSON.parse(userData);
-        if (currentUser.role !== 'teacher') {
+        // ✅ PARSEAR EL PERFIL MODERNO
+        const profile = JSON.parse(userProfile);
+        currentUser = {
+            ...profile,
+            name: profile.full_name,
+            avatar: profile.avatar_url,
+            role: profile.user_role // Mapear al formato legacy para compatibilidad
+        };
+        
+        // ✅ VERIFICAR ROL CORRECTO
+        if (profile.user_role !== 'teacher') {
             console.warn('⚠️ Usuario no es profesor, redirigiendo...');
             window.location.href = '/index.html';
             return false;
         }
+        
+        console.log('✅ Profesor autenticado:', profile.full_name);
         return true;
     } catch (error) {
         console.error('❌ Error al parsear datos de usuario:', error);
@@ -67,12 +115,14 @@ function checkAuthentication() {
 function loadUserData() {
     if (!currentUser) return;
     
-    // Actualizar info del profesor en el header
-    document.getElementById('profesor-nombre').textContent = currentUser.name || 'Profesor';
+    // ✅ ACTUALIZAR INFO DEL PROFESOR CON VERIFICACIÓN TOLERANTE
+    setTextSafely('profesor-nombre', currentUser.name || 'Profesor');
     
-    if (currentUser.avatar) {
-        document.getElementById('profesor-avatar').src = currentUser.avatar;
-    }
+    updateElementSafely('profesor-avatar', (el) => {
+        if (currentUser.avatar) {
+            el.src = currentUser.avatar;
+        }
+    });
     
     console.log('✅ Datos del usuario cargados');
 }
@@ -134,30 +184,45 @@ function loadEstudiantes() {
 }
 
 function setupEventListeners() {
-    // Gestión de estudiantes
-    document.getElementById('btn-agregar-estudiante').addEventListener('click', mostrarFormularioEstudiante);
-    document.getElementById('btn-cancelar-estudiante').addEventListener('click', ocultarFormularioEstudiante);
-    document.getElementById('form-nuevo-estudiante').addEventListener('submit', guardarEstudiante);
+    // ✅ GESTIÓN DE ESTUDIANTES CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-agregar-estudiante', (el) => 
+        el.addEventListener('click', mostrarFormularioEstudiante));
+    updateElementSafely('btn-cancelar-estudiante', (el) => 
+        el.addEventListener('click', ocultarFormularioEstudiante));
+    updateElementSafely('form-nuevo-estudiante', (el) => 
+        el.addEventListener('submit', guardarEstudiante));
     
-    // Generación de ejercicios
-    document.getElementById('btn-generar-ia').addEventListener('click', () => generarEjercicios('ia'));
-    document.getElementById('btn-generar-offline').addEventListener('click', () => generarEjercicios('offline'));
+    // ✅ GENERACIÓN DE EJERCICIOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-generar-ia', (el) => 
+        el.addEventListener('click', () => generarEjercicios('ia')));
+    updateElementSafely('btn-generar-offline', (el) => 
+        el.addEventListener('click', () => generarEjercicios('offline')));
     
-    // Resultados
-    document.getElementById('btn-descargar-pdf').addEventListener('click', descargarPDF);
-    document.getElementById('btn-generar-cuento').addEventListener('click', generarCuento);
-    document.getElementById('btn-guardar-progreso').addEventListener('click', guardarProgreso);
+    // ✅ RESULTADOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-descargar-pdf', (el) => 
+        el.addEventListener('click', descargarPDF));
+    updateElementSafely('btn-generar-cuento', (el) => 
+        el.addEventListener('click', generarCuento));
+    updateElementSafely('btn-guardar-progreso', (el) => 
+        el.addEventListener('click', guardarProgreso));
     
-    // Cerrar sesión
-    document.getElementById('btn-cerrar-sesion').addEventListener('click', cerrarSesion);
+    // ✅ CERRAR SESIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-cerrar-sesion', (el) => 
+        el.addEventListener('click', cerrarSesion));
     
-    // Modal de cuento
-    const btnCerrarCuento = document.getElementById('btn-cerrar-cuento');
-    if (btnCerrarCuento) {
-        btnCerrarCuento.addEventListener('click', cerrarModalCuento);
-    }
+    // ✅ MODAL DE CUENTO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('btn-cerrar-cuento-modal', (el) => 
+        el.addEventListener('click', cerrarModalCuento));
     
-    console.log('✅ Event listeners configurados');
+    // ✅ FILTROS DE BÚSQUEDA CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('buscar-estudiante', (el) => 
+        el.addEventListener('input', filtrarEstudiantes));
+    updateElementSafely('filtro-curso', (el) => 
+        el.addEventListener('change', filtrarEstudiantes));
+    updateElementSafely('filtro-nivel', (el) => 
+        el.addEventListener('change', filtrarEstudiantes));
+    
+    console.log('✅ Event listeners configurados (tolerante)');
 }
 
 function updateUI() {
@@ -167,131 +232,150 @@ function updateUI() {
 }
 
 function actualizarListaEstudiantes() {
-    const container = document.getElementById('lista-estudiantes');
-    
-    if (estudiantes.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-8">
-                <div class="text-6xl mb-4">👥</div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Sin estudiantes registrados</h3>
-                <p class="text-gray-500 mb-4">Agrega tu primer estudiante para comenzar</p>
-                <button onclick="mostrarFormularioEstudiante()" class="btn-primary">
-                    <i class="fas fa-plus mr-2"></i>Agregar Estudiante
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    const estudiantesActivos = estudiantes.filter(e => e.activo);
-    
-    container.innerHTML = estudiantesActivos.map(estudiante => {
-        const inicial = estudiante.name.charAt(0).toUpperCase();
-        const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
-        const nivel = niveles[estudiante.level - 1] || '🟢 Fácil';
+    // ✅ ACTUALIZAR LISTA CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('lista-estudiantes', (container) => {
+        if (estudiantes.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-6xl mb-4">👥</div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Sin estudiantes registrados</h3>
+                    <p class="text-gray-500 mb-4">Agrega tu primer estudiante para comenzar</p>
+                    <button onclick="mostrarFormularioEstudiante()" class="btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Agregar Estudiante
+                    </button>
+                </div>
+            `;
+            return;
+        }
         
-        // Calcular estadísticas del estudiante
-        const ejerciciosEstudiante = ejerciciosHistorial.filter(e => e.estudianteId === estudiante.id);
-        const totalEjercicios = ejerciciosEstudiante.reduce((sum, sesion) => sum + sesion.cantidad, 0);
-        const ultimaActividad = ejerciciosEstudiante.length > 0 
-            ? new Date(ejerciciosEstudiante[ejerciciosEstudiante.length - 1].fecha).toLocaleDateString('es-ES')
-            : 'Sin actividad';
+        const estudiantesActivos = estudiantes.filter(e => e.activo);
         
-        return `
-            <div class="estudiante-card bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
-                            ${inicial}
+        container.innerHTML = estudiantesActivos.map(estudiante => {
+            const inicial = estudiante.name.charAt(0).toUpperCase();
+            const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
+            const nivel = niveles[estudiante.level - 1] || '🟢 Fácil';
+            
+            // Calcular estadísticas del estudiante
+            const ejerciciosEstudiante = ejerciciosHistorial.filter(e => e.estudianteId === estudiante.id);
+            const totalEjercicios = ejerciciosEstudiante.reduce((sum, sesion) => sum + sesion.cantidad, 0);
+            const ultimaActividad = ejerciciosEstudiante.length > 0 
+                ? new Date(ejerciciosEstudiante[ejerciciosEstudiante.length - 1].fecha).toLocaleDateString('es-ES')
+                : 'Sin actividad';
+            
+            return `
+                <div class="estudiante-card bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                                ${inicial}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-lg text-gray-800">${estudiante.name}</h3>
+                                <p class="text-gray-600">${estudiante.grade} • ${estudiante.age} años</p>
+                                <p class="text-sm text-gray-500">${nivel}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="font-semibold text-lg text-gray-800">${estudiante.name}</h3>
-                            <p class="text-gray-600">${estudiante.grade} • ${estudiante.age} años</p>
-                            <p class="text-sm text-gray-500">${nivel}</p>
+                        <div class="flex space-x-2">
+                            <button onclick="editarEstudiante(${estudiante.id})" class="btn-icon text-blue-600 hover:bg-blue-50">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="eliminarEstudiante(${estudiante.id})" class="btn-icon text-red-600 hover:bg-red-50">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-blue-50 p-3 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600">${totalEjercicios}</div>
+                            <div class="text-sm text-blue-800">Ejercicios totales</div>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg">
+                            <div class="text-sm font-semibold text-green-800">Última actividad</div>
+                            <div class="text-xs text-green-600">${ultimaActividad}</div>
+                        </div>
+                    </div>
+                    
                     <div class="flex space-x-2">
-                        <button onclick="editarEstudiante(${estudiante.id})" class="btn-icon text-blue-600 hover:bg-blue-50">
-                            <i class="fas fa-edit"></i>
+                        <button onclick="seleccionarEstudiante(${estudiante.id})" class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all">
+                            <i class="fas fa-calculator mr-2"></i>Generar Ejercicios
                         </button>
-                        <button onclick="eliminarEstudiante(${estudiante.id})" class="btn-icon text-red-600 hover:bg-red-50">
-                            <i class="fas fa-trash"></i>
+                        <button onclick="verEstadisticas(${estudiante.id})" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-semibold transition-all">
+                            <i class="fas fa-chart-line"></i>
                         </button>
                     </div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-blue-50 p-3 rounded-lg">
-                        <div class="text-2xl font-bold text-blue-600">${totalEjercicios}</div>
-                        <div class="text-sm text-blue-800">Ejercicios totales</div>
-                    </div>
-                    <div class="bg-green-50 p-3 rounded-lg">
-                        <div class="text-sm font-semibold text-green-800">Última actividad</div>
-                        <div class="text-xs text-green-600">${ultimaActividad}</div>
-                    </div>
-                </div>
-                
-                <div class="flex space-x-2">
-                    <button onclick="seleccionarEstudiante(${estudiante.id})" class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all">
-                        <i class="fas fa-calculator mr-2"></i>Generar Ejercicios
-                    </button>
-                    <button onclick="verEstadisticas(${estudiante.id})" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-semibold transition-all">
-                        <i class="fas fa-chart-line"></i>
-                    </button>
-                </div>
-                
-                ${estudiante.parentEmail ? `
-                    <div class="mt-3 pt-3 border-t border-gray-200">
-                        <div class="flex items-center text-sm text-gray-600">
-                            <i class="fas fa-envelope mr-2"></i>
-                            <span>${estudiante.parentEmail}</span>
+                    
+                    ${estudiante.parentEmail ? `
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-envelope mr-2"></i>
+                                <span>${estudiante.parentEmail}</span>
+                            </div>
                         </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    });
     
-    console.log(`✅ Lista de estudiantes actualizada: ${estudiantesActivos.length} estudiantes`);
+    console.log(`✅ Lista de estudiantes actualizada (tolerante): ${estudiantes.filter(e => e.activo).length} estudiantes`);
 }
 
 function actualizarSelectorEstudiantes() {
-    const selector = document.getElementById('estudiante-target');
-    
-    if (!selector) {
-        console.warn('⚠️ Selector de estudiante no encontrado');
-        return;
-    }
-    
-    if (estudiantes.length === 0) {
-        selector.innerHTML = '<option value="">Sin estudiantes registrados</option>';
-        return;
-    }
-    
-    const estudiantesActivos = estudiantes.filter(e => e.activo);
-    
-    selector.innerHTML = `
-        <option value="">Selecciona un estudiante</option>
-        ${estudiantesActivos.map(estudiante => 
-            `<option value="${estudiante.id}">${estudiante.name} - ${estudiante.grade}</option>`
-        ).join('')}
-    `;
-    
-    // Event listener para el selector
-    selector.addEventListener('change', function() {
-        const estudianteId = parseInt(this.value);
-        if (estudianteId) {
-            seleccionarEstudiante(estudianteId);
-        } else {
-            estudianteSeleccionado = null;
+    // ✅ ACTUALIZAR SELECTOR CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('estudiante-selector', (selector) => {
+        if (estudiantes.length === 0) {
+            selector.innerHTML = '<option value="">Sin estudiantes registrados</option>';
+            return;
         }
+        
+        const estudiantesActivos = estudiantes.filter(e => e.activo);
+        
+        selector.innerHTML = `
+            <option value="">Selecciona un estudiante</option>
+            ${estudiantesActivos.map(estudiante => 
+                `<option value="${estudiante.id}">${estudiante.name} - ${estudiante.grade}</option>`
+            ).join('')}
+        `;
+        
+        // Event listener para el selector
+        selector.addEventListener('change', function() {
+            const estudianteId = parseInt(this.value);
+            if (estudianteId) {
+                seleccionarEstudiante(estudianteId);
+            } else {
+                estudianteSeleccionado = null;
+            }
+        });
+    });
+    
+    // ✅ TAMBIÉN ACTUALIZAR EL SELECTOR ALTERNATIVO
+    updateElementSafely('estudiante-target', (selector) => {
+        if (estudiantes.length === 0) {
+            selector.innerHTML = '<option value="">Sin estudiantes registrados</option>';
+            return;
+        }
+        
+        const estudiantesActivos = estudiantes.filter(e => e.activo);
+        
+        selector.innerHTML = `
+            <option value="">Selecciona un estudiante</option>
+            ${estudiantesActivos.map(estudiante => 
+                `<option value="${estudiante.id}">${estudiante.name} - ${estudiante.grade}</option>`
+            ).join('')}
+        `;
     });
 }
 
 function mostrarFormularioEstudiante(estudianteId = null) {
+    // ✅ MOSTRAR FORMULARIO CON VERIFICACIÓN TOLERANTE
     const formulario = document.getElementById('formulario-estudiante');
     const form = document.getElementById('form-nuevo-estudiante');
-    const titulo = document.getElementById('titulo-modal-estudiante');
+    
+    if (!formulario || !form) {
+        console.warn('⚠️ Elementos del formulario no encontrados');
+        return;
+    }
     
     // Limpiar formulario
     form.reset();
@@ -300,25 +384,25 @@ function mostrarFormularioEstudiante(estudianteId = null) {
         // Modo edición
         const estudiante = estudiantes.find(e => e.id === estudianteId);
         if (estudiante) {
-            titulo.textContent = 'Editar Estudiante';
-            document.getElementById('estudiante-nombre').value = estudiante.name;
-            document.getElementById('estudiante-curso').value = estudiante.grade;
-            document.getElementById('estudiante-edad').value = estudiante.age;
-            document.getElementById('estudiante-nivel').value = estudiante.level;
-            document.getElementById('apoderado-email').value = estudiante.parentEmail || '';
+            setTextSafely('titulo-modal-estudiante', 'Editar Estudiante');
+            setValueSafely('estudiante-nombre', estudiante.name);
+            setValueSafely('estudiante-curso', estudiante.grade);
+            setValueSafely('estudiante-edad', estudiante.age);
+            setValueSafely('estudiante-nivel', estudiante.level);
+            setValueSafely('apoderado-email', estudiante.parentEmail || '');
             form.dataset.estudianteId = estudianteId;
         }
     } else {
         // Modo creación
-        titulo.textContent = 'Agregar Nuevo Estudiante';
+        setTextSafely('titulo-modal-estudiante', 'Agregar Nuevo Estudiante');
         delete form.dataset.estudianteId;
     }
     
-    formulario.classList.remove('hidden');
+    removeClassSafely('formulario-estudiante', 'hidden');
 }
 
 function ocultarFormularioEstudiante() {
-    document.getElementById('formulario-estudiante').classList.add('hidden');
+    addClassSafely('formulario-estudiante', 'hidden');
 }
 
 async function guardarEstudiante(event) {
@@ -406,34 +490,37 @@ function seleccionarEstudiante(estudianteId) {
     
     estudianteSeleccionado = estudiante;
     
-    // Actualizar selector
-    document.getElementById('estudiante-selector').value = estudianteId;
+    // ✅ ACTUALIZAR SELECTOR CON VERIFICACIÓN TOLERANTE
+    setValueSafely('estudiante-selector', estudianteId);
     
-    // Mostrar info del estudiante seleccionado
-    const infoContainer = document.getElementById('estudiante-seleccionado-info');
-    const inicial = estudiante.name.charAt(0).toUpperCase();
-    const niveles = ['Fácil', 'Medio', 'Difícil'];
-    const nivel = niveles[estudiante.level - 1] || 'Fácil';
+    // ✅ MOSTRAR INFO DEL ESTUDIANTE SELECCIONADO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('estudiante-seleccionado-info', (infoContainer) => {
+        const inicial = estudiante.name.charAt(0).toUpperCase();
+        const niveles = ['Fácil', 'Medio', 'Difícil'];
+        const nivel = niveles[estudiante.level - 1] || 'Fácil';
+        
+        setTextSafely('estudiante-seleccionado-inicial', inicial);
+        setTextSafely('estudiante-seleccionado-nombre', estudiante.name);
+        setTextSafely('estudiante-seleccionado-info-text', `${estudiante.grade} • ${estudiante.age} años • Nivel ${nivel}`);
+        
+        infoContainer.classList.remove('hidden');
+    });
     
-    document.getElementById('estudiante-seleccionado-inicial').textContent = inicial;
-    document.getElementById('estudiante-seleccionado-nombre').textContent = estudiante.name;
-    document.getElementById('estudiante-seleccionado-info-text').textContent = `${estudiante.grade} • ${estudiante.age} años • Nivel ${nivel}`;
+    // ✅ CONFIGURAR NIVEL RECOMENDADO CON VERIFICACIÓN TOLERANTE
+    setValueSafely('nivelSelect', estudiante.level);
     
-    infoContainer.classList.remove('hidden');
+    // ✅ SCROLL AL GENERADOR CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('seccion-generador', (el) => {
+        el.scrollIntoView({ behavior: 'smooth' });
+    });
     
-    // Configurar nivel recomendado
-    document.getElementById('nivelSelect').value = estudiante.level;
-    
-    // Scroll al generador
-    seccionGenerador.scrollIntoView({ behavior: 'smooth' });
-    
-    console.log('✅ Estudiante seleccionado:', estudiante.name);
+    console.log('✅ Estudiante seleccionado (tolerante):', estudiante.name);
 }
 
 function filtrarEstudiantes() {
-    const busqueda = document.getElementById('buscar-estudiante').value.toLowerCase();
-    const filtroCurso = document.getElementById('filtro-curso').value;
-    const filtroNivel = document.getElementById('filtro-nivel').value;
+    const busqueda = getElementValueSafely('buscar-estudiante', '').toLowerCase();
+    const filtroCurso = getElementValueSafely('filtro-curso', '');
+    const filtroNivel = getElementValueSafely('filtro-nivel', '');
     
     const estudiantesFiltrados = estudiantes.filter(estudiante => {
         if (!estudiante.activo) return false;
@@ -445,8 +532,6 @@ function filtrarEstudiantes() {
         return coincideBusqueda && coincideCurso && coincideNivel;
     });
     
-    // Actualizar lista con estudiantes filtrados
-    // (Aquí podrías crear una función separada para renderizar solo los filtrados)
     console.log(`🔍 Filtros aplicados: ${estudiantesFiltrados.length} estudiantes encontrados`);
 }
 
@@ -456,9 +541,10 @@ async function generarEjercicios(tipo) {
         return;
     }
     
-    const nivel = document.getElementById('nivelSelect').value;
-    const cantidad = document.getElementById('cantidadSelect').value;
-    const tipoOperacion = document.getElementById('tipoSelect').value;
+    // ✅ OBTENER VALORES CON VERIFICACIÓN TOLERANTE
+    const nivel = getElementValueSafely('nivelSelect', estudianteSeleccionado.level.toString());
+    const cantidad = getElementValueSafely('cantidadSelect', '5');
+    const tipoOperacion = getElementValueSafely('tipoSelect', 'mixto');
     
     console.log(`🎯 Generando ${cantidad} ejercicios (${tipo}) para ${estudianteSeleccionado.name}`);
     
@@ -476,24 +562,52 @@ async function generarEjercicios(tipo) {
         mostrarEjercicios(ejercicios);
         
         // Guardar en historial
-        const sesion = {
-            id: Date.now(),
-            fecha: new Date().toISOString(),
+        const sesionData = {
+            estudianteNombre: estudianteSeleccionado.name,
+            estudianteId: estudianteSeleccionado.id,
             nivel: parseInt(nivel),
             cantidad: parseInt(cantidad),
-            tipo: tipoOperacion,
+            tipoOperacion: tipoOperacion,
             metodo: tipo,
-            estudianteId: estudianteSeleccionado.id,
-            estudianteNombre: estudianteSeleccionado.name,
-            profesorId: currentUser.id,
-            ejercicios: ejercicios
+            ejercicios: ejercicios,
+            fechaInicio: new Date().toISOString(),
+            duracion: Math.floor(parseInt(cantidad) * 1.5), // Estimar duración
+            tipo: 'profesor',
+            profesorId: currentUser.id
         };
-        
-        ejerciciosHistorial.push(sesion);
-        localStorage.setItem('profesorEjerciciosHistorial', JSON.stringify(ejerciciosHistorial));
+
+        // ✅ USAR FUNCIÓN DE GUARDADO HÍBRIDO
+        if (window.guardarSesionHibrida) {
+            const resultado = await window.guardarSesionHibrida(sesionData);
+            
+            if (resultado.supabase) {
+                console.log('☁️ Sesión guardada en Supabase y localStorage');
+                mostrarNotificacion(`✅ ${cantidad} ejercicios generados y sincronizados`, 'success');
+            } else {
+                console.log('💾 Sesión guardada solo en localStorage');
+                mostrarNotificacion(`✅ ${cantidad} ejercicios generados (modo offline)`, 'success');
+            }
+        } else {
+            // ✅ FALLBACK AL MÉTODO ANTERIOR SI NO ESTÁ DISPONIBLE
+            const sesion = {
+                id: Date.now(),
+                fecha: new Date().toISOString(),
+                nivel: parseInt(nivel),
+                cantidad: parseInt(cantidad),
+                tipo: tipoOperacion,
+                metodo: tipo,
+                estudianteId: estudianteSeleccionado.id,
+                estudianteNombre: estudianteSeleccionado.name,
+                profesorId: currentUser.id,
+                ejercicios: ejercicios
+            };
+            
+            ejerciciosHistorial.push(sesion);
+            localStorage.setItem('profesorEjerciciosHistorial', JSON.stringify(ejerciciosHistorial));
+            mostrarNotificacion(`✅ ${cantidad} ejercicios generados para ${estudianteSeleccionado.name}`, 'success');
+        }
         
         ocultarCargando();
-        mostrarNotificacion(`✅ ${cantidad} ejercicios generados para ${estudianteSeleccionado.name}`, 'success');
         
         // Actualizar estadísticas
         actualizarEstadisticasGenerales();
@@ -575,25 +689,30 @@ function generarEjercicioAleatorio(nivel, tipoOperacion, numero) {
 }
 
 function mostrarEjercicios(ejercicios) {
-    const container = document.getElementById('ejercicios-container');
-    container.innerHTML = '';
-    
-    ejercicios.forEach(ejercicio => {
-        const ejercicioCard = document.createElement('div');
-        ejercicioCard.className = 'ejercicio-card';
-        ejercicioCard.innerHTML = `
-            <div class="ejercicio-numero">Ejercicio ${ejercicio.numero}</div>
-            <div class="ejercicio-operacion">
-                ${ejercicio.operacion} = <span class="linea-respuesta"></span>
-            </div>
-        `;
-        container.appendChild(ejercicioCard);
+    // ✅ MOSTRAR EJERCICIOS CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('ejercicios-container', (container) => {
+        container.innerHTML = '';
+        
+        ejercicios.forEach(ejercicio => {
+            const ejercicioCard = document.createElement('div');
+            ejercicioCard.className = 'ejercicio-card';
+            ejercicioCard.innerHTML = `
+                <div class="ejercicio-numero">Ejercicio ${ejercicio.numero}</div>
+                <div class="ejercicio-operacion">
+                    ${ejercicio.operacion} = <span class="linea-respuesta"></span>
+                </div>
+            `;
+            container.appendChild(ejercicioCard);
+        });
     });
     
-    seccionResultados.classList.remove('hidden');
-    seccionResultados.scrollIntoView({ behavior: 'smooth' });
+    // ✅ MOSTRAR SECCIÓN CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('seccion-resultados', (el) => {
+        el.classList.remove('hidden');
+        el.scrollIntoView({ behavior: 'smooth' });
+    });
     
-    console.log(`✅ ${ejercicios.length} ejercicios mostrados`);
+    console.log(`✅ ${ejercicios.length} ejercicios mostrados (tolerante)`);
 }
 
 async function enviarAApoderado() {
@@ -742,18 +861,18 @@ function verEstadisticas(estudianteId) {
 }
 
 function mostrarModalEstadisticas(contenido) {
-    const modal = document.getElementById('modal-estadisticas');
-    if (modal) {
-        document.getElementById('contenido-estadisticas').innerHTML = contenido;
+    updateElementSafely('modal-estadisticas', (modal) => {
+        updateElementSafely('contenido-estadisticas', (el) => el.innerHTML = contenido);
         modal.classList.remove('hidden');
         
         // Event listener para cerrar modal
-        const btnCerrar = document.getElementById('btn-cerrar-estadisticas');
-        if (btnCerrar) {
-            btnCerrar.onclick = () => modal.classList.add('hidden');
-        }
-    } else {
-        // Si no existe el modal, crear uno temporal
+        updateElementSafely('btn-cerrar-estadisticas', (btn) => {
+            btn.onclick = () => modal.classList.add('hidden');
+        });
+    });
+    
+    // Si no existe el modal, crear uno temporal
+    if (!document.getElementById('modal-estadisticas')) {
         const modalTemp = document.createElement('div');
         modalTemp.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
         modalTemp.innerHTML = `
@@ -784,64 +903,66 @@ function actualizarEstadisticasGenerales() {
     const totalSesiones = ejerciciosHistorial.length;
     const totalEjercicios = ejerciciosHistorial.reduce((sum, sesion) => sum + sesion.cantidad, 0);
     
-    // Actualizar métricas principales
-    document.getElementById('total-estudiantes').textContent = estudiantesActivos.length;
-    document.getElementById('total-sesiones').textContent = totalSesiones;
-    document.getElementById('total-ejercicios').textContent = totalEjercicios;
+    // ✅ ACTUALIZAR MÉTRICAS CON VERIFICACIÓN TOLERANTE
+    setTextSafely('total-estudiantes', estudiantesActivos.length);
+    setTextSafely('total-sesiones', totalSesiones);
+    setTextSafely('total-ejercicios', totalEjercicios);
     
-    // Estudiante más activo
-    const estudianteActivoContainer = document.getElementById('estudiante-activo');
-    if (ejerciciosHistorial.length > 0) {
-        const actividadPorEstudiante = {};
-        ejerciciosHistorial.forEach(sesion => {
-            if (!actividadPorEstudiante[sesion.estudianteId]) {
-                actividadPorEstudiante[sesion.estudianteId] = {
-                    nombre: sesion.estudianteNombre,
-                    sesiones: 0,
-                    ejercicios: 0
-                };
-            }
-            actividadPorEstudiante[sesion.estudianteId].sesiones++;
-            actividadPorEstudiante[sesion.estudianteId].ejercicios += sesion.cantidad;
-        });
-        
-        const masActivo = Object.values(actividadPorEstudiante)
-            .sort((a, b) => b.ejercicios - a.ejercicios)[0];
-        
-        estudianteActivoContainer.innerHTML = `
-            <div class="text-center">
-                <div class="text-2xl font-bold text-purple-600">${masActivo.nombre}</div>
-                <div class="text-sm text-gray-600">${masActivo.ejercicios} ejercicios</div>
-            </div>
-        `;
-    } else {
-        estudianteActivoContainer.innerHTML = '<p class="text-gray-500">Sin datos aún</p>';
-    }
+    // ✅ ESTUDIANTE MÁS ACTIVO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('estudiante-activo', (estudianteActivoContainer) => {
+        if (ejerciciosHistorial.length > 0) {
+            const actividadPorEstudiante = {};
+            ejerciciosHistorial.forEach(sesion => {
+                if (!actividadPorEstudiante[sesion.estudianteId]) {
+                    actividadPorEstudiante[sesion.estudianteId] = {
+                        nombre: sesion.estudianteNombre,
+                        sesiones: 0,
+                        ejercicios: 0
+                    };
+                }
+                actividadPorEstudiante[sesion.estudianteId].sesiones++;
+                actividadPorEstudiante[sesion.estudianteId].ejercicios += sesion.cantidad;
+            });
+            
+            const masActivo = Object.values(actividadPorEstudiante)
+                .sort((a, b) => b.ejercicios - a.ejercicios)[0];
+            
+            estudianteActivoContainer.innerHTML = `
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-purple-600">${masActivo.nombre}</div>
+                    <div class="text-sm text-gray-600">${masActivo.ejercicios} ejercicios</div>
+                </div>
+            `;
+        } else {
+            estudianteActivoContainer.innerHTML = '<p class="text-gray-500">Sin datos aún</p>';
+        }
+    });
     
-    // Nivel más practicado
-    const nivelFavoritoContainer = document.getElementById('nivel-favorito');
-    if (ejerciciosHistorial.length > 0) {
-        const nivelesCount = {1: 0, 2: 0, 3: 0};
-        ejerciciosHistorial.forEach(sesion => {
-            nivelesCount[sesion.nivel] += sesion.cantidad;
-        });
-        
-        const nivelFavorito = Object.keys(nivelesCount).reduce((a, b) => 
-            nivelesCount[a] > nivelesCount[b] ? a : b
-        );
-        
-        const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
-        nivelFavoritoContainer.innerHTML = `
-            <div class="text-center">
-                <div class="text-2xl font-bold text-blue-600">${niveles[nivelFavorito - 1]}</div>
-                <div class="text-sm text-gray-600">${nivelesCount[nivelFavorito]} ejercicios</div>
-            </div>
-        `;
-    } else {
-        nivelFavoritoContainer.innerHTML = '<p class="text-gray-500">Sin datos aún</p>';
-    }
+    // ✅ NIVEL MÁS PRACTICADO CON VERIFICACIÓN TOLERANTE
+    updateElementSafely('nivel-favorito', (nivelFavoritoContainer) => {
+        if (ejerciciosHistorial.length > 0) {
+            const nivelesCount = {1: 0, 2: 0, 3: 0};
+            ejerciciosHistorial.forEach(sesion => {
+                nivelesCount[sesion.nivel] += sesion.cantidad;
+            });
+            
+            const nivelFavorito = Object.keys(nivelesCount).reduce((a, b) => 
+                nivelesCount[a] > nivelesCount[b] ? a : b
+            );
+            
+            const niveles = ['🟢 Fácil', '🟡 Medio', '🔴 Difícil'];
+            nivelFavoritoContainer.innerHTML = `
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">${niveles[nivelFavorito - 1]}</div>
+                    <div class="text-sm text-gray-600">${nivelesCount[nivelFavorito]} ejercicios</div>
+                </div>
+            `;
+        } else {
+            nivelFavoritoContainer.innerHTML = '<p class="text-gray-500">Sin datos aún</p>';
+        }
+    });
     
-    console.log('📊 Estadísticas generales actualizadas');
+    console.log('📊 Estadísticas generales actualizadas (tolerante)');
 }
 
 // Funciones auxiliares reutilizadas
@@ -887,21 +1008,21 @@ async function generarCuento() {
 }
 
 function mostrarModalCuento(contenido) {
-    document.getElementById('contenido-cuento').innerHTML = contenido;
-    document.getElementById('modal-cuento').classList.remove('hidden');
+    updateElementSafely('contenido-cuento', (el) => el.innerHTML = contenido);
+    removeClassSafely('modal-cuento', 'hidden');
 }
 
 function cerrarModalCuento() {
-    document.getElementById('modal-cuento').classList.add('hidden');
+    addClassSafely('modal-cuento', 'hidden');
 }
 
 function mostrarCargando(mensaje) {
-    document.getElementById('loading-text').textContent = mensaje;
-    document.getElementById('loading-overlay').classList.remove('hidden');
+    setTextSafely('loading-text', mensaje);
+    removeClassSafely('loading-overlay', 'hidden');
 }
 
 function ocultarCargando() {
-    document.getElementById('loading-overlay').classList.add('hidden');
+    addClassSafely('loading-overlay', 'hidden');
 }
 
 function mostrarNotificacion(mensaje, tipo = 'info') {
@@ -937,17 +1058,44 @@ function cerrarSesion() {
     
     if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
         // Usar el sistema principal de autenticación si está disponible
-        if (window.loginSystem && window.loginSystem.signOut) {
+        if (window.loginSystem && typeof window.loginSystem.signOut === 'function') {
             console.log('🚪 Usando logout del sistema principal...');
             window.loginSystem.signOut();
         } else {
-            // Fallback para compatibilidad
-            console.log('🚪 Usando logout de fallback...');
-            localStorage.removeItem('isAuthenticated');
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('matemagica-user-profile');
-            localStorage.removeItem('matemagica_selected_role');
-            window.location.href = '/index.html';
+            // Fallback mejorado para compatibilidad
+            console.log('🚪 Usando logout de fallback mejorado...');
+            const itemsToRemove = [
+                'matemagica-authenticated',
+                'matemagica-user-profile',
+                'matemagica_selected_role',
+                'matemagica_user',
+                'matemagica_profile',
+                'matemagica_role',
+                'currentUser',
+                'userProfile',
+                'selectedRole',
+                'studentData',
+                'ejerciciosHistorial',
+                'profesorEstudiantes',
+                'profesorEjerciciosHistorial'
+            ];
+            
+            itemsToRemove.forEach(item => {
+                localStorage.removeItem(item);
+            });
+            
+            sessionStorage.clear();
+            
+            // Cerrar sesión en Supabase si está disponible
+            if (window.supabaseClient && window.supabaseClient.auth) {
+                window.supabaseClient.auth.signOut().catch(err => {
+                    console.warn('⚠️ Error cerrando sesión en Supabase:', err);
+                });
+            }
+            
+            setTimeout(() => {
+                window.location.href = '/index.html';
+            }, 500);
         }
     }
 }

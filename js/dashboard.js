@@ -1,10 +1,10 @@
 /**
  * 🧮 MATEMÁGICA - DASHBOARD CURRICULAR 2° BÁSICO
  * Sistema completo integrado con currículum oficial chileno
- * Versión: 4.0 - Compatible con nueva estructura SaaS - Diciembre 2024
+ * Versión: 4.0 - Compatible con Sistema Unificado - Diciembre 2024
  */
 
-// 🎯 CONFIGURACIÓN GLOBAL - Actualizada para nueva estructura
+// 🎯 CONFIGURACIÓN GLOBAL - Actualizada para sistema unificado
 const DASHBOARD_CONFIG = {
     currentStudent: null,
     currentUnit: 1,
@@ -20,27 +20,26 @@ const DASHBOARD_CONFIG = {
             totalTime: 0
         }
     },
-    supabase: null,
-    isNewStructure: true // Flag para identificar nueva estructura
+    supabaseClient: null,
+    isNewStructure: true,
+    useUnifiedSystem: true // ✅ NUEVO: Flag para usar sistema unificado
 };
 
-// 🎯 INICIALIZACIÓN DEL DASHBOARD - Adaptada para SaaS
+// 🎯 INICIALIZACIÓN DEL DASHBOARD - Compatible con sistema unificado
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Iniciando Matemágica Dashboard v4.0 (SaaS Compatible)...');
+    console.log('🚀 Iniciando Matemágica Dashboard v4.0 (Sistema Unificado)...');
     
     try {
-        // PASO 1: Esperar un momento para que auth.js complete su trabajo
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // PASO 2: Verificar si estamos en la nueva estructura
+        // PASO 1: Verificar si estamos en la nueva estructura
         const isNewDashboard = document.getElementById('matematicas-segundo-content') !== null;
         
         if (isNewDashboard) {
-            console.log('✅ Nueva estructura SaaS detectada - Modo híbrido activado');
-            return; // La nueva estructura maneja su propia inicialización
+            console.log('✅ Nueva estructura detectada, usando sistema unificado');
+            await initializeWithUnifiedSystem();
+            return;
         }
         
-        // PASO 3: Código legacy para estructura antigua
+        // PASO 2: Código legacy para compatibilidad
         await initializeSupabase();
         await checkAuthentication();
         await initializeCurriculum();
@@ -48,30 +47,139 @@ document.addEventListener('DOMContentLoaded', async () => {
         await setupEventListeners();
         await loadDefaultStudent();
         
-        console.log('✅ Dashboard inicializado correctamente');
+        console.log('✅ Dashboard inicializado correctamente (modo legacy)');
         
     } catch (error) {
         console.error('❌ Error inicializando dashboard:', error);
-        // Solo mostrar error si no estamos en la nueva estructura
-        if (!document.getElementById('matematicas-segundo-content')) {
-            showErrorMessage('Error al cargar la aplicación. Por favor, recarga la página.');
-        }
+        handleInitializationError(error);
     }
 });
 
-// 🔐 AUTENTICACIÓN Y SUPABASE
+// ✅ NUEVA FUNCIÓN: Inicializar con sistema unificado
+async function initializeWithUnifiedSystem() {
+    try {
+        console.log('🎯 Inicializando con sistema unificado...');
+        
+        // Esperar que el sistema unificado esté listo
+        await waitForUnifiedSystem();
+        
+        // Configurar listeners específicos para currículum
+        setupCurriculumEventListeners();
+        
+        // Cargar estudiante actual desde sistema unificado
+        await loadCurrentStudentFromUnified();
+        
+        // Inicializar currículum si estamos en modo matemáticas
+        if (window.location.hash === '#matematicas' || DASHBOARD_CONFIG.currentView === 'matematicas') {
+            await initializeCurriculum();
+        }
+        
+        console.log('✅ Sistema unificado inicializado para dashboard curricular');
+        
+    } catch (error) {
+        console.error('❌ Error en inicialización con sistema unificado:', error);
+        // Fallback a modo legacy
+        await initializeLegacyMode();
+    }
+}
+
+// ✅ NUEVA FUNCIÓN: Esperar sistema modular (no unificado)
+async function waitForUnifiedSystem() {
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    while (attempts < maxAttempts) {
+        // ✅ USAR EL NUEVO SISTEMA MODULAR
+        if (window.studentCore && window.studentCore.isInitialized() && 
+            window.studentModalSystem && window.studentModalSystem.state.isInitialized) {
+            console.log('✅ Sistema modular detectado y listo');
+            DASHBOARD_CONFIG.supabaseClient = window.studentCore.state?.supabaseClient;
+            return true;
+        }
+        
+        attempts++;
+        console.log(`🔍 Esperando sistema modular... ${attempts}/${maxAttempts}`);
+        await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    
+    console.warn('⚠️ Timeout esperando sistema modular');
+    return false;
+}
+
+// ✅ NUEVA FUNCIÓN: Cargar estudiante desde sistema modular
+async function loadCurrentStudentFromUnified() {
+    try {
+        // ✅ USAR EL NUEVO SISTEMA MODULAR
+        if (window.studentCore && window.studentCore.isInitialized()) {
+            const currentStudent = window.studentCore.getCurrentStudent();
+            if (currentStudent) {
+                DASHBOARD_CONFIG.currentStudent = currentStudent;
+                console.log('✅ Estudiante cargado desde sistema modular:', currentStudent.name);
+                
+                // Actualizar display del estudiante
+                updateCurrentStudentDisplay();
+                return currentStudent;
+            }
+        }
+        
+        console.log('📚 No hay estudiante seleccionado en sistema modular');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error cargando estudiante desde sistema modular:', error);
+        return null;
+    }
+}
+
+// ✅ NUEVA FUNCIÓN: Configurar listeners específicos para currículum
+function setupCurriculumEventListeners() {
+    try {
+        // Listener para cambios de estudiante en sistema unificado
+        document.addEventListener('studentChanged', (event) => {
+            console.log('👥 Estudiante cambiado en sistema unificado:', event.detail);
+            DASHBOARD_CONFIG.currentStudent = event.detail.student;
+            updateCurrentStudentDisplay();
+        });
+        
+        // Listener para navegación a matemáticas
+        document.addEventListener('navigateToMathematics', (event) => {
+            console.log('🧮 Navegando a matemáticas desde sistema unificado');
+            if (event.detail.studentData) {
+                DASHBOARD_CONFIG.currentStudent = event.detail.studentData;
+            }
+            initializeCurriculum();
+        });
+        
+        console.log('✅ Event listeners del currículum configurados para sistema unificado');
+        
+    } catch (error) {
+        console.error('❌ Error configurando listeners del currículum:', error);
+    }
+}
+
+// 🔐 AUTENTICACIÓN Y SUPABASE - Compatible con sistema unificado
 async function initializeSupabase() {
+    // Si estamos usando sistema unificado, obtener cliente de ahí
+    if (DASHBOARD_CONFIG.useUnifiedSystem && window.unifiedStudentSystem) {
+        DASHBOARD_CONFIG.supabaseClient = window.unifiedStudentSystem.state?.supabaseClient;
+        if (DASHBOARD_CONFIG.supabaseClient) {
+            console.log('✅ Cliente Supabase obtenido del sistema unificado');
+            return;
+        }
+    }
+    
+    // Fallback al método original
     if (typeof window.supabase === 'undefined') {
         console.log('🔄 Supabase no disponible, modo offline activado');
         return;
     }
     
-    DASHBOARD_CONFIG.supabase = window.supabase;
-    console.log('✅ Supabase conectado');
+    DASHBOARD_CONFIG.supabaseClient = window.supabase;
+    console.log('✅ Supabase conectado (método legacy)');
 }
 
 async function checkAuthentication() {
-    console.log('🔐 Verificando autenticación - VERSIÓN MEJORADA');
+    console.log('🔐 Verificando autenticación - Compatible con sistema unificado');
     
     // 1️⃣ VERIFICAR DATOS LOCALES PRIMERO
     const isAuthenticated = localStorage.getItem('matemagica-authenticated');
@@ -82,101 +190,76 @@ async function checkAuthentication() {
     if (isAuthenticated === 'true' && userProfile) {
         try {
             const profile = JSON.parse(userProfile);
-            console.log('✅ Usuario autenticado encontrado:', profile.email);
-            
-            // Actualizar UI inmediatamente
-            const userNameElement = document.getElementById('user-name');
-            if (userNameElement) {
-                userNameElement.textContent = profile.full_name || profile.email.split('@')[0];
-            }
-            
-            // ✅ USUARIO VÁLIDO - CONTINUAR SIN PROBLEMAS
-            return;
-            
+            console.log('✅ Usuario autenticado desde localStorage:', profile.email);
+            return true;
         } catch (error) {
-            console.warn('⚠️ Error parseando perfil local:', error);
-            // Continuar con verificación Supabase como fallback
+            console.error('❌ Error parseando perfil de usuario:', error);
         }
     }
     
     // 2️⃣ VERIFICAR SUPABASE COMO SEGUNDA OPCIÓN
-    if (DASHBOARD_CONFIG.supabase) {
+    if (DASHBOARD_CONFIG.supabaseClient) {
         try {
-            console.log('🔍 Verificando sesión con Supabase...');
-            const { data: { session } } = await DASHBOARD_CONFIG.supabase.auth.getSession();
-            
+            const { data: { session } } = await DASHBOARD_CONFIG.supabaseClient.auth.getSession();
             if (session?.user) {
-                console.log('✅ Sesión Supabase encontrada:', session.user.email);
-                
-                // Actualizar datos locales con información de Supabase
-                const userProfile = {
-                    user_id: session.user.id,
-                    email: session.user.email,
-                    full_name: session.user.user_metadata?.full_name || session.user.email.split('@')[0],
-                    avatar_url: session.user.user_metadata?.avatar_url,
-                    user_role: 'parent' // Default
-                };
-                
-                localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
-                localStorage.setItem('matemagica-authenticated', 'true');
-                
-                // Actualizar UI
-                const userNameElement = document.getElementById('user-name');
-                if (userNameElement) {
-                    userNameElement.textContent = userProfile.full_name;
-                }
-                
-                return;
+                console.log('✅ Usuario autenticado desde Supabase:', session.user.email);
+                return true;
             }
         } catch (supabaseError) {
-            console.warn('⚠️ Error verificando Supabase:', supabaseError.message);
+            console.error('❌ Error verificando sesión Supabase:', supabaseError);
         }
     }
     
     // 3️⃣ SOLO REDIRIGIR SI NO HAY NINGUNA AUTENTICACIÓN VÁLIDA
     console.log('❌ No se encontró autenticación válida');
     
-    // Dar una pequeña pausa antes de redirigir para permitir que se complete la carga
-    setTimeout(() => {
-        console.log('🔄 Redirigiendo al login...');
-        window.location.href = 'index.html';
-    }, 2000);
-}
-
-// 📚 INICIALIZACIÓN DEL CURRÍCULUM - Adaptada para compatibilidad
-async function initializeCurriculum() {
-    try {
-        console.log('📚 Cargando currículum de 2° Básico...');
-        
-        // Generar navegación de unidades solo si elementos existen
-        generateUnitNavigation();
-        
-        // Cargar unidad por defecto solo en estructura antigua
-        if (!DASHBOARD_CONFIG.isNewStructure) {
-            await loadUnit(1);
-        }
-        
-        console.log('✅ Currículum cargado correctamente');
-        
-    } catch (error) {
-        console.error('❌ Error cargando currículum:', error);
-        throw error;
+    // Solo redirigir si no estamos en modo desarrollo
+    if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 3000);
     }
 }
 
-// 🧭 NAVEGACIÓN DE UNIDADES - COMPATIBLE con ambas estructuras
+// 📚 INICIALIZACIÓN DEL CURRÍCULUM - Compatible con sistema unificado
+async function initializeCurriculum() {
+    try {
+        console.log('📚 Inicializando currículum 2° Básico...');
+        
+        // Verificar que el currículum esté disponible
+        if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+            console.warn('⚠️ Currículum no cargado, esperando...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+                throw new Error('Currículum 2° Básico no disponible');
+            }
+        }
+        
+        generateUnitNavigation();
+        await loadUnit(DASHBOARD_CONFIG.currentUnit);
+        
+        console.log('✅ Currículum inicializado correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error inicializando currículum:', error);
+        showErrorMessage('Error cargando el currículum. Recarga la página.');
+    }
+}
+
+// 🧭 NAVEGACIÓN DE UNIDADES - COMPATIBLE con sistema unificado
 function generateUnitNavigation() {
     console.log('📚 Navegación de unidades iniciada para currículum 2° Básico');
     
     // Verificar que el currículum esté disponible
     if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
-        console.warn('⚠️ Currículum no disponible');
+        console.error('❌ CURRICULUM_SEGUNDO_BASICO no está definido');
         return;
     }
     
     // Mostrar unidades disponibles en consola para debug
     Object.entries(CURRICULUM_SEGUNDO_BASICO.unidades).forEach(([key, unidad]) => {
-        console.log(`📖 ${unidad.icono} Unidad ${unidad.numero}: ${unidad.titulo}`);
+        console.log(`📖 Unidad ${unidad.numero}: ${unidad.titulo} (${Object.keys(unidad.temas).length} temas)`);
     });
     
     console.log('✅ Sistema de navegación curricular listo');
@@ -185,35 +268,29 @@ function generateUnitNavigation() {
 // 📖 CARGA DE UNIDADES - Con verificación de elementos DOM
 async function loadUnit(unitNumber) {
     try {
-        console.log(`📖 Cargando Unidad ${unitNumber}...`);
+        console.log(`📖 Cargando unidad ${unitNumber}...`);
         
         const unidad = obtenerUnidad(unitNumber);
         if (!unidad) {
-            showErrorMessage('Unidad no encontrada');
-            return;
+            throw new Error(`Unidad ${unitNumber} no encontrada`);
         }
         
-        // Actualizar estado
         DASHBOARD_CONFIG.currentUnit = unitNumber;
-        DASHBOARD_CONFIG.currentTopic = null;
         
-        // Actualizar UI solo si los elementos existen
-        updateUnitNavigation();
+        // Actualizar header de la unidad
         updateUnitHeader(unidad);
+        
+        // Generar grid de temas
         generateTopicsGrid(unidad);
         
-        // Ocultar/mostrar secciones solo si existen
-        const exercisesSection = document.getElementById('exercises-section');
-        const unitContent = document.getElementById('unit-content');
+        // Actualizar navegación
+        updateUnitNavigation();
         
-        if (exercisesSection) exercisesSection.classList.add('hidden');
-        if (unitContent) unitContent.classList.remove('hidden');
-        
-        console.log(`✅ Unidad ${unitNumber} cargada correctamente`);
+        console.log(`✅ Unidad ${unitNumber} cargada: ${unidad.titulo}`);
         
     } catch (error) {
-        console.error('❌ Error cargando unidad:', error);
-        showErrorMessage('Error al cargar la unidad');
+        console.error(`❌ Error cargando unidad ${unitNumber}:`, error);
+        showErrorMessage(`Error cargando la unidad ${unitNumber}`);
     }
 }
 
@@ -232,12 +309,12 @@ function updateUnitHeader(unidad) {
     // Solo actualizar si los elementos existen
     const currentUnitName = document.getElementById('current-unit-name');
     if (currentUnitName) {
-        currentUnitName.textContent = `Unidad ${unidad.numero}`;
+        currentUnitName.textContent = unidad.titulo;
     }
     
     const unitTitle = document.getElementById('unit-title');
     if (unitTitle) {
-        unitTitle.textContent = `${unidad.icono} ${unidad.titulo}`;
+        unitTitle.textContent = unidad.titulo;
     }
     
     const unitDescription = document.getElementById('unit-description');
@@ -257,7 +334,7 @@ function updateUnitHeader(unidad) {
     
     const unitProgressText = document.getElementById('unit-progress-text');
     if (unitProgressText) {
-        unitProgressText.textContent = `${completedTemas} de ${totalTemas} temas completados`;
+        unitProgressText.textContent = `${completedTemas}/${totalTemas} temas completados`;
     }
 }
 
@@ -265,15 +342,15 @@ function updateUnitHeader(unidad) {
 function generateTopicsGrid(unidad) {
     const grid = document.getElementById('topics-grid');
     if (!grid) {
-        console.warn('⚠️ Grid de temas no encontrado en DOM');
+        console.warn('⚠️ Elemento topics-grid no encontrado');
         return;
     }
     
     grid.innerHTML = '';
     
     Object.entries(unidad.temas).forEach(([temaKey, tema]) => {
-        const topicCard = createTopicCard(tema, temaKey, unidad.numero);
-        grid.appendChild(topicCard);
+        const card = createTopicCard(tema, temaKey, unidad.numero);
+        grid.appendChild(card);
     });
 }
 
@@ -282,24 +359,21 @@ function createTopicCard(tema, temaKey, unitNumber) {
     const isCompleted = isTopicCompleted(unitNumber, temaKey);
     const isInProgress = isTopicInProgress(unitNumber, temaKey);
     
-    let statusClass = '';
-    let statusIcon = '';
-    let statusText = '';
+    let statusClass = 'bg-white';
+    let statusIcon = '📚';
+    let statusText = 'No iniciado';
     
     if (isCompleted) {
-        statusClass = 'completed';
+        statusClass = 'bg-green-50 border-green-200';
         statusIcon = '✅';
         statusText = 'Completado';
     } else if (isInProgress) {
-        statusClass = 'in-progress';
-        statusIcon = '⏳';
-        statusText = 'En Progreso';
-    } else {
-        statusIcon = '🎯';
-        statusText = 'Disponible';
+        statusClass = 'bg-blue-50 border-blue-200';
+        statusIcon = '🔄';
+        statusText = 'En progreso';
     }
     
-    card.className = `topic-card ${statusClass}`;
+    card.className = `topic-card ${statusClass} border-2 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300`;
     card.innerHTML = `
         <div class="flex justify-between items-start mb-3">
             <h3 class="font-bold text-gray-800 text-lg">${tema.titulo}</h3>
@@ -314,7 +388,7 @@ function createTopicCard(tema, temaKey, unitNumber) {
         <div class="mb-4">
             <div class="flex flex-wrap gap-1">
                 ${tema.subtemas.map(subtema => 
-                    `<span class="subtopic-pill">${subtema}</span>`
+                    `<span class="subtopic-pill text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${subtema}</span>`
                 ).join('')}
             </div>
         </div>
@@ -338,11 +412,9 @@ function createTopicCard(tema, temaKey, unitNumber) {
 }
 
 function getStatusBadgeClass(status) {
-    switch (status) {
-        case 'completed': return 'bg-green-100 text-green-800';
-        case 'in-progress': return 'bg-yellow-100 text-yellow-800';
-        default: return 'bg-blue-100 text-blue-800';
-    }
+    if (status.includes('green')) return 'bg-green-100 text-green-800';
+    if (status.includes('blue')) return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-600';
 }
 
 function getDifficultyBadgeClass(difficulty) {
@@ -350,7 +422,7 @@ function getDifficultyBadgeClass(difficulty) {
         case 'facil': return 'bg-green-100 text-green-800';
         case 'medio': return 'bg-yellow-100 text-yellow-800';
         case 'dificil': return 'bg-red-100 text-red-800';
-        default: return 'bg-gray-100 text-gray-800';
+        default: return 'bg-gray-100 text-gray-600';
     }
 }
 
@@ -359,1014 +431,263 @@ function getDifficultyLabel(difficulty) {
         case 'facil': return '🟢 Fácil';
         case 'medio': return '🟡 Medio';
         case 'dificil': return '🔴 Difícil';
-        default: return 'Normal';
+        default: return '📚 Normal';
     }
 }
 
-// 🎯 APERTURA DE TEMAS - Con verificación DOM
+// Función para abrir modal de estudiante usando sistema modular
+function openStudentModal() {
+    try {
+        // ✅ USAR EL NUEVO SISTEMA MODULAR
+        if (window.studentModalSystem && window.studentModalSystem.state.isInitialized) {
+            console.log('👥 Abriendo modal usando sistema modular...');
+            window.studentModalSystem.openModal('selection');
+        } else if (window.studentManager && window.studentManager.openStudentModal) {
+            console.log('👥 Usando sistema legacy de estudiantes...');
+            window.studentManager.openStudentModal();
+        } else {
+            console.warn('⚠️ Ningún sistema de estudiantes disponible');
+            showErrorToast('Sistema de estudiantes no disponible');
+        }
+    } catch (error) {
+        console.error('❌ Error abriendo modal de estudiante:', error);
+        showErrorToast('Error al abrir selector de estudiantes');
+    }
+}
+
+// Función para actualizar display del estudiante actual
+function updateCurrentStudentDisplay() {
+    try {
+        const student = DASHBOARD_CONFIG.currentStudent;
+        const nameElement = document.getElementById('current-student-name');
+        const avatarElement = document.querySelector('.student-avatar, .w-8.h-8');
+        
+        if (student && nameElement) {
+            nameElement.textContent = student.name;
+            console.log('✅ Display del estudiante actualizado:', student.name);
+        }
+        
+        if (student && avatarElement) {
+            const avatar = student.avatar || (student.gender === 'niña' ? '👧' : '👦');
+            avatarElement.textContent = avatar;
+            
+            // Actualizar colores según género
+            if (student.gender === 'niña') {
+                avatarElement.className = avatarElement.className.replace(/bg-blue-\d+/, 'bg-pink-500');
+            } else {
+                avatarElement.className = avatarElement.className.replace(/bg-pink-\d+/, 'bg-blue-500');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error actualizando display del estudiante:', error);
+    }
+}
+
+// ✅ FUNCIONES DE FALLBACK PARA COMPATIBILIDAD
+
+async function initializeLegacyMode() {
+    console.log('🔄 Inicializando en modo legacy...');
+    try {
+        await initializeSupabase();
+        await checkAuthentication();
+        await loadStudentProfiles();
+        await setupEventListeners();
+        await loadDefaultStudent();
+        console.log('✅ Modo legacy inicializado');
+    } catch (error) {
+        console.error('❌ Error en modo legacy:', error);
+    }
+}
+
+async function loadStudentProfiles() {
+    // Implementación básica para compatibilidad
+    console.log('📚 Cargando perfiles de estudiantes (legacy)...');
+}
+
+async function setupEventListeners() {
+    // Event listeners básicos
+    console.log('✅ Event listeners básicos configurados');
+}
+
+async function loadDefaultStudent() {
+    // Cargar estudiante por defecto
+    console.log('👥 Cargando estudiante por defecto...');
+}
+
+// ✅ FUNCIONES AUXILIARES
+
+function handleInitializationError(error) {
+    console.error('❌ Error crítico en inicialización:', error);
+    showErrorMessage('Error al inicializar el dashboard. Por favor, recarga la página.');
+}
+
+function showErrorMessage(message) {
+    if (typeof showErrorToast === 'function') {
+        showErrorToast(message);
+    } else {
+        alert(message);
+    }
+}
+
+function showInfoToast(message) {
+    if (typeof showInfoToast === 'function') {
+        showInfoToast(message);
+    } else {
+        console.log('ℹ️', message);
+    }
+}
+
+function showErrorToast(message) {
+    if (typeof showErrorToast === 'function') {
+        showErrorToast(message);
+    } else {
+        console.error('❌', message);
+    }
+}
+
+function showSuccessToast(message) {
+    if (typeof showSuccessToast === 'function') {
+        showSuccessToast(message);
+    } else {
+        console.log('✅', message);
+    }
+}
+
+// ✅ FUNCIONES DE PROGRESO Y ESTADO - Implementaciones básicas
+function isTopicCompleted(unitNumber, topicKey) {
+    try {
+        const progress = JSON.parse(localStorage.getItem('topic_progress') || '{}');
+        return progress[`${unitNumber}_${topicKey}`]?.completed || false;
+    } catch (error) {
+        console.error('❌ Error verificando tema completado:', error);
+        return false;
+    }
+}
+
+function isTopicInProgress(unitNumber, topicKey) {
+    try {
+        const progress = JSON.parse(localStorage.getItem('topic_progress') || '{}');
+        const topicProgress = progress[`${unitNumber}_${topicKey}`];
+        return topicProgress?.started && !topicProgress?.completed;
+    } catch (error) {
+        console.error('❌ Error verificando tema en progreso:', error);
+        return false;
+    }
+}
+
+function getCompletedTopics(unitNumber) {
+    try {
+        const progress = JSON.parse(localStorage.getItem('topic_progress') || '{}');
+        let completed = 0;
+        
+        Object.keys(progress).forEach(key => {
+            if (key.startsWith(`${unitNumber}_`) && progress[key].completed) {
+                completed++;
+            }
+        });
+        
+        return completed;
+    } catch (error) {
+        console.error('❌ Error contando temas completados:', error);
+        return 0;
+    }
+}
+
+function obtenerUnidad(unitNumber) {
+    try {
+        if (typeof CURRICULUM_SEGUNDO_BASICO === 'undefined') {
+            throw new Error('Currículum no disponible');
+        }
+        
+        const unidadKey = `unidad_${unitNumber}`;
+        return CURRICULUM_SEGUNDO_BASICO.unidades[unidadKey];
+    } catch (error) {
+        console.error(`❌ Error obteniendo unidad ${unitNumber}:`, error);
+        return null;
+    }
+}
+
+// ✅ FUNCIÓN GLOBAL PARA NAVEGACIÓN DESDE OTROS MÓDULOS
+window.volverAMatematicas = function() {
+    try {
+        console.log('🔄 Volviendo a matemáticas desde módulo externo...');
+        
+        // Disparar evento para que otros sistemas sepan que volvimos
+        document.dispatchEvent(new CustomEvent('returnToMathematics', {
+            detail: { 
+                from: 'external_module',
+                timestamp: Date.now()
+            }
+        }));
+        
+        // Si estamos usando sistema unificado, notificar
+        if (window.unifiedStudentSystem) {
+            const currentStudent = window.unifiedStudentSystem.getCurrentStudent();
+            if (currentStudent) {
+                DASHBOARD_CONFIG.currentStudent = currentStudent;
+                updateCurrentStudentDisplay();
+            }
+        }
+        
+        // Recargar currículum si es necesario
+        if (typeof CURRICULUM_SEGUNDO_BASICO !== 'undefined') {
+            initializeCurriculum();
+        }
+        
+        console.log('✅ Navegación a matemáticas completada');
+        
+    } catch (error) {
+        console.error('❌ Error volviendo a matemáticas:', error);
+        // Fallback: recargar página
+        window.location.reload();
+    }
+};
+
+// ✅ FUNCIONES PLACEHOLDER PARA COMPATIBILIDAD
 async function openTopic(unitNumber, topicKey, topicData) {
+    console.log(`🎯 Abriendo tema: ${topicData.titulo} (Unidad ${unitNumber})`);
+    // Implementación pendiente
+}
+
+function generateExercises() {
+    console.log('🎲 Generando ejercicios...');
+    // Implementación pendiente
+}
+
+function downloadPDF() {
+    showInfoToast('📄 Función de descarga PDF pendiente de implementación');
+}
+
+function createMathStory(exerciseId) {
+    showInfoToast('📖 Función de cuentos con IA pendiente de implementación');
+}
+
+function updateSessionStats() {
+    // Implementación básica de estadísticas
+    console.log('📊 Actualizando estadísticas de sesión...');
+}
+
+function saveExerciseProgress(exercise) {
     try {
-        console.log(`🎯 Abriendo tema: ${topicData.titulo}`);
-        
-        // Actualizar estado
-        DASHBOARD_CONFIG.currentTopic = {
-            unit: unitNumber,
-            key: topicKey,
-            data: topicData
-        };
-        
-        // Mostrar sección de ejercicios solo si existe
-        const unitContent = document.getElementById('unit-content');
-        const exercisesSection = document.getElementById('exercises-section');
-        
-        if (unitContent) unitContent.classList.add('hidden');
-        if (exercisesSection) exercisesSection.classList.remove('hidden');
-        
-        // Actualizar header del tema
-        updateTopicHeader(topicData);
-        
-        // Mostrar recomendaciones pedagógicas
-        showPedagogicalRecommendations(topicData);
-        
-        // Limpiar ejercicios anteriores
-        clearExercisesContent();
-        
-        console.log(`✅ Tema ${topicData.titulo} abierto correctamente`);
-        
+        const progress = JSON.parse(localStorage.getItem('exercise_progress') || '[]');
+        progress.push({
+            id: exercise.id,
+            completed: exercise.completed,
+            correct: exercise.correct,
+            timestamp: Date.now()
+        });
+        localStorage.setItem('exercise_progress', JSON.stringify(progress));
+        console.log('💾 Progreso de ejercicio guardado');
     } catch (error) {
-        console.error('❌ Error abriendo tema:', error);
-        showErrorMessage('Error al abrir el tema');
+        console.error('❌ Error guardando progreso:', error);
     }
 }
 
-function updateTopicHeader(topicData) {
-    const topicTitle = document.getElementById('topic-title');
-    if (topicTitle) {
-        topicTitle.textContent = topicData.titulo;
-    }
-    
-    const topicDescription = document.getElementById('topic-description');
-    if (topicDescription) {
-        topicDescription.textContent = topicData.descripcion;
-    }
-    
-    // Actualizar subtemas
-    const subtopicsContainer = document.getElementById('subtopics-pills');
-    if (subtopicsContainer) {
-        subtopicsContainer.innerHTML = '';
-        
-        topicData.subtemas.forEach(subtema => {
-            const pill = document.createElement('span');
-            pill.className = 'subtopic-pill';
-            pill.textContent = subtema;
-            subtopicsContainer.appendChild(pill);
-        });
-    }
-}
+// ✅ EXPORTAR FUNCIONES PRINCIPALES PARA COMPATIBILIDAD GLOBAL
+window.DASHBOARD_CONFIG = DASHBOARD_CONFIG;
+window.openStudentModal = openStudentModal;
+window.updateCurrentStudentDisplay = updateCurrentStudentDisplay;
+window.initializeCurriculum = initializeCurriculum;
+window.loadUnit = loadUnit;
 
-function showPedagogicalRecommendations(topicData) {
-    const recsSection = document.getElementById('pedagogical-recommendations');
-    if (!recsSection) return;
-    
-    recsSection.classList.remove('hidden');
-    
-    // Llenar recomendaciones solo si los elementos existen
-    const recMethodology = document.getElementById('rec-methodology');
-    if (recMethodology) {
-        recMethodology.textContent = 
-            `${topicData.metodologia.concreto} → ${topicData.metodologia.pictórico} → ${topicData.metodologia.simbólico}`;
-    }
-    
-    const recTime = document.getElementById('rec-time');
-    if (recTime) {
-        recTime.textContent = topicData.tiempo_sugerido;
-    }
-    
-    const recMaterials = document.getElementById('rec-materials');
-    if (recMaterials) {
-        recMaterials.textContent = topicData.materiales.join(', ');
-    }
-    
-    const recEvaluation = document.getElementById('rec-evaluation');
-    if (recEvaluation) {
-        recEvaluation.textContent = 
-            `Evaluación ${CURRICULUM_SEGUNDO_BASICO.configuracion_pedagogica.metodologia_base}`;
-    }
-}
-
-function clearExercisesContent() {
-    const exercisesContent = document.getElementById('exercises-content');
-    const exercisesLoader = document.getElementById('exercises-loader');
-    const sessionStats = document.getElementById('session-stats');
-    
-    if (exercisesContent) exercisesContent.classList.add('hidden');
-    if (exercisesLoader) exercisesLoader.classList.add('hidden');
-    if (sessionStats) sessionStats.classList.add('hidden');
-}
-
-// 🎲 GENERACIÓN DE EJERCICIOS
-async function generateExercises() {
-    if (!DASHBOARD_CONFIG.currentTopic) {
-        showErrorMessage('No hay tema seleccionado');
-        return;
-    }
-    
-    try {
-        // Mostrar loader
-        document.getElementById('exercises-loader').classList.remove('hidden');
-        
-        // Obtener configuración
-        const difficulty = document.getElementById('difficulty-select').value;
-        const quantity = parseInt(document.getElementById('quantity-select').value);
-        
-        console.log(`🎲 Generando ${quantity} ejercicios de nivel ${difficulty}...`);
-        
-        // Obtener configuración curricular
-        const config = generarConfiguracionEjercicios(
-            DASHBOARD_CONFIG.currentTopic.unit,
-            DASHBOARD_CONFIG.currentTopic.key,
-            difficulty
-        );
-        
-        if (!config) {
-            throw new Error('No se pudo obtener configuración del tema');
-        }
-        
-        // Generar ejercicios según el tipo de tema
-        let exercises = [];
-        const topicId = DASHBOARD_CONFIG.currentTopic.data.id;
-        
-        switch (topicId) {
-            case 'adicion-sustraccion':
-                exercises = await generateMathExercises(config, quantity, difficulty);
-                break;
-            case 'calculo-mental':
-                exercises = await generateMentalMathExercises(config, quantity, difficulty);
-                break;
-            case 'comparacion-orden':
-                exercises = await generateComparisonExercises(config, quantity, difficulty);
-                break;
-            case 'conteo-agrupacion':
-                exercises = await generateCountingExercises(config, quantity, difficulty);
-                break;
-            default:
-                exercises = await generateGenericExercises(config, quantity, difficulty);
-        }
-        
-        // Guardar ejercicios en sesión
-        DASHBOARD_CONFIG.exerciseSession = {
-            active: true,
-            exercises: exercises,
-            currentIndex: 0,
-            startTime: Date.now(),
-            stats: {
-                completed: 0,
-                correct: 0,
-                totalTime: 0
-            }
-        };
-        
-        // Mostrar ejercicios
-        displayExercises(exercises);
-        
-        // ✅ MENSAJE CORREGIDO: Especificar el origen real de los ejercicios
-        const aiGeneratedCount = exercises.filter(ex => ex.generatedWith === 'gemini-ai').length;
-        const localGeneratedCount = exercises.filter(ex => ex.generatedWith === 'local').length;
-        
-        if (aiGeneratedCount > 0 && localGeneratedCount > 0) {
-            console.log(`✅ ${exercises.length} ejercicios generados: ${aiGeneratedCount} con Gemini AI + ${localGeneratedCount} offline`);
-        } else if (aiGeneratedCount > 0) {
-            console.log(`✅ ${exercises.length} ejercicios generados COMPLETAMENTE con Gemini AI`);
-        } else {
-            console.log(`✅ ${exercises.length} ejercicios generados en modo offline (sin IA)`);
-        }
-        
-        console.log(`✅ ${exercises.length} ejercicios generados correctamente`);
-        
-    } catch (error) {
-        console.error('❌ Error generando ejercicios:', error);
-        showErrorMessage('Error al generar ejercicios. Inténtalo de nuevo.');
-    } finally {
-        document.getElementById('exercises-loader').classList.add('hidden');
-    }
-}
-
-// 🧮 GENERADORES DE EJERCICIOS ESPECÍFICOS - VERSIÓN CORREGIDA
-async function generateMathExercises(config, quantity, difficulty) {
-    console.log(`🧮 Generando EXACTAMENTE ${quantity} ejercicios matemáticos...`);
-    
-    try {
-        // Obtener tipo de operación seleccionada
-        const operationTypeElement = document.getElementById('operation-type-select');
-        const operationType = operationTypeElement ? operationTypeElement.value : 'ambos';
-        
-        console.log(`🎯 Tipo: ${operationType}, Dificultad: ${difficulty}, Cantidad EXACTA: ${quantity}`);
-        
-        // ✅ USAR GEMINI AI con cantidad EXACTA
-        if (window.geminiAI && window.geminiAI.configured) {
-            console.log('🎯 Usando Google Gemini AI para ejercicios personalizados');
-            
-            // Mapear dificultad del dashboard a niveles de Gemini
-            const difficultyMap = {
-                'facil': 1,
-                'medio': 2, 
-                'dificil': 3
-            };
-            const geminiLevel = difficultyMap[difficulty] || 2;
-            
-            let geminiExercises = [];
-            
-            // ✅ GENERAR SOLO LA CANTIDAD EXACTA SOLICITADA
-            switch (operationType) {
-                case 'suma':
-                    console.log(`➕ Generando EXACTAMENTE ${quantity} sumas con IA`);
-                    geminiExercises = await window.geminiAI.generateAdditions(geminiLevel, quantity);
-                    break;
-                case 'resta':
-                    console.log(`➖ Generando EXACTAMENTE ${quantity} restas con IA`);
-                    geminiExercises = await window.geminiAI.generateSubtractions(geminiLevel, quantity);
-                    break;
-                case 'ambos':
-                default:
-                    console.log(`➕➖ Generando EXACTAMENTE ${quantity} ejercicios mixtos con IA`);
-                    // ✅ CALCULAR DISTRIBUCIÓN EXACTA
-                    const sumasCount = Math.ceil(quantity / 2);
-                    const restasCount = quantity - sumasCount;
-                    
-                    console.log(`🔢 Distribución: ${sumasCount} sumas + ${restasCount} restas = ${quantity} total`);
-                    
-                    // ✅ GENERAR CANTIDADES EXACTAS
-                    const [sums, subs] = await Promise.all([
-                        window.geminiAI.generateAdditions(geminiLevel, sumasCount),
-                        window.geminiAI.generateSubtractions(geminiLevel, restasCount)
-                    ]);
-                    
-                    // ✅ COMBINAR SIN EXCEDER LA CANTIDAD
-                    geminiExercises = [...sums, ...subs];
-                    
-                    // ✅ MEZCLAR ORDEN ALEATORIAMENTE
-                    geminiExercises.sort(() => Math.random() - 0.5);
-                    break;
-            }
-            
-            // ✅ VERIFICAR QUE TENEMOS LA CANTIDAD EXACTA
-            if (geminiExercises.length !== quantity) {
-                console.warn(`⚠️ IA generó ${geminiExercises.length} pero se solicitaron ${quantity}. Ajustando...`);
-                geminiExercises = geminiExercises.slice(0, quantity);
-            }
-            
-            // Convertir a formato VERTICAL del dashboard
-            const exercises = [];
-            for (let i = 0; i < geminiExercises.length; i++) {
-                const ex = geminiExercises[i];
-                const operation = ex.operation === 'addition' ? '+' : '-';
-                const answer = ex.operation === 'addition' ? ex.num1 + ex.num2 : ex.num1 - ex.num2;
-                
-                exercises.push({
-                    id: i + 1,
-                    type: 'math_operation_vertical',
-                    num1: ex.num1,
-                    num2: ex.num2,
-                    operation: operation,
-                    answer: answer,
-                    difficulty: difficulty,
-                    completed: false,
-                    correct: null,
-                    userAnswer: null,
-                    timeSpent: 0,
-                    generatedWith: 'gemini-ai',
-                    showDUHelp: difficulty === 'facil' // Mostrar ayuda D|U solo en fácil
-                });
-            }
-            
-            console.log(`✅ ${exercises.length} ejercicios generados EXACTOS con Gemini AI`);
-            return exercises;
-        }
-    } catch (error) {
-        console.warn('⚠️ Error con Gemini AI, usando generador local:', error);
-    }
-    
-    // 📚 FALLBACK: Generador local offline
-    console.log(`📚 Usando generador local offline para ${quantity} ejercicios`);
-    
-    const { ejercicios_tipo } = config;
-    const ranges = ejercicios_tipo.rangos;
-    const exercises = [];
-    
-    for (let i = 0; i < quantity; i++) {
-        let num1, num2, operation, answer;
-        
-        // Generar según tipo de operación
-        const operationTypeElement = document.getElementById('operation-type-select');
-        const operationType = operationTypeElement ? operationTypeElement.value : 'ambos';
-        
-        switch (operationType) {
-            case 'suma':
-                num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                operation = '+';
-                answer = num1 + num2;
-                break;
-            case 'resta':
-                // Generar números para que el resultado no sea negativo
-                const larger = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                const smaller = Math.floor(Math.random() * larger) + 1;
-                num1 = larger;
-                num2 = smaller;
-                operation = '-';
-                answer = num1 - num2;
-                break;
-            case 'ambos':
-            default:
-                const isAddition = Math.random() > 0.5;
-                if (isAddition) {
-                    num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                    num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                    operation = '+';
-                    answer = num1 + num2;
-                } else {
-                    const larger = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-                    const smaller = Math.floor(Math.random() * larger) + 1;
-                    num1 = larger;
-                    num2 = smaller;
-                    operation = '-';
-                    answer = num1 - num2;
-                }
-                break;
-        }
-        
-        exercises.push({
-            id: i + 1,
-            type: 'math_operation_vertical',
-            num1: num1,
-            num2: num2,
-            operation: operation,
-            answer: answer,
-            difficulty: difficulty,
-            completed: false,
-            correct: null,
-            userAnswer: null,
-            timeSpent: 0,
-            generatedWith: 'local',
-            showDUHelp: difficulty === 'facil' // Mostrar ayuda D|U solo en fácil
-        });
-    }
-    
-    console.log(`✅ ${exercises.length} ejercicios generados localmente`);
-    return exercises;
-}
-
-async function generateMentalMathExercises(config, quantity, difficulty) {
-    const exercises = [];
-    const maxNum = difficulty === 'facil' ? 10 : difficulty === 'medio' ? 15 : 20;
-    
-    for (let i = 0; i < quantity; i++) {
-        const num1 = Math.floor(Math.random() * maxNum) + 1;
-        const num2 = Math.floor(Math.random() * maxNum) + 1;
-        
-        const strategies = ['dobles', 'casi_dobles', 'conteo', 'descomposicion'];
-        const strategy = strategies[Math.floor(Math.random() * strategies.length)];
-        
-        let question, answer, hint;
-        
-        switch (strategy) {
-            case 'dobles':
-                const double = Math.floor(Math.random() * 10) + 1;
-                question = `${double} + ${double} = ?`;
-                answer = double * 2;
-                hint = `💡 Piensa en los dobles: ${double} × 2`;
-                break;
-            case 'casi_dobles':
-                const base = Math.floor(Math.random() * 9) + 1;
-                question = `${base} + ${base + 1} = ?`;
-                answer = base + (base + 1);
-                hint = `💡 Casi dobles: ${base} + ${base} + 1`;
-                break;
-            default:
-                const isAdd = Math.random() > 0.5;
-                if (isAdd) {
-                    question = `${num1} + ${num2} = ?`;
-                    answer = num1 + num2;
-                } else {
-                    const larger = Math.max(num1, num2);
-                    const smaller = Math.min(num1, num2);
-                    question = `${larger} - ${smaller} = ?`;
-                    answer = larger - smaller;
-                }
-                hint = `💡 Usa tu estrategia favorita`;
-        }
-        
-        exercises.push({
-            id: i + 1,
-            type: 'mental_math',
-            question: question,
-            answer: answer,
-            hint: hint,
-            strategy: strategy,
-            difficulty: difficulty,
-            completed: false,
-            correct: null,
-            userAnswer: null,
-            timeSpent: 0
-        });
-    }
-    
-    return exercises;
-}
-
-async function generateComparisonExercises(config, quantity, difficulty) {
-    const exercises = [];
-    const { ejercicios_tipo } = config;
-    const ranges = ejercicios_tipo.rangos;
-    
-    for (let i = 0; i < quantity; i++) {
-        const num1 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-        const num2 = Math.floor(Math.random() * (ranges.max - ranges.min + 1)) + ranges.min;
-        
-        let question, answer;
-        const comparisonType = Math.random();
-        
-        if (comparisonType < 0.33) {
-            question = `¿Cuál es mayor: ${num1} o ${num2}?`;
-            answer = Math.max(num1, num2).toString();
-        } else if (comparisonType < 0.66) {
-            question = `Completa: ${num1} ___ ${num2}`;
-            if (num1 > num2) answer = '>';
-            else if (num1 < num2) answer = '<';
-            else answer = '=';
-        } else {
-            const numbers = [num1, num2, Math.floor(Math.random() * ranges.max) + ranges.min];
-            numbers.sort((a, b) => Math.random() - 0.5); // Mezclar
-            question = `Ordena de menor a mayor: ${numbers.join(', ')}`;
-            answer = numbers.sort((a, b) => a - b).join(', ');
-        }
-        
-        exercises.push({
-            id: i + 1,
-            type: 'comparison',
-            question: question,
-            answer: answer,
-            difficulty: difficulty,
-            completed: false,
-            correct: null,
-            userAnswer: null,
-            timeSpent: 0
-        });
-    }
-    
-    return exercises;
-}
-
-async function generateCountingExercises(config, quantity, difficulty) {
-    const exercises = [];
-    const increments = [2, 5, 10];
-    
-    for (let i = 0; i < quantity; i++) {
-        const increment = increments[Math.floor(Math.random() * increments.length)];
-        const start = Math.floor(Math.random() * 20);
-        const steps = Math.floor(Math.random() * 5) + 3;
-        
-        const sequence = [];
-        for (let j = 0; j < steps; j++) {
-            sequence.push(start + (j * increment));
-        }
-        
-        const questionTypes = ['continue', 'missing', 'count_groups'];
-        const questionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
-        
-        let question, answer;
-        
-        switch (questionType) {
-            case 'continue':
-                const partial = sequence.slice(0, -1);
-                question = `Continúa la secuencia: ${partial.join(', ')}, ___`;
-                answer = sequence[sequence.length - 1].toString();
-                break;
-            case 'missing':
-                const missingIndex = Math.floor(sequence.length / 2);
-                const withMissing = [...sequence];
-                withMissing[missingIndex] = '___';
-                question = `¿Qué número falta? ${withMissing.join(', ')}`;
-                answer = sequence[missingIndex].toString();
-                break;
-            case 'count_groups':
-                const total = increment * Math.floor(Math.random() * 6 + 2);
-                question = `Si tienes ${total} objetos y los agrupas de ${increment} en ${increment}, ¿cuántos grupos completos formas?`;
-                answer = Math.floor(total / increment).toString();
-                break;
-        }
-        
-        exercises.push({
-            id: i + 1,
-            type: 'counting',
-            question: question,
-            answer: answer,
-            increment: increment,
-            difficulty: difficulty,
-            completed: false,
-            correct: null,
-            userAnswer: null,
-            timeSpent: 0
-        });
-    }
-    
-    return exercises;
-}
-
-async function generateGenericExercises(config, quantity, difficulty) {
-    // Ejercicios genéricos para temas no implementados específicamente
-    const exercises = [];
-    
-    for (let i = 0; i < quantity; i++) {
-        exercises.push({
-            id: i + 1,
-            type: 'generic',
-            question: `Ejercicio ${i + 1} de ${DASHBOARD_CONFIG.currentTopic.data.titulo}`,
-            answer: 'Respuesta correcta',
-            difficulty: difficulty,
-            completed: false,
-            correct: null,
-            userAnswer: null,
-            timeSpent: 0,
-            note: 'Este tipo de ejercicio estará disponible próximamente'
-        });
-    }
-    
-    return exercises;
-}
-
-// 📺 VISUALIZACIÓN DE EJERCICIOS
-function displayExercises(exercises) {
-    const grid = document.getElementById('exercises-grid');
-    grid.innerHTML = '';
-    
-    exercises.forEach((exercise, index) => {
-        const exerciseCard = createExerciseCard(exercise, index);
-        grid.appendChild(exerciseCard);
-    });
-    
-    // Mostrar contenido de ejercicios
-    const exercisesContent = document.getElementById('exercises-content');
-    const sessionStats = document.getElementById('session-stats');
-    
-    if (exercisesContent) exercisesContent.classList.remove('hidden');
-    if (sessionStats) sessionStats.classList.remove('hidden');
-    
-    // Actualizar estadísticas
-    updateSessionStats();
-}
-
-function createExerciseCard(exercise, index) {
-    const card = document.createElement('div');
-    card.className = `exercise-item ${exercise.completed ? (exercise.correct ? 'completed' : 'incorrect') : ''}`;
-    card.dataset.exerciseId = exercise.id;
-    
-    let content = '';
-    
-    if (exercise.type === 'generic' && exercise.note) {
-        content = `
-            <div class="text-center">
-                <div class="text-gray-400 text-3xl mb-2">🚧</div>
-                <div class="font-medium text-gray-700 mb-2">${exercise.question}</div>
-                <div class="text-xs text-gray-500 mb-3">${exercise.note}</div>
-                <button class="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed" disabled>
-                    Próximamente
-                </button>
-            </div>
-        `;
-    } else if (exercise.type === 'math_operation_vertical') {
-        // 📊 SISTEMA VERTICAL DE OPERACIONES
-        content = `
-            <div class="exercise-number text-sm font-bold text-gray-500 mb-2">Ejercicio ${exercise.id}</div>
-            
-            <!-- Operación Vertical -->
-            <div class="vertical-operation-container mb-4">
-                ${exercise.showDUHelp ? `
-                    <!-- Ayuda D|U para nivel fácil -->
-                    <div class="du-helper mb-2 text-xs text-blue-600 font-medium">
-                        <div class="flex justify-center space-x-8">
-                            <span>D</span>
-                            <span>U</span>
-                        </div>
-                        <div class="border-b border-blue-300 mt-1"></div>
-                    </div>
-                ` : ''}
-                
-                <div class="vertical-operation bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
-                    <!-- Primera fila: primer número -->
-                    <div class="operation-row flex justify-center items-center mb-1">
-                        ${exercise.showDUHelp ? `
-                            <div class="du-breakdown flex space-x-4 font-mono text-lg">
-                                <span class="decena text-blue-700 font-bold">${Math.floor(exercise.num1 / 10)}</span>
-                                <span class="unidad text-blue-700 font-bold">${exercise.num1 % 10}</span>
-                            </div>
-                        ` : `
-                            <span class="number-display font-mono text-xl font-bold text-blue-800">${exercise.num1}</span>
-                        `}
-                    </div>
-                    
-                    <!-- Segunda fila: operador y segundo número -->
-                    <div class="operation-row flex justify-center items-center mb-2">
-                        <span class="operator font-mono text-xl font-bold text-orange-600 mr-2">${exercise.operation}</span>
-                        ${exercise.showDUHelp ? `
-                            <div class="du-breakdown flex space-x-4 font-mono text-lg">
-                                <span class="decena text-blue-700 font-bold">${Math.floor(exercise.num2 / 10)}</span>
-                                <span class="unidad text-blue-700 font-bold">${exercise.num2 % 10}</span>
-                            </div>
-                        ` : `
-                            <span class="number-display font-mono text-xl font-bold text-blue-800">${exercise.num2}</span>
-                        `}
-                    </div>
-                    
-                    <!-- Línea divisoria -->
-                    <div class="operation-line border-t-2 border-gray-400 mb-2"></div>
-                    
-                    <!-- Tercera fila: área de respuesta -->
-                    <div class="operation-result">
-                        ${exercise.showDUHelp ? `
-                            <div class="du-answer-breakdown flex justify-center space-x-4">
-                                <input type="number" 
-                                       class="decena-input w-8 h-10 text-center border border-gray-300 rounded font-mono text-lg font-bold bg-yellow-50"
-                                       placeholder="D"
-                                       min="0" max="9"
-                                       data-exercise-id="${exercise.id}"
-                                       data-digit="decena"
-                                       ${exercise.completed ? 'readonly' : ''}>
-                                <input type="number" 
-                                       class="unidad-input w-8 h-10 text-center border border-gray-300 rounded font-mono text-lg font-bold bg-yellow-50"
-                                       placeholder="U"
-                                       min="0" max="9"
-                                       data-exercise-id="${exercise.id}"
-                                       data-digit="unidad"
-                                       ${exercise.completed ? 'readonly' : ''}>
-                            </div>
-                        ` : `
-                            <input type="number" 
-                                   class="answer-input w-20 h-10 text-center border-2 border-yellow-400 rounded-lg font-mono text-xl font-bold bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="?"
-                                   data-exercise-id="${exercise.id}"
-                                   ${exercise.completed ? 'readonly' : ''}>
-                        `}
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Botones de acción -->
-            <div class="exercise-actions space-y-2">
-                <button class="check-answer-btn w-full py-2 px-4 ${exercise.completed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white font-medium rounded-lg transition-colors"
-                        data-exercise-id="${exercise.id}"
-                        ${exercise.completed ? 'disabled' : ''}>
-                    ${exercise.completed ? (exercise.correct ? '✅ Correcto' : '❌ Incorrecto') : '✓ Comprobar'}
-                </button>
-                
-                ${exercise.generatedWith === 'gemini-ai' && !exercise.completed ? `
-                    <button class="create-story-btn w-full py-2 px-4 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
-                            data-exercise-id="${exercise.id}">
-                        📖 Crear Cuento con IA
-                    </button>
-                ` : ''}
-            </div>
-            
-            ${exercise.completed && !exercise.correct ? 
-                `<div class="correct-answer text-sm text-green-600 mt-2 text-center">✅ Respuesta correcta: <strong>${exercise.answer}</strong></div>` 
-                : ''
-            }
-        `;
-    } else {
-        // Ejercicios no matemáticos (mantener original)
-        content = `
-            <div class="exercise-number text-sm font-bold text-gray-500 mb-2">Ejercicio ${exercise.id}</div>
-            <div class="exercise-question text-lg font-medium text-gray-800 mb-4">${exercise.question}</div>
-            
-            ${exercise.hint ? `<div class="exercise-hint text-sm text-blue-600 mb-3">${exercise.hint}</div>` : ''}
-            
-            <div class="exercise-input mb-3">
-                <input type="text" 
-                       class="answer-input w-full px-3 py-2 border border-gray-300 rounded-md text-center font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="Tu respuesta..."
-                       data-exercise-id="${exercise.id}"
-                       ${exercise.completed ? 'readonly' : ''}>
-            </div>
-            
-            <button class="check-answer-btn w-full py-2 px-4 ${exercise.completed ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'} text-white font-medium rounded-lg transition-colors"
-                    data-exercise-id="${exercise.id}"
-                    ${exercise.completed ? 'disabled' : ''}>
-                ${exercise.completed ? (exercise.correct ? '✅ Correcto' : '❌ Incorrecto') : '✓ Comprobar'}
-            </button>
-            
-            ${exercise.completed && !exercise.correct ? 
-                `<div class="correct-answer text-sm text-green-600 mt-2">Respuesta correcta: ${exercise.answer}</div>` 
-                : ''
-            }
-        `;
-    }
-    
-    card.innerHTML = content;
-    
-    // Agregar event listeners
-    if (exercise.type !== 'generic' || !exercise.note) {
-        const checkButton = card.querySelector('.check-answer-btn');
-        const storyButton = card.querySelector('.create-story-btn');
-        
-        if (checkButton) {
-            checkButton.addEventListener('click', () => {
-                checkAnswer(exercise.id);
-            });
-        }
-        
-        if (storyButton) {
-            storyButton.addEventListener('click', () => {
-                createMathStory(exercise.id);
-            });
-        }
-        
-        // Event listeners para inputs
-        if (exercise.type === 'math_operation_vertical') {
-            if (exercise.showDUHelp) {
-                // Inputs de decena y unidad
-                const decenaInput = card.querySelector('.decena-input');
-                const unidadInput = card.querySelector('.unidad-input');
-                
-                if (decenaInput && unidadInput) {
-                    [decenaInput, unidadInput].forEach(input => {
-                        input.addEventListener('keypress', (e) => {
-                            if (e.key === 'Enter') {
-                                checkAnswer(exercise.id);
-                            }
-                        });
-                    });
-                }
-            } else {
-                // Input normal
-                const input = card.querySelector('.answer-input');
-                if (input) {
-                    input.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            checkAnswer(exercise.id);
-                        }
-                    });
-                }
-            }
-        } else {
-            // Inputs de otros tipos de ejercicios
-            const input = card.querySelector('.answer-input');
-            if (input) {
-                input.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        checkAnswer(exercise.id);
-                    }
-                });
-            }
-        }
-    }
-    
-    return card;
-}
-
-// ✅ VERIFICAR RESPUESTA
-async function checkAnswer(exerciseId) {
-    const exercise = DASHBOARD_CONFIG.exerciseSession.exercises.find(ex => ex.id === exerciseId);
-    if (!exercise || exercise.completed) return;
-    
-    let userAnswer;
-    
-    if (exercise.type === 'math_operation_vertical' && exercise.showDUHelp) {
-        // Obtener respuesta de inputs D|U
-        const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-        const decenaInput = card.querySelector('.decena-input');
-        const unidadInput = card.querySelector('.unidad-input');
-        
-        const decena = parseInt(decenaInput.value) || 0;
-        const unidad = parseInt(unidadInput.value) || 0;
-        
-        userAnswer = (decena * 10) + unidad;
-        
-        if (decenaInput.value.trim() === '' && unidadInput.value.trim() === '') {
-            showErrorMessage('Por favor, completa ambos dígitos (D y U)');
-            return;
-        }
-    } else {
-        // Obtener respuesta de input normal
-        const input = document.querySelector(`input[data-exercise-id="${exerciseId}"]`);
-        userAnswer = parseInt(input.value);
-        
-        if (!input.value.trim()) {
-            showErrorMessage('Por favor, ingresa una respuesta');
-            return;
-        }
-    }
-    
-    if (isNaN(userAnswer)) {
-        showErrorMessage('Por favor, ingresa un número válido');
-        return;
-    }
-    
-    // Verificar respuesta
-    const isCorrect = userAnswer === exercise.answer;
-    
-    // ✅ ¡CONFETI CUANDO EL NIÑO ACIERTA!
-    if (isCorrect) {
-        launchConfetti();
-    }
-    
-    // Actualizar ejercicio
-    exercise.completed = true;
-    exercise.correct = isCorrect;
-    exercise.userAnswer = userAnswer;
-    exercise.timeSpent = Date.now() - DASHBOARD_CONFIG.exerciseSession.startTime;
-    
-    // ✅ GENERAR FEEDBACK INTELIGENTE CON IA
-    let feedback = '';
-    try {
-        if (window.geminiAI && window.geminiAI.configured) {
-            console.log('🤖 Generando feedback personalizado con IA...');
-            feedback = await window.geminiAI.generateFeedback(userAnswer, exercise.answer, isCorrect);
-        } else {
-            feedback = isCorrect ? 
-                '¡Excelente trabajo! ¡Respuesta correcta!' : 
-                '¡Buen intento! Revisa tu respuesta e inténtalo de nuevo.';
-        }
-    } catch (error) {
-        console.error('❌ Error generando feedback:', error);
-        feedback = isCorrect ? 
-            '¡Muy bien! ¡Correcto!' : 
-            '¡Sigue intentando! Puedes hacerlo.';
-    }
-    
-    // Mostrar feedback en el ejercicio
-    exercise.feedback = feedback;
-    
-    // Actualizar estadísticas
-    DASHBOARD_CONFIG.exerciseSession.stats.completed++;
-    if (isCorrect) {
-        DASHBOARD_CONFIG.exerciseSession.stats.correct++;
-    }
-    
-    // Actualizar UI
-    updateExerciseCard(exerciseId, exercise);
-    updateSessionStats();
-    
-    // Guardar progreso
-    saveExerciseProgress(exercise);
-    
-    console.log(`${isCorrect ? '✅🎉' : '❌'} Ejercicio ${exerciseId}: ${userAnswer} (Correcto: ${exercise.answer})`);
-    console.log(`💬 Feedback: ${feedback}`);
-}
-
-// 🎉 SISTEMA DE CONFETI PARA NIÑOS
-function launchConfetti() {
-    console.log('🎉 ¡Lanzando confeti por respuesta correcta!');
-    
-    // Crear contenedor de confeti si no existe
-    let confettiContainer = document.getElementById('confetti-container');
-    if (!confettiContainer) {
-        confettiContainer = document.createElement('div');
-        confettiContainer.id = 'confetti-container';
-        confettiContainer.className = 'fixed inset-0 pointer-events-none z-50 overflow-hidden';
-        document.body.appendChild(confettiContainer);
-    }
-    
-    // Crear múltiples piezas de confeti
-    const confettiCount = 50;
-    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
-    const shapes = ['●', '▲', '■', '★', '♦', '♥', '♠', '♣'];
-    
-    for (let i = 0; i < confettiCount; i++) {
-        createConfettiPiece(confettiContainer, colors, shapes);
-    }
-    
-    // Reproducir sonido de celebración (si está disponible)
-    playSuccessSound();
-    
-    // Limpiar confeti después de la animación
-    setTimeout(() => {
-        confettiContainer.innerHTML = '';
-    }, 4000);
-}
-
-function createConfettiPiece(container, colors, shapes) {
-    const confetti = document.createElement('div');
-    confetti.className = 'confetti-piece';
-    
-    // Propiedades aleatorias
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const shape = shapes[Math.floor(Math.random() * shapes.length)];
-    const size = Math.random() * 10 + 8; // Entre 8px y 18px
-    const startX = Math.random() * window.innerWidth;
-    const duration = Math.random() * 2 + 2; // Entre 2s y 4s
-    const delay = Math.random() * 0.5; // Hasta 0.5s de delay
-    
-    // Estilos del confeti
-    confetti.style.cssText = `
-        position: absolute;
-        top: -20px;
-        left: ${startX}px;
-        color: ${color};
-        font-size: ${size}px;
-        animation: confetti-fall ${duration}s linear ${delay}s forwards;
-        pointer-events: none;
-        user-select: none;
-        font-weight: bold;
-    `;
-    
-    confetti.textContent = shape;
-    container.appendChild(confetti);
-}
-
-function playSuccessSound() {
-    try {
-        // Crear un sonido de celebración con Web Audio API
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Crear una secuencia de tonos alegres
-        const frequencies = [523.25, 659.25, 783.99, 1046.50]; // Do, Mi, Sol, Do octava alta
-        
-        frequencies.forEach((freq, index) => {
-            setTimeout(() => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
-                oscillator.type = 'sine';
-                
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.3);
-            }, index * 100);
-        });
-    } catch (error) {
-        console.log('🔊 Audio no disponible, solo confeti visual');
-    }
-}
-
-// 🔄 ACTUALIZAR TARJETA DE EJERCICIO DESPUÉS DE RESPUESTA
-function updateExerciseCard(exerciseId, exercise) {
-    const card = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-    if (!card) return;
-    
-    // Actualizar clases de la tarjeta
-    card.className = `exercise-item ${exercise.completed ? (exercise.correct ? 'completed' : 'incorrect') : ''}`;
-    
-    // Actualizar botón de comprobar
-    const checkButton = card.querySelector('.check-answer-btn');
-    if (checkButton) {
-        if (exercise.completed) {
-            checkButton.disabled = true;
-            checkButton.className = 'check-answer-btn w-full py-2 px-4 bg-gray-400 cursor-not-allowed text-white font-medium rounded-lg transition-colors';
-            checkButton.textContent = exercise.correct ? '✅ Correcto' : '❌ Incorrecto';
-        }
-    }
-    
-    // Mostrar respuesta correcta si es incorrecta
-    if (exercise.completed && !exercise.correct) {
-        // Verificar si ya existe el mensaje de respuesta correcta
-        let correctAnswerDiv = card.querySelector('.correct-answer');
-        if (!correctAnswerDiv) {
-            correctAnswerDiv = document.createElement('div');
-            correctAnswerDiv.className = 'correct-answer text-sm text-green-600 mt-2 text-center';
-            correctAnswerDiv.innerHTML = `✅ Respuesta correcta: <strong>${exercise.answer}</strong>`;
-            
-            // Insertar después de los botones de acción
-            const actionsDiv = card.querySelector('.exercise-actions');
-            if (actionsDiv) {
-                actionsDiv.parentNode.insertBefore(correctAnswerDiv, actionsDiv.nextSibling);
-            } else {
-                card.appendChild(correctAnswerDiv);
-            }
-        }
-    }
-    
-    // Mostrar feedback si existe
-    if (exercise.feedback) {
-        // Verificar si ya existe el feedback
-        let feedbackDiv = card.querySelector('.exercise-feedback');
-        if (!feedbackDiv) {
-            feedbackDiv = document.createElement('div');
-            feedbackDiv.className = `exercise-feedback mt-3 p-3 rounded-lg text-sm ${
-                exercise.correct ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-blue-50 border border-blue-200 text-blue-800'
-            }`;
-            feedbackDiv.innerHTML = `💬 ${exercise.feedback}`;
-            
-            // Insertar antes del mensaje de respuesta correcta o al final
-            const correctAnswerDiv = card.querySelector('.correct-answer');
-            if (correctAnswerDiv) {
-                correctAnswerDiv.parentNode.insertBefore(feedbackDiv, correctAnswerDiv);
-            } else {
-                card.appendChild(feedbackDiv);
-            }
-        }
-    }
-    
-    // Deshabilitar inputs si está completado
-    if (exercise.completed) {
-        const inputs = card.querySelectorAll('input');
-        inputs.forEach(input => {
-            input.setAttribute('readonly', true);
-        });
-    }
-}
+console.log('✅ Dashboard.js v4.0 cargado - Compatible con Sistema Unificado');

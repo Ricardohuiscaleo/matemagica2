@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Profesores Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #1e293b;
+        }
+        .query-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        .query-btn:hover {
+            transform: translateY(-2px);
+        }
+        .results {
+            margin-top: 20px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 16px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .teacher-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .teacher-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .teacher-info {
+            color: #64748b;
+            margin: 4px 0;
+        }
+        .duplicate-warning {
+            background: #fef3cd;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            color: #92400e;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Consulta de Profesores en Supabase</h1>
+            <p>Herramienta para verificar los profesores registrados en la base de datos</p>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="query-btn" onclick="queryAllTeachers()">
+                👨‍🏫 Consultar Todos los Profesores
+            </button>
+            <button class="query-btn" onclick="debugUserRoles()">
+                🔬 Debug User Roles
+            </button>
+            <button class="query-btn" onclick="queryDuplicates()">
+                🔍 Buscar Duplicados
+            </button>
+            <button class="query-btn" onclick="queryBySchool()">
+                🏫 Agrupar por Colegio
+            </button>
+            <button class="query-btn" onclick="clearResults()">
+                🗑️ Limpiar Resultados
+            </button>
+        </div>
+
+        <div id="results" class="results" style="display: none;"></div>
+    </div>
+
+    <script>
+        // ✅ CONFIGURAR SUPABASE CLIENT
+        let supabaseClient = null;
+        let teachersData = [];
+
+        // Intentar obtener cliente desde diferentes fuentes
+        function initializeSupabase() {
+            try {
+                // Primero intentar usar el cliente existente de la aplicación
+                if (window.supabaseClient) {
+                    supabaseClient = window.supabaseClient;
+                    log('✅ Cliente Supabase encontrado desde aplicación');
+                    return true;
+                }
+
+                // Si no está disponible, crear uno nuevo con las credenciales correctas
+                const SUPABASE_URL = 'https://uznvakpuuxnpdhoejrog.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6bnZha3B1dXhucGRob2Vqcm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwODg0MTAsImV4cCI6MjA2NDY2NDQxMH0.OxbLYkjlgpWFnqd28gaZSwar_NQ6_qUS3U76bqbcXVg';
+
+                if (window.supabase?.createClient) {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    log('✅ Cliente Supabase creado con credenciales');
+                    return true;
+                }
+
+                log('❌ No se pudo inicializar cliente Supabase');
+                return false;
+
+            } catch (error) {
+                log('❌ Error inicializando Supabase: ' + error.message);
+                return false;
+            }
+        }
+
+        // Función para logging
+        function log(message) {
+            console.log(message);
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += message + '\n';
+            resultsDiv.style.display = 'block';
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // ✅ QUERY PRINCIPAL: Todos los profesores
+        async function queryAllTeachers() {
+            if (!initializeSupabase()) {
+                log('❌ No se pudo conectar a Supabase');
+                return;
+            }
+
+            try {
+                log('🔍 Consultando profesores en Supabase...\n');
+
+                // ✅ DIAGNÓSTICO: Primero veamos TODOS los roles disponibles
+                log('🔍 DIAGNÓSTICO: Verificando todos los user_role disponibles...');
+                const { data: allRoles, error: rolesError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('user_role')
+                    .not('user_role', 'is', null);
+
+                if (!rolesError && allRoles) {
+                    const uniqueRoles = [...new Set(allRoles.map(r => r.user_role))];
+                    log(`📊 Roles encontrados: ${uniqueRoles.join(', ')}`);
+                    log(`📊 Total registros con role: ${allRoles.length}\n`);
+                }
+
+                // ✅ DIAGNÓSTICO: Buscar específicamente a Francisca
+                log('🔍 DIAGNÓSTICO: Buscando específicamente a Francisca Gavilan...');
+                const { data: franciscaData, error: franciscaError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('*')
+                    .ilike('full_name', '%francisca%gavilan%');
+
+                if (!franciscaError && franciscaData && franciscaData.length > 0) {
+                    log(`✅ Francisca encontrada! Datos:`);
+                    franciscaData.forEach(f => {
+                        log(`   - Nombre: ${f.full_name}`);
+                        log(`   - Email: ${f.email}`);
+                        log(`   - Role: ${f.user_role}`);
+                        log(`   - ID: ${f.user_id}`);
+                        log(`   - Creado: ${f.created_at}`);
+                    });
+                } else {
+                    log(`❌ Francisca NO encontrada en la base de datos`);
+                }
+                log('');
+
+                // ✅ CONSULTA PRINCIPAL: Profesores - MEJORADA PARA CAPTURAR VARIACIONES
+                const { data: teachers, error } = await supabaseClient
+                    .from('math_profiles')
+                    .select('*')
+                    .or('user_role.ilike.%teacher%,user_role.ilike.%profesor%') // Buscar variaciones
+                    .order('created_at', { ascending: true });
+
+                // ✅ TAMBIÉN HACER UNA CONSULTA ALTERNATIVA LIMPIANDO ESPACIOS
+                let teachersAlt = null;
+                if (teachers && teachers.length === 0) {
+                    log('🔄 Intentando consulta alternativa limpiando espacios...');
+                    const { data: altData, error: altError } = await supabaseClient
+                        .rpc('search_teachers_cleaned', {});
+                    
+                    if (!altError) {
+                        teachersAlt = altData;
+                        log(`✅ Consulta alternativa: ${altData?.length || 0} resultados`);
+                    }
+                }
+
+                if (error) {
+                    log('❌ Error en la consulta: ' + error.message);
+                    if (error.code === '42P01') {
+                        log('💡 La tabla math_profiles no existe');
+                    } else if (error.code === 'PGRST116') {
+                        log('💡 Sin permisos para acceder a la tabla');
+                    }
+                    return;
+                }
+
+                teachersData = teachers;
+                log(`✅ Query exitosa - ${teachers.length} profesores encontrados\n`);
+
+                if (teachers.length === 0) {
+                    log('📝 No hay profesores registrados en la base de datos');
+                    return;
+                }
+
+                // ✅ DIAGNÓSTICO: Comparar con búsqueda de Francisca
+                if (franciscaData && franciscaData.length > 0) {
+                    const franciscaInTeachers = teachers.find(t => 
+                        t.full_name && t.full_name.toLowerCase().includes('francisca') && 
+                        t.full_name.toLowerCase().includes('gavilan')
+                    );
+                    
+                    if (franciscaInTeachers) {
+                        log('✅ Francisca SÍ aparece en la consulta de profesores');
+                    } else {
+                        log('⚠️ PROBLEMA: Francisca existe pero NO aparece en consulta de profesores');
+                        log('🔍 Verificando el user_role de Francisca...');
+                        franciscaData.forEach(f => {
+                            log(`   - Role actual: "${f.user_role}" (¿es exactamente "teacher"?)`);
+                            log(`   - Comparación: "${f.user_role}" === "teacher" = ${f.user_role === 'teacher'}`);
+                        });
+                    }
+                    log('');
+                }
+
+                // Mostrar estadísticas
+                displayStats(teachers);
+
+                // Mostrar profesores
+                displayTeachers(teachers);
+
+                // Análisis de duplicados
+                analyzeEmailDuplicates(teachers);
+
+            } catch (error) {
+                log('❌ Error ejecutando query: ' + error.message);
+            }
+        }
+
+        // ✅ MOSTRAR ESTADÍSTICAS
+        function displayStats(teachers) {
+            const uniqueEmails = new Set(teachers.map(t => t.email?.toLowerCase()).filter(Boolean)).size;
+            const uniqueSchools = new Set(teachers.map(t => t.school).filter(Boolean)).size;
+            const withCourse = teachers.filter(t => t.course).length;
+
+            log('📊 ESTADÍSTICAS GENERALES:');
+            log('========================');
+            log(`Total profesores: ${teachers.length}`);
+            log(`Emails únicos: ${uniqueEmails}`);
+            log(`Colegios diferentes: ${uniqueSchools}`);
+            log(`Con curso asignado: ${withCourse}`);
+            log('');
+        }
+
+        // ✅ MOSTRAR PROFESORES
+        function displayTeachers(teachers) {
+            log('👨‍🏫 LISTA DE PROFESORES:');
+            log('========================');
+
+            teachers.forEach((teacher, index) => {
+                log(`${index + 1}. ${teacher.full_name || 'Sin nombre'}`);
+                log(`   📧 Email: ${teacher.email || 'Sin email'}`);
+                log(`   🏫 Colegio: ${teacher.school || 'Sin especificar'}`);
+                log(`   📚 Curso: ${teacher.course || 'Sin especificar'}`);
+                log(`   🆔 ID: ${teacher.user_id}`);
+                log(`   📅 Creado: ${teacher.created_at ? new Date(teacher.created_at).toLocaleDateString('es-ES') : 'Sin fecha'}`);
+                log(`   🔄 Actualizado: ${teacher.updated_at ? new Date(teacher.updated_at).toLocaleDateString('es-ES') : 'Sin fecha'}`);
+                log('   ─────────────────────────────');
+            });
+            log('');
+        }
+
+        // ✅ ANÁLISIS DE DUPLICADOS
+        function analyzeEmailDuplicates(teachers) {
+            log('🔍 ANÁLISIS DE DUPLICADOS POR EMAIL:');
+            log('===================================');
+
+            const emailMap = new Map();
+            teachers.forEach(teacher => {
+                const email = teacher.email?.toLowerCase()?.trim();
+                if (email) {
+                    if (!emailMap.has(email)) {
+                        emailMap.set(email, []);
+                    }
+                    emailMap.get(email).push(teacher);
+                }
+            });
+
+            let duplicatesFound = false;
+            emailMap.forEach((teachersList, email) => {
+                if (teachersList.length > 1) {
+                    duplicatesFound = true;
+                    log(`⚠️  Email duplicado: ${email} (${teachersList.length} registros)`);
+                    teachersList.forEach((teacher, idx) => {
+                        log(`     ${idx + 1}. ${teacher.full_name} - ID: ${teacher.user_id}`);
+                        log(`        Creado: ${teacher.created_at}`);
+                        log(`        Actualizado: ${teacher.updated_at || 'No actualizado'}`);
+                    });
+                    log('');
+                }
+            });
+
+            if (!duplicatesFound) {
+                log('✅ No se encontraron emails duplicados');
+            }
+            log('');
+        }
+
+        // ✅ QUERY ESPECÍFICA: Solo duplicados
+        async function queryDuplicates() {
+            if (teachersData.length === 0) {
+                await queryAllTeachers();
+                return;
+            }
+
+            clearResults();
+            log('🔍 BUSCANDO DUPLICADOS...\n');
+            analyzeEmailDuplicates(teachersData);
+        }
+
+        // ✅ QUERY ESPECÍFICA: Por colegio
+        async function queryBySchool() {
+            if (teachersData.length === 0) {
+                await queryAllTeachers();
+                return;
+            }
+
+            clearResults();
+            log('🏫 PROFESORES AGRUPADOS POR COLEGIO:');
+            log('===================================\n');
+
+            const schoolMap = new Map();
+            teachersData.forEach(teacher => {
+                const school = teacher.school || 'Sin especificar';
+                if (!schoolMap.has(school)) {
+                    schoolMap.set(school, []);
+                }
+                schoolMap.get(school).push(teacher);
+            });
+
+            // Ordenar colegios alfabéticamente
+            const sortedSchools = Array.from(schoolMap.keys()).sort();
+
+            sortedSchools.forEach(school => {
+                const teachers = schoolMap.get(school);
+                log(`📚 ${school} (${teachers.length} profesor${teachers.length !== 1 ? 'es' : ''})`);
+                
+                teachers.forEach((teacher, idx) => {
+                    log(`   ${idx + 1}. ${teacher.full_name || 'Sin nombre'}`);
+                    log(`      📧 ${teacher.email || 'Sin email'}`);
+                    if (teacher.course) {
+                        log(`      📖 Curso: ${teacher.course}`);
+                    }
+                });
+                log('');
+            });
+        }
+
+        // ✅ NUEVA FUNCIÓN: Debug específico de user_role
+        async function debugUserRoles() {
+            if (!initializeSupabase()) {
+                log('❌ No se pudo conectar a Supabase');
+                return;
+            }
+
+            try {
+                clearResults();
+                log('🔬 DEBUG DETALLADO DE USER_ROLE\n');
+                log('================================\n');
+
+                // 1. Buscar TODOS los registros con información completa
+                log('1️⃣ Obteniendo TODOS los registros...');
+                const { data: allRecords, error: allError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('user_id, full_name, email, user_role')
+                    .not('user_role', 'is', null)
+                    .order('created_at', { ascending: true });
+
+                if (allError) {
+                    log('❌ Error: ' + allError.message);
+                    return;
+                }
+
+                log(`✅ Total registros: ${allRecords.length}\n`);
+
+                // 2. Análisis detallado de user_role
+                log('2️⃣ ANÁLISIS DETALLADO DE USER_ROLE:');
+                log('──────────────────────────────────');
+
+                const roleAnalysis = new Map();
+                allRecords.forEach(record => {
+                    const role = record.user_role;
+                    const roleKey = `"${role}"`;
+                    
+                    if (!roleAnalysis.has(roleKey)) {
+                        roleAnalysis.set(roleKey, {
+                            count: 0,
+                            length: role ? role.length : 0,
+                            hasSpaces: role ? (role !== role.trim()) : false,
+                            examples: []
+                        });
+                    }
+                    
+                    const analysis = roleAnalysis.get(roleKey);
+                    analysis.count++;
+                    if (analysis.examples.length < 3) {
+                        analysis.examples.push({
+                            name: record.full_name,
+                            email: record.email,
+                            id: record.user_id
+                        });
+                    }
+                });
+
+                // Mostrar análisis
+                roleAnalysis.forEach((analysis, roleKey) => {
+                    log(`🔍 Role: ${roleKey}`);
+                    log(`   📊 Cantidad: ${analysis.count}`);
+                    log(`   📏 Longitud: ${analysis.length} caracteres`);
+                    log(`   🔲 Espacios extra: ${analysis.hasSpaces ? 'SÍ' : 'NO'}`);
+                    log(`   👤 Ejemplos:`);
+                    analysis.examples.forEach((example, idx) => {
+                        log(`      ${idx + 1}. ${example.name} (${example.email})`);
+                    });
+                    log('');
+                });
+
+                // 3. Buscar específicamente variaciones de "teacher"
+                log('3️⃣ BÚSQUEDA ESPECÍFICA DE VARIACIONES DE "TEACHER":');
+                log('─────────────────────────────────────────────────');
+
+                const teacherVariations = [
+                    'teacher',
+                    'Teacher',
+                    'TEACHER',
+                    ' teacher',
+                    'teacher ',
+                    ' teacher ',
+                    'profesor',
+                    'Profesor'
+                ];
+
+                for (const variation of teacherVariations) {
+                    const { data: varData, error: varError } = await supabaseClient
+                        .from('math_profiles')
+                        .select('user_id, full_name, email, user_role')
+                        .eq('user_role', variation);
+
+                    if (!varError && varData && varData.length > 0) {
+                        log(`✅ Encontrados ${varData.length} con user_role = "${variation}"`);
+                        varData.forEach(v => {
+                            log(`   - ${v.full_name} (${v.email})`);
+                        });
+                    } else {
+                        log(`❌ No encontrados con user_role = "${variation}"`);
+                    }
+                }
+                log('');
+
+                // 4. Búsqueda con ILIKE (insensible a mayúsculas)
+                log('4️⃣ BÚSQUEDA CON ILIKE (insensible a mayúsculas):');
+                log('───────────────────────────────────────────────');
+
+                const { data: ilikeData, error: ilikeError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('user_id, full_name, email, user_role')
+                    .ilike('user_role', '%teacher%');
+
+                if (!ilikeError && ilikeData) {
+                    log(`✅ ILIKE '%teacher%': ${ilikeData.length} resultados`);
+                    ilikeData.forEach(t => {
+                        log(`   - ${t.full_name}: "${t.user_role}" (${t.email})`);
+                    });
+                } else {
+                    log('❌ Error con ILIKE o sin resultados');
+                }
+                log('');
+
+                // 5. Verificar específicamente Francisca
+                log('5️⃣ VERIFICACIÓN ESPECÍFICA DE FRANCISCA:');
+                log('────────────────────────────────────────');
+
+                const { data: franciscaData, error: franciscaError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('*')
+                    .ilike('full_name', '%francisca%');
+
+                if (!franciscaError && franciscaData && franciscaData.length > 0) {
+                    franciscaData.forEach(f => {
+                        log(`👤 ${f.full_name}:`);
+                        log(`   📧 Email: ${f.email}`);
+                        log(`   🔑 Role: "${f.user_role}"`);
+                        log(`   📏 Role length: ${f.user_role ? f.user_role.length : 'null'}`);
+                        log(`   🔲 Role trimmed: "${f.user_role ? f.user_role.trim() : 'null'}"`);
+                        log(`   ✅ Equals 'teacher': ${f.user_role === 'teacher'}`);
+                        log(`   ✅ Trimmed equals 'teacher': ${f.user_role ? f.user_role.trim() === 'teacher' : false}`);
+                        log(`   ✅ ILIKE teacher: ${f.user_role ? f.user_role.toLowerCase().includes('teacher') : false}`);
+                        log('');
+                    });
+                } else {
+                    log('❌ Francisca no encontrada');
+                }
+
+                // 6. BÚSQUEDA ESPECÍFICA POR EMAIL DE FRANCISCA
+                log('6️⃣ BÚSQUEDA ESPECÍFICA POR EMAIL DE FRANCISCA:');
+                log('──────────────────────────────────────────────────');
+
+                const { data: emailData, error: emailError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('*')
+                    .eq('email', 'franita90@gmail.com');
+
+                if (!emailError && emailData && emailData.length > 0) {
+                    log(`✅ Francisca ENCONTRADA por email: ${emailData.length} registros`);
+                    emailData.forEach(f => {
+                        log(`👤 Registro encontrado:`);
+                        log(`   📧 Email: ${f.email}`);
+                        log(`   👤 Nombre: ${f.full_name}`);
+                        log(`   🔑 Role: "${f.user_role}"`);
+                        log(`   🆔 User ID: ${f.user_id}`);
+                        log(`   📅 Creado: ${f.created_at}`);
+                        log(`   📝 Actualizado: ${f.updated_at}`);
+                        log(`   🔍 Role igual a 'teacher': ${f.user_role === 'teacher'}`);
+                        log('');
+                    });
+                } else {
+                    log('❌ Francisca NO encontrada por email franita90@gmail.com');
+                    if (emailError) {
+                        log(`   Error: ${emailError.message}`);
+                    }
+                }
+                log('');
+
+                // 7. BÚSQUEDA GENERAL POR PATRONES DE NOMBRE
+                log('7️⃣ BÚSQUEDA GENERAL POR PATRONES DE NOMBRE:');
+                log('─────────────────────────────────────────────');
+
+                const namePatterns = ['francisca', 'gavilan', 'franita'];
+                
+                for (const pattern of namePatterns) {
+                    const { data: patternData, error: patternError } = await supabaseClient
+                        .from('math_profiles')
+                        .select('*')
+                        .or(`full_name.ilike.%${pattern}%,email.ilike.%${pattern}%`);
+
+                    if (!patternError && patternData && patternData.length > 0) {
+                        log(`✅ Patrón "${pattern}": ${patternData.length} resultados`);
+                        patternData.forEach(p => {
+                            log(`   - ${p.full_name} (${p.email}) - Role: "${p.user_role}"`);
+                        });
+                    } else {
+                        log(`❌ Patrón "${pattern}": Sin resultados`);
+                    }
+                }
+                log('');
+
+                // 8. VERIFICAR TODOS LOS EMAILS QUE CONTENGAN 'franita' o 'francisca'
+                log('8️⃣ BÚSQUEDA POR EMAILS SIMILARES:');
+                log('─────────────────────────────────');
+
+                const { data: similarEmails, error: similarError } = await supabaseClient
+                    .from('math_profiles')
+                    .select('*')
+                    .or('email.ilike.%franita%,email.ilike.%francisca%');
+
+                if (!similarError && similarEmails && similarEmails.length > 0) {
+                    log(`✅ Emails similares: ${similarEmails.length} resultados`);
+                    similarEmails.forEach(s => {
+                        log(`   📧 ${s.email} - ${s.full_name} - Role: "${s.user_role}"`);
+                    });
+                } else {
+                    log('❌ No se encontraron emails similares');
+                }
+            } catch (error) {
+                log('❌ Error en debug: ' + error.message);
+            }
+        }
+
+        // Intentar conectar automáticamente al cargar la página
+        window.addEventListener('load', () => {
+            log('🔄 Inicializando herramienta de consulta...');
+            if (initializeSupabase()) {
+                log('✅ Listo para consultar profesores\n');
+                log('💡 Usa los botones de arriba para ejecutar consultas\n');
+            } else {
+                log('❌ Error de inicialización');
+                log('💡 Asegúrate de que las credenciales de Supabase sean correctas\n');
+            }
+        });
+    </script>
+</body>
+</html>

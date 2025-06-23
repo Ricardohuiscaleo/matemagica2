@@ -111,6 +111,9 @@ class LoginSystem {
             this.supabase = window.supabase.createClient(this.config.url, this.config.anon_key);
             console.log("✅ Cliente Supabase inicializado");
             
+            // ✅ NUEVO: Exponer cliente globalmente para otros módulos
+            window.supabaseClient = this.supabase;
+            
             // 3. Configurar elementos DOM
             this.setupDOMElements();
             this.setupEventListeners();
@@ -128,6 +131,33 @@ class LoginSystem {
     async handleInitialLoad() {
         try {
             console.log("🔄 Manejando carga inicial...");
+            
+            // ✅ NUEVO: Verificar si el usuario acaba de hacer logout
+            const recentLogout = sessionStorage.getItem('matemagica-recent-logout');
+            if (recentLogout) {
+                const logoutTime = parseInt(recentLogout);
+                const now = Date.now();
+                
+                // Si el logout fue hace menos de 30 segundos, no auto-login
+                if (now - logoutTime < 30000) {
+                    console.log("🚪 Logout reciente detectado - no auto-login");
+                    sessionStorage.removeItem('matemagica-recent-logout');
+                    this.showLoader(false);
+                    return;
+                }
+                
+                // Limpiar marca de logout expirada
+                sessionStorage.removeItem('matemagica-recent-logout');
+            }
+            
+            // ✅ NUEVO: Verificar si hay una marca de "no auto-login"
+            const skipAutoLogin = localStorage.getItem('matemagica-skip-autologin');
+            if (skipAutoLogin === 'true') {
+                console.log("⏭️ Auto-login deshabilitado por usuario");
+                localStorage.removeItem('matemagica-skip-autologin');
+                this.showLoader(false);
+                return;
+            }
             
             // Verificar si hay tokens OAuth en la URL
             const oauthTokens = this.parseUrlFragment();
@@ -166,16 +196,33 @@ class LoginSystem {
                 }
             }
             
-            // Verificar sesión existente (sin tokens OAuth en URL)
+            // ✅ MEJORADO: Verificar sesión existente solo si no acabamos de hacer logout
             const { data: { session }, error } = await this.supabase.auth.getSession();
             if (session?.user && !error) {
-                console.log("✅ Sesión existente encontrada:", session.user.email);
-                await this.onLoginSuccess(session.user);
-                return;
+                // ✅ NUEVO: Verificar si tenemos datos locales que coincidan
+                const localAuth = localStorage.getItem('matemagica-authenticated');
+                const localProfile = localStorage.getItem('matemagica-user-profile');
+                
+                if (localAuth === 'true' && localProfile) {
+                    try {
+                        const profile = JSON.parse(localProfile);
+                        if (profile.user_id === session.user.id) {
+                            console.log("✅ Sesión existente válida encontrada:", session.user.email);
+                            await this.onLoginSuccess(session.user);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("⚠️ Error validando perfil local:", e);
+                    }
+                }
+                
+                // Si la sesión existe pero no hay datos locales válidos, limpiar todo
+                console.log("🧹 Sesión remota sin datos locales válidos - limpiando...");
+                await this.supabase.auth.signOut();
             }
             
-            // No hay sesión - mostrar pantalla de login
-            console.log("ℹ️ No hay sesión activa - mostrando login");
+            // No hay sesión válida - mostrar pantalla de login
+            console.log("ℹ️ No hay sesión válida - mostrando login");
             this.showLoader(false);
             
         } catch (error) {
@@ -244,43 +291,108 @@ class LoginSystem {
 
     async onLoginSuccess(user) {
         const role = localStorage.getItem('matemagica_selected_role') || 'parent';
+        
+        // ✅ TODOS ENTRAN COMO USUARIOS NORMALES (sin detección automática de admin)
         const userProfile = {
             user_id: user.id, 
             email: user.email,
             full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-            avatar_url: user.user_metadata?.avatar_url,
-            user_role: role
+            avatar_url: user.user_metadata?.avatar_url || null,
+            user_role: role, // Usar el rol seleccionado por el usuario (parent/teacher)
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
         
         try {
             console.log("💾 Guardando perfil");
             
-            // Intentar guardar en Supabase (sin bloquear si falla)
-            try {
-                await this.supabase.from('math_profiles').upsert(userProfile, { 
-                    onConflict: 'user_id' 
-                });
-            } catch (dbError) {
-                console.warn('⚠️ Error en BD (continuando):', dbError.message);
-            }
-            
-            // SIEMPRE guardar localmente
+            // Siempre guardar localmente PRIMERO (más confiable)
             localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
             localStorage.setItem('matemagica-authenticated', 'true');
             localStorage.removeItem('matemagica_selected_role');
             
-            // Redirección directa
+            // Intentar guardar en Supabase de forma opcional (sin bloquear)
+            try {
+                // Verificar si ya existe el perfil
+                const { data: existingProfile, error: checkError } = await this.supabase
+                    .from('math_profiles')
+                    .select('user_id')
+                    .eq('user_id', user.id)
+                    .single();
+                
+                if (checkError && checkError.code !== 'PGRST116') {
+                    // Error diferente a "no encontrado"
+                    console.warn('⚠️ Error verificando perfil existente:', checkError.message);
+                }
+                
+                let dbResult;
+                if (existingProfile) {
+                    // Actualizar perfil existente
+                    dbResult = await this.supabase
+                        .from('math_profiles')
+                        .update({
+                            email: userProfile.email,
+                            full_name: userProfile.full_name,
+                            avatar_url: userProfile.avatar_url,
+                            updated_at: userProfile.updated_at
+                        })
+                        .eq('user_id', user.id);
+                } else {
+                    // Crear nuevo perfil
+                    dbResult = await this.supabase
+                        .from('math_profiles')
+                        .insert([userProfile]);
+                }
+                
+                if (dbResult.error) {
+                    console.warn('⚠️ Error guardando en BD (modo desarrollo):', dbResult.error.message);
+                    console.warn('⚠️ Detalles del error:', dbResult.error);
+                    // En desarrollo, los errores de BD no son críticos
+                } else {
+                    console.log('✅ Perfil guardado en BD correctamente');
+                }
+            } catch (dbError) {
+                console.warn('⚠️ BD no disponible (modo desarrollo):', dbError.message);
+                // En modo desarrollo, esto es normal si la BD no está configurada
+            }
+            
+            // Redirección directa SEGÚN ROL SELECCIONADO (sin detección especial)
             this.showLoader(true, "success");
             setTimeout(() => {
-                window.location.href = 'dashboard.html';
+                if (role === 'parent') {
+                    console.log('👨‍👩‍👧‍👦 Redirigiendo apoderado a dashboard específico');
+                    window.location.href = 'apoderado-dashboard.html';
+                } else if (role === 'teacher') {
+                    console.log('👩‍🏫 Redirigiendo profesor a dashboard específico');
+                    window.location.href = 'profesor-dashboard.html';
+                } else {
+                    // Fallback al dashboard legacy
+                    console.log('🎯 Rol no reconocido, usando dashboard legacy');
+                    window.location.href = 'dashboard-legacy.html';
+                }
             }, 1000);
             
         } catch (error) {
             console.error("❌ Error en onLoginSuccess:", error);
-            // Guardar localmente y continuar
+            // Fallback: Guardar solo localmente y continuar
             localStorage.setItem('matemagica-user-profile', JSON.stringify(userProfile));
             localStorage.setItem('matemagica-authenticated', 'true');
-            window.location.href = 'dashboard.html';
+            localStorage.removeItem('matemagica_selected_role');
+            
+            this.showLoader(true, "success");
+            setTimeout(() => {
+                if (role === 'parent') {
+                    console.log('👨‍👩‍👧‍👦 Redirigiendo apoderado a dashboard específico');
+                    window.location.href = 'apoderado-dashboard.html';
+                } else if (role === 'teacher') {
+                    console.log('👩‍🏫 Redirigiendo profesor a dashboard específico');
+                    window.location.href = 'profesor-dashboard.html';
+                } else {
+                    // Fallback al dashboard legacy
+                    console.log('🎯 Rol no reconocido, usando dashboard legacy');
+                    window.location.href = 'dashboard-legacy.html';
+                }
+            }, 1000);
         }
     }
 
@@ -337,6 +449,97 @@ class LoginSystem {
     cleanupUrl() {
         if (window.location.hash) {
             window.history.replaceState(null, '', window.location.pathname);
+        }
+    }
+
+    // ✅ NUEVO: Método signOut para cerrar sesión completamente
+    async signOut() {
+        try {
+            console.log('🚪 === INICIANDO LOGOUT COMPLETO ===');
+            
+            // 🆕 NUEVO: Marcar logout reciente para evitar auto-login
+            sessionStorage.setItem('matemagica-recent-logout', Date.now().toString());
+            
+            // 1. Cerrar sesión en Supabase primero
+            if (this.supabase && this.supabase.auth) {
+                console.log('🚪 Cerrando sesión en Supabase...');
+                const { error } = await this.supabase.auth.signOut();
+                if (error) {
+                    console.warn('⚠️ Error cerrando sesión en Supabase:', error.message);
+                } else {
+                    console.log('✅ Sesión cerrada en Supabase');
+                }
+            }
+            
+            // 2. Limpiar localStorage completo
+            console.log('🧹 Limpiando localStorage...');
+            const itemsToRemove = [
+                'matemagica-authenticated',
+                'matemagica-user-profile',
+                'matemagica_selected_role',
+                'matemagica_user',
+                'matemagica_profile',
+                'matemagica_role',
+                'matemagica_student_info',
+                'currentUser',
+                'userProfile',
+                'selectedRole',
+                'studentData',
+                'ejerciciosHistorial',
+                'profesorEstudiantes',
+                'profesorEjerciciosHistorial'
+            ];
+            
+            itemsToRemove.forEach(item => {
+                localStorage.removeItem(item);
+                console.log(`  ✅ Removido: ${item}`);
+            });
+            
+            // 3. Limpiar sessionStorage (excepto la marca de logout reciente)
+            console.log('🧹 Limpiando sessionStorage...');
+            const recentLogout = sessionStorage.getItem('matemagica-recent-logout');
+            sessionStorage.clear();
+            if (recentLogout) {
+                sessionStorage.setItem('matemagica-recent-logout', recentLogout);
+            }
+            
+            // 4. Limpiar cookies relacionadas
+            console.log('🍪 Limpiando cookies...');
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            // 5. Limpiar estado interno del sistema
+            this.selectedRole = null;
+            this.initialized = false;
+            
+            // 6. Limpiar referencias globales si existen
+            if (window.welcomeAuthManager) {
+                window.welcomeAuthManager.currentUser = null;
+                window.welcomeAuthManager.userProfile = null;
+                window.welcomeAuthManager.selectedRole = null;
+                window.welcomeAuthManager.studentInfo = null;
+            }
+            
+            console.log('✅ === LOGOUT COMPLETO FINALIZADO ===');
+            console.log('⏰ Marca de logout guardada - auto-login bloqueado por 30 segundos');
+            
+            // 7. Redireccionar al login después de un breve delay
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
+            
+        } catch (error) {
+            console.error('❌ Error durante logout:', error);
+            
+            // Fallback: limpiar localStorage básico y redireccionar
+            sessionStorage.setItem('matemagica-recent-logout', Date.now().toString());
+            localStorage.clear();
+            sessionStorage.clear();
+            sessionStorage.setItem('matemagica-recent-logout', Date.now().toString());
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
         }
     }
 }
