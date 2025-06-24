@@ -1776,11 +1776,14 @@ class BaseProfileManagement {
                 assignedTeachers: []
             };
 
-            console.log('🧑‍🎓 BaseProfileManagement: Datos del nuevo estudiante para el core:', studentDataForCore);
+            // Aquí estaba el error: studentDataForCore no estaba definida.
+            // La variable correcta con los datos del formulario es 'studentData'.
+            console.log('🧑‍🎓 BaseProfileManagement: Datos del nuevo estudiante para el core:', studentData);
 
             if (window.studentCore) {
                 try {
-                    const createdStudent = await window.studentCore.createStudent(studentDataForCore);
+                    // Usar la variable correcta 'studentData' aquí también.
+                    const createdStudent = await window.studentCore.createStudent(studentData);
                     if (createdStudent) {
                         console.log('✅ BaseProfileManagement: Estudiante creado/guardado a través de studentCore:', createdStudent);
                         this.showNotification(`✅ Perfil de ${nickname} guardado exitosamente (vía Core).`, 'success');
