@@ -1,5 +1,5 @@
 /**
- * 🎯 CORE DE GESTIÓN DE ESTUDIANTES 24 jun 02:32pm v5
+ * 🎯 CORE DE GESTIÓN DE ESTUDIANTES
  * Responsabilidad: Lógica de negocio, datos y persistencia
  * Separado del sistema de modales para mejor organización
  */
@@ -294,7 +294,7 @@ class StudentManagementCore {
                 .select('*')
                 .eq('parent_id', parentId)
                 .eq('user_role', 'student')
-                .not('user_id', 'is', null)
+                // .not('user_id', 'is', null) // Eliminado para cargar estudiantes aunque user_id sea null
                 .order('created_at', { ascending: true });
             
             if (error) {
@@ -630,32 +630,11 @@ class StudentManagementCore {
                     console.error(`❌ Error insertando en Supabase:`, error);
                     throw error;
                 }
-
-                if (data && data.id) {
-                    // El estudiante fue insertado, ahora actualizamos user_id para que sea igual a id
-                    console.log(`ℹ️ Estudiante insertado con ID: ${data.id}. Actualizando user_id...`);
-                    const { data: updatedData, error: updateError } = await this.state.supabaseClient
-                        .from('math_profiles')
-                        .update({ user_id: data.id }) // Establecer user_id = id
-                        .eq('id', data.id)
-                        .select()
-                        .single();
-
-                    if (updateError) {
-                        console.error(`❌ Error actualizando user_id para el nuevo estudiante ${data.id}:`, updateError);
-                        // Aunque esto es un error, el estudiante ya fue creado.
-                        // Podríamos decidir si lanzar el error o solo loguearlo.
-                        // Por ahora, lo logueamos y devolvemos los datos de la inserción original.
-                        // El usuario podría no ver al estudiante si la carga filtra por user_id != null.
-                    } else {
-                        console.log(`✅ user_id actualizado para el nuevo estudiante ${data.id}. Datos finales:`, updatedData);
-                        return updatedData; // Devolver el perfil con user_id actualizado
-                    }
-                }
-                // Si data o data.id no existen después del insert, algo salió mal
-                // o la operación no devolvió lo esperado.
-                console.log(`✅ Estudiante guardado en Supabase (paso de inserción). Datos devueltos:`, data);
-                return data; // Devolver datos de la inserción original, incluso si la actualización de user_id falló
+                // Se elimina el bloque que intentaba actualizar user_id con data.id,
+                // ya que causaba un error de FK. user_id se insertará como null
+                // según la definición de supabaseRecord.
+                console.log(`✅ Estudiante guardado en Supabase (solo inserción). Datos devueltos:`, data);
+                return data;
             }
             
         } catch (error) {
