@@ -1,5 +1,5 @@
 /**
- * 🎯 CORE DE GESTIÓN DE ESTUDIANTES
+ * 🎯 CORE DE GESTIÓN DE ESTUDIANTES 24 jun 02:32pm v5
  * Responsabilidad: Lógica de negocio, datos y persistencia
  * Separado del sistema de modales para mejor organización
  */
