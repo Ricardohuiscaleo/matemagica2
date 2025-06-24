@@ -459,8 +459,8 @@ function openStudentModal() {
 function updateCurrentStudentDisplay() {
     try {
         const student = DASHBOARD_CONFIG.currentStudent;
-        const nameElement = document.getElementById('current-student-name');
-        const avatarElement = document.querySelector('.student-avatar, .w-8.h-8');
+        const nameElement = document.getElementById('active-student-name'); // ID CORREGIDO
+        const avatarElement = document.querySelector('#student-active-display .w-8.h-8'); // Selector más específico para el avatar en el panel
         
         if (student && nameElement) {
             nameElement.textContent = student.name;
@@ -468,7 +468,9 @@ function updateCurrentStudentDisplay() {
         }
         
         if (student && avatarElement) {
-            const avatar = student.avatar || (student.gender === 'niña' ? '👧' : '👦');
+            // Si el estudiante tiene un campo 'avatar_url' o 'avatar', usarlo.
+            // Si no, usar el emoji de género.
+            const avatar = student.avatar_url || student.avatar || (student.gender === 'femenino' ? '👧' : (student.gender === 'masculino' ? '👦' : '👤'));
             avatarElement.textContent = avatar;
             
             // Actualizar colores según género
