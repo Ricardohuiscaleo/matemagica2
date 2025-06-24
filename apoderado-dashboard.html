@@ -729,7 +729,306 @@
                 setupNavigation(); // <--- AÑADIR LLAMADA A LA NUEVA FUNCIÓN DE NAVEGACIÓN
                 
                 console.log('✅ Sistemas básicos inicializados');
-            } catch (error) GESTIÓN DE PERFILES (MODIFICADA)
+            } catch (error) { // GESTIÓN DE PERFILES (MODIFICADA) - Comentado para evitar error de sintaxis
+                console.error('❌ Error en inicialización del dashboard:', error); // Añadido mensaje de error
+            }
+        }
+
+        // SOBRE LA FUNCIÓN updateDashboardStats() - YA ESTABA EN EL ARCHIVO, SOLO AJUSTES MENORES
+        // Asegúrate que esta función esté definida ANTES de initializeDashboardSystem si es llamada desde ahí.
+        // O muévela dentro de initializeDashboardSystem o llámala después de que todas las funciones estén definidas.
+        // Por ahora, la dejo aquí asumiendo que el orden de ejecución es correcto o se ajustará.
+        function updateDashboardStats() {
+            console.log('🔄 Actualizando estadísticas del dashboard...');
+            try {
+                let currentStudent = null;
+                if (window.studentCore && typeof window.studentCore.getCurrentStudent === 'function') {
+                    currentStudent = window.studentCore.getCurrentStudent();
+                }
+
+                const statExercisesEl = document.getElementById('stat-exercises');
+                const statPointsEl = document.getElementById('stat-points');
+                const statAccuracyEl = document.getElementById('stat-accuracy');
+
+
+                if (currentStudent && currentStudent.stats) {
+                    console.log('📊 Usando estadísticas del estudiante actual:', currentStudent.name, currentStudent.stats);
+                    if (statExercisesEl) statExercisesEl.textContent = currentStudent.stats.totalExercises || 0;
+                    if (statPointsEl) statPointsEl.textContent = currentStudent.stats.totalPoints || 0;
+
+                    let accuracy = 0;
+                    if (currentStudent.stats.totalExercises > 0 && currentStudent.stats.correctAnswers !== undefined) {
+                        accuracy = Math.round((currentStudent.stats.correctAnswers / currentStudent.stats.totalExercises) * 100);
+                    } else if (currentStudent.stats.averageAccuracy !== undefined) {
+                        accuracy = Math.round(currentStudent.stats.averageAccuracy);
+                    }
+                    if (statAccuracyEl) statAccuracyEl.textContent = `${accuracy}%`;
+
+                } else {
+                    console.log('ℹ️ No hay estudiante actual o no tiene estadísticas. Mostrando valores por defecto.');
+                    if (statExercisesEl) statExercisesEl.textContent = '0';
+                    if (statPointsEl) statPointsEl.textContent = '0';
+                    if (statAccuracyEl) statAccuracyEl.textContent = '0%';
+                }
+                console.log('✅ Estadísticas del dashboard actualizadas.');
+            } catch (error) {
+                console.error('❌ Error actualizando estadísticas del dashboard:', error);
+                const statExercisesEl = document.getElementById('stat-exercises');
+                const statPointsEl = document.getElementById('stat-points');
+                const statAccuracyEl = document.getElementById('stat-accuracy');
+                if (statExercisesEl) statExercisesEl.textContent = '0';
+                if (statPointsEl) statPointsEl.textContent = '0';
+                if (statAccuracyEl) statAccuracyEl.textContent = '0%';
+            }
+        }
+
+
+        function initializeGlobalAIIndicator() {
+            try {
+                const aiConfigured = window.geminiAI && window.geminiAI.configured;
+                const aiStatusDot = document.querySelector('#ai-indicator .ai-status-dot');
+                const aiStatusText = document.querySelector('#ai-indicator .ai-status-text');
+
+                if (aiStatusDot) {
+                    if (aiConfigured) {
+                        aiStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
+                        aiStatusDot.classList.add('bg-green-500');
+                        if (aiStatusText) aiStatusText.textContent = 'IA Activa';
+                        console.log('🤖 IA: ACTIVA (Indicador visual actualizado)');
+                    } else {
+                        aiStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
+                        aiStatusDot.classList.add('bg-red-500');
+                        if (aiStatusText) aiStatusText.textContent = 'IA Offline';
+                        console.log('🤖 IA: OFFLINE (Indicador visual actualizado)');
+                    }
+                } else {
+                    console.warn("⚠️ Elemento .ai-status-dot no encontrado para el indicador IA.");
+                }
+            } catch (error) {
+                console.error('❌ Error inicializando indicador IA:', error);
+                // Asegurarse de que el indicador muestre un estado de error o desconocido
+                const aiStatusDot = document.querySelector('#ai-indicator .ai-status-dot');
+                const aiStatusText = document.querySelector('#ai-indicator .ai-status-text');
+                if (aiStatusDot) {
+                    aiStatusDot.classList.remove('bg-green-500', 'bg-red-500');
+                    aiStatusDot.classList.add('bg-gray-400'); // Estado neutro/error
+                    if (aiStatusText) aiStatusText.textContent = 'IA Indet.';
+                }
+            }
+        }
+
+        function updateWelcomeMessage() {
+            try {
+                const now = new Date();
+                let greeting = "¡Hola";
+
+                const hours = now.getHours();
+                if (hours < 12) {
+                    greeting = "¡Buenos días";
+                } else if (hours < 20) {
+                    greeting = "¡Buenas tardes";
+                } else {
+                    greeting = "¡Buenas noches";
+                }
+
+                let userName = "";
+                try {
+                    const userProfileString = localStorage.getItem('matemagica-user-profile');
+                    if (userProfileString) {
+                        const userProfile = JSON.parse(userProfileString);
+                        if (userProfile && userProfile.full_name) {
+                            userName = userProfile.full_name.split(' ')[0]; // Tomar solo el primer nombre
+                        }
+                    }
+                } catch (e) {
+                    console.warn("⚠️ No se pudo obtener el nombre del usuario para el saludo:", e);
+                }
+
+                if (userName) {
+                    greeting += `, ${userName}!`;
+                } else {
+                    greeting += "!";
+                }
+
+                const timeString = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                const dateStringOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const dateString = now.toLocaleDateString('es-ES', dateStringOptions);
+
+                const fullMessage = `${greeting} Son las ${timeString} del ${dateString}.`;
+
+                const welcomeElement = document.getElementById('welcome-message');
+                if (welcomeElement) {
+                    welcomeElement.textContent = fullMessage;
+                }
+
+                console.log(`✅ Mensaje de bienvenida actualizado: ${fullMessage}`);
+            } catch (error) {
+                console.error('❌ Error actualizando mensaje de bienvenida:', error);
+            }
+        }
+
+        function setupBasicUI() {
+            try {
+                // setupNavigationListeners(); // Esta función parece que ya no es necesaria aquí si setupNavigation() maneja todo.
+                setupQuickActions();
+                setupLogoutButton();
+                console.log('✅ UI básica configurada');
+            } catch (error) {
+                console.error('❌ Error configurando UI básica:', error);
+            }
+        }
+
+        // function setupNavigationListeners() { // Comentada porque setupNavigation() debería cubrir esto.
+        //     // Navegación básica - los eventos específicos los maneja cada módulo
+        //     console.log('✅ Listeners de navegación configurados');
+        // }
+
+        function setupQuickActions() {
+            const quickActions = document.querySelectorAll('.quick-action');
+            quickActions.forEach(action => {
+                action.addEventListener('click', () => {
+                    console.log('🚀 Acción rápida próximamente');
+                });
+            });
+        }
+
+        function setupLogoutButton() {
+            try {
+                const logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', handleLogout);
+                    console.log('✅ Botón de logout configurado');
+                } else {
+                    console.warn('⚠️ Botón de logout no encontrado');
+                }
+            } catch (error) { // GESTIÓN DE PERFILES (MODIFICADA)
+                console.error('❌ Error configurando botón de logout:', error);
+            }
+        }
+
+        function handleLogout() {
+            try {
+                console.log('🚪 Iniciando proceso de logout...');
+
+                if (!confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                    return;
+                }
+
+                if (window.loginSystem && typeof window.loginSystem.signOut === 'function') {
+                    console.log('🚪 Usando logout del sistema principal de auth.js...');
+                    window.loginSystem.signOut();
+                } else {
+                    console.log('🚪 Usando logout manual de fallback...');
+                    performManualLogout();
+                }
+
+            } catch (error) {
+                console.error('❌ Error durante logout:', error);
+                performManualLogout();
+            }
+        }
+
+        function performManualLogout() {
+            try {
+                console.log('🧹 Limpiando datos de sesión...');
+                const itemsToRemove = [
+                    'matemagica-authenticated', 'matemagica-user-profile',
+                    'matemagica_selected_role', 'matemagica_user', 'matemagica_profile',
+                    'currentUser', 'userProfile', 'selectedRole'
+                ];
+                itemsToRemove.forEach(item => localStorage.removeItem(item));
+                sessionStorage.clear();
+                if (window.supabase && window.supabase.auth) {
+                    window.supabase.auth.signOut().catch(err => console.warn('⚠️ Error cerrando sesión en Supabase:', err));
+                }
+                console.log('✅ Datos de sesión limpiados');
+                setTimeout(() => { window.location.href = 'index.html'; }, 500);
+            } catch (error) {
+                console.error('❌ Error en logout manual:', error);
+                window.location.reload();
+            }
+        }
+
+        function openProfileManagement() {
+            try {
+                console.log('👥 Abriendo sección de gestión de perfiles...');
+                if (window.studentProfileManagement) {
+                    if (window.studentProfileManagement.isInitialized) {
+                        window.studentProfileManagement.renderFullSection();
+                    } else {
+                        window.studentProfileManagement.init().then(() => {
+                            window.studentProfileManagement.renderFullSection();
+                        }).catch(error => {
+                            console.error('❌ Error inicializando gestión de perfiles:', error);
+                            showProfileManagementError("Error al inicializar el gestor de perfiles.");
+                        });
+                    }
+                } else {
+                    console.warn('⚠️ `studentProfileManagement` no disponible. Intentando cargar script...');
+                    loadProfileManagementScript();
+                }
+            } catch (error) {
+                console.error('❌ Error crítico abriendo gestión de perfiles:', error);
+                showProfileManagementError("Error crítico al intentar abrir la gestión de perfiles.");
+            }
+        }
+
+        function loadProfileManagementScript() {
+            console.log('📦 Cargando script de gestión de perfiles dinámicamente...');
+            showLoadingIndicator('Cargando gestión de perfiles...');
+            const scriptId = 'student-profile-management-script';
+            if (document.getElementById(scriptId)) {
+                console.log('📜 Script ya añadido al DOM. Esperando evento `studentProfileFactoryReady`.');
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'js/student-profile-management.js';
+            script.id = scriptId;
+            script.async = true;
+            script.onload = () => console.log('✅ Script `student-profile-management.js` cargado.');
+            script.onerror = (error) => {
+                console.error('❌ Error cargando script de gestión de perfiles:', error);
+                hideLoadingIndicator();
+                showProfileManagementError("No se pudo cargar el módulo de gestión de perfiles.");
+            };
+            document.head.appendChild(script);
+        }
+
+        document.addEventListener('studentProfileFactoryReady', (event) => {
+            console.log("🎉 Evento 'studentProfileFactoryReady' recibido en apoderado-dashboard.html!");
+            hideLoadingIndicator();
+            if (event.detail && event.detail.manager) {
+                openProfileManagement();
+            } else {
+                console.error("❌ Evento 'studentProfileFactoryReady' recibido sin el gestor.");
+                showProfileManagementError("Error al recibir la confirmación del módulo de perfiles.");
+            }
+        });
+
+        function showLoadingIndicator(mensaje = 'Cargando...') {
+            hideLoadingIndicator();
+            const indicator = document.createElement('div');
+            indicator.id = 'profile-loading-indicator';
+            indicator.className = 'fixed top-20 right-4 z-50 bg-blue-500 text-white p-4 rounded-lg shadow-lg max-w-sm';
+            indicator.innerHTML = `<div class="flex items-center space-x-3"><div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div><div><div class="font-medium">${mensaje}</div><div class="text-xs opacity-75">Por favor espera...</div></div></div>`;
+            document.body.appendChild(indicator);
+        }
+
+        function hideLoadingIndicator() {
+            const indicator = document.getElementById('profile-loading-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        function showProfileManagementError(customMessage = "Error cargando gestión de perfiles.") {
+            hideLoadingIndicator();
+            if (document.getElementById('profile-error-modal')) return;
+            const errorModal = document.createElement('div');
+            errorModal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            errorModal.id = 'profile-error-modal';
+            errorModal.innerHTML = `<div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center"><div class="text-6xl mb-4">😕</div><h2 class="text-2xl font-bold text-gray-800 mb-4">${customMessage}</h2><p class="text-gray-600 mb-6 leading-relaxed">No se pudo cargar el sistema de gestión de perfiles. Esto puede deberse a una conexión lenta, un error en el módulo o un problema temporal.</p><div class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6"><h3 class="font-bold text-yellow-800 mb-2 flex items-center justify-center"><i class="fas fa-tools mr-2"></i>¿Qué puedes hacer?</h3><ul class="text-left text-yellow-700 space-y-1 text-sm"><li>🔄 Intentar recargar la página completamente (Ctrl+Shift+R o Cmd+Shift+R)</li><li>🌐 Verificar tu conexión a internet</li><li>🔎 Revisar la consola del navegador (F12) para más detalles del error</li><li>⏳ Esperar unos segundos y volver a intentar abrir la sección</li></ul></div><div class="space-y-3"><button onclick="retryProfileManagement()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-bold transition-colors"><i class="fas fa-sync-alt mr-2"></i>Reintentar Abrir Sección</button><button onclick="reloadPage()" class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"><i class="fas fa-redo mr-2"></i>Recargar Página Completa</button><button onclick="closeErrorModal()" class="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"><i class="fas fa-times mr-2"></i>Cerrar este mensaje</button></div></div>`;
+            document.body.appendChild(errorModal);
+        }
+
         function retryProfileManagement() {
             console.log('🔄 Reintentando carga de gestión de perfiles...');
             closeErrorModal();
