@@ -496,10 +496,47 @@ async loadStudentsData() {
     }
 
     renderCreateProfileView() {
+        let noStudentMessage = '';
+        // Comprobar si no hay estudiantes y si esta vista se está mostrando por defecto.
+        // this.currentView podría ser 'overview' al inicio si así se configura,
+        // y 'overview' para padres muestra 'create-profile'.
+        // Una comprobación más directa es this.students.length === 0.
+        // El contexto es que esta vista (create-profile) es la que se muestra al padre sin hijos.
+        if (this.students.length === 0) {
+            noStudentMessage = `
+                <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg shadow-md animate-fade-in-down">
+                    <style>
+                        @keyframes fade-in-down {
+                            0% { opacity: 0; transform: translateY(-10px); }
+                            100% { opacity: 1; transform: translateY(0); }
+                        }
+                        .animate-fade-in-down { animation: fade-in-down 0.5s ease-out; }
+                    </style>
+                    <div class="flex items-center">
+                        <div class="mr-4">
+                            <i class="fas fa-info-circle text-blue-500 text-4xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-xl font-semibold text-gray-800">¡Bienvenido/a a Matemágica!</h3>
+                            <p class="text-sm text-gray-600 mt-1 leading-relaxed">
+                                Para comenzar tu aventura educativa, el primer paso es crear un perfil para tu hijo/a.
+                                Completa el formulario a continuación con sus datos. ¡Es rápido y fácil!
+                            </p>
+                            <p class="text-xs text-blue-700 mt-2">
+                                <i class="fas fa-lightbulb mr-1"></i>
+                                Una vez creado el perfil, podrás acceder al dashboard, asignar profesores y mucho más.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         return `
             <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    <i class="fas fa-child mr-2 text-pink-600"></i>Crear Perfil de mi Hijo/a
+                ${noStudentMessage}
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center ${this.students.length > 0 ? '' : 'mt-4'}">
+                    <i class="fas fa-child mr-2 text-pink-600"></i>${this.students.length > 0 ? 'Crear Otro Perfil de Hijo/a' : 'Crear Perfil de mi Hijo/a'}
                 </h2>
                 
                 <form id="student-profile-form" class="space-y-6">
@@ -1359,10 +1396,13 @@ async loadStudentsData() {
         console.log('🇨🇱 Configurando regiones y comunas de Chile con detección automática por IP...');
         
         // Verificar que el servicio de Chile esté disponible
-        if (typeof window.ChileLocationService === 'undefined') {
-            console.warn('⚠️ ChileLocationService no disponible, cargando script...');
-            this.loadChileLocationService();
-            return;
+        if (typeof window.ChileLocationService === 'undefined' || typeof window.ChileLocationService.setupRegionComunaSelectors === 'undefined') {
+            console.error('❌ ERROR CRÍTICO: ChileLocationService no está disponible o completo cuando se necesita en setupChileRegionsComunas.');
+            console.error('❌ No se puede continuar con la configuración de regiones y comunas. Los selectores permanecerán vacíos.');
+            // Opcionalmente, notificar al usuario en la UI si es apropiado.
+            // this.showNotification('Error al cargar datos de ubicación. Por favor, recarga la página.', 'error');
+            this.showLocationHelp(); // Mostrar ayuda indicando que se debe seleccionar manualmente, aunque estará vacío.
+            return; // Detener la ejecución de esta función para evitar más errores.
         }
         
         // ✅ USAR EL SISTEMA PROBADO DE DETECCIÓN AUTOMÁTICA DE IP
