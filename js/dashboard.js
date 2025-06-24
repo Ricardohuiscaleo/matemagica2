@@ -69,10 +69,13 @@ async function initializeWithUnifiedSystem() {
         // Cargar estudiante actual desde sistema unificado
         await loadCurrentStudentFromUnified();
         
-        // Inicializar currículum si estamos en modo matemáticas
-        if (window.location.hash === '#matematicas' || DASHBOARD_CONFIG.currentView === 'matematicas') {
-            await initializeCurriculum();
-        }
+        // Inicializar currículum si estamos en modo matemáticas (esta lógica se moverá a handleHashChange)
+        // if (window.location.hash === '#matematicas' || DASHBOARD_CONFIG.currentView === 'matematicas') {
+        //     await initializeCurriculum();
+        // }
+
+        // Configurar navegación y manejar hash inicial
+        setupNavigation();
         
         console.log('✅ Sistema unificado inicializado para dashboard curricular');
         
@@ -105,6 +108,82 @@ async function waitForUnifiedSystem() {
     console.warn('⚠️ Timeout esperando sistema modular');
     return false;
 }
+
+// ✅ MANEJO DE NAVEGACIÓN POR HASH
+function handleHashChange() {
+    const hash = window.location.hash;
+    console.log('🔄 Hash changed or page loaded. Hash:', hash);
+
+    const dashboardContent = document.getElementById('dashboard-content');
+    const matematicasContent = document.getElementById('matematicas-segundo-content');
+    // Asumimos que si studentProfileManagement está activo, una recarga por cambio de hash
+    // limpiará <main> y estos divs (dashboard-content, matematicas-segundo-content)
+    // serán recreados o ya existen en el DOM original de apoderado-dashboard.html.
+
+    // Ocultar todas las secciones principales primero
+    if (dashboardContent) dashboardContent.classList.add('hidden');
+    if (matematicasContent) matematicasContent.classList.add('hidden');
+
+    // Determinar qué vista mostrar
+    if (hash === '#view=dashboard' || hash === '#dashboard' || hash === '') {
+        if (dashboardContent) {
+            dashboardContent.classList.remove('hidden');
+            console.log('🚀 Mostrando vista: Dashboard');
+        } else {
+            console.warn('⚠️ #dashboard-content no encontrado para mostrar.');
+        }
+    } else if (hash === '#view=mathematics' || hash.startsWith('#matematicas')) {
+        if (matematicasContent) {
+            matematicasContent.classList.remove('hidden');
+            console.log('🚀 Mostrando vista: Matemáticas');
+            if (typeof initializeCurriculum === 'function') {
+                initializeCurriculum(); // Cargar contenido del currículum
+            }
+        } else {
+            console.warn('⚠️ #matematicas-segundo-content no encontrado para mostrar.');
+        }
+    } else {
+        // Hash desconocido o no especificado para vista, mostrar dashboard por defecto
+        if (dashboardContent) {
+            dashboardContent.classList.remove('hidden');
+            console.log('🚀 Mostrando vista por defecto: Dashboard (hash desconocido o no especificado)');
+        } else {
+            console.warn('⚠️ #dashboard-content no encontrado para vista por defecto.');
+        }
+    }
+}
+
+function setupNavigation() {
+    const dashboardLink = document.querySelector('a.nav-item[href="#dashboard"]');
+    if (dashboardLink) {
+        dashboardLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Cambiar el hash dispara 'hashchange' y recarga si es necesario
+            window.location.hash = 'view=dashboard';
+        });
+    } else {
+        console.warn('⚠️ Enlace de navegación "Dashboard" no encontrado.');
+    }
+
+    const matematicasLink = document.querySelector('.nav-item[data-module="matematicas"]');
+    if (matematicasLink) {
+        matematicasLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.hash = 'view=mathematics';
+        });
+    } else {
+        console.warn('⚠️ Enlace de navegación "Matemáticas" no encontrado.');
+    }
+
+    // Escuchar cambios en el hash
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Llamar una vez al cargar la página para procesar el hash inicial
+    // Esto es importante si el usuario llega con un hash en la URL
+    handleHashChange();
+    console.log('✅ Navegación por hash configurada.');
+}
+
 
 // ✅ NUEVA FUNCIÓN: Cargar estudiante desde sistema modular
 async function loadCurrentStudentFromUnified() {

@@ -2226,9 +2226,26 @@ showNotification(message, type = 'info', duration = 4000) {
     goBackToDashboard() {
         console.log('⏪ Volviendo al dashboard principal...');
         // Redirigir a apoderado-dashboard.html para asegurar que se muestre el contenido del dashboard.
-        // Esto es simple y efectivo, aunque una recarga completa.
-        // Mejoras futuras podrían implicar restaurar el estado del DOM sin recargar toda la página.
-        window.location.href = 'apoderado-dashboard.html';
+        // Se usa un hash para que dashboard.js pueda interpretar la vista deseada.
+        // Si la página ya es apoderado-dashboard.html, cambiar el hash debería
+        // activar el listener 'hashchange' en dashboard.js o ser procesado al recargar.
+        if (window.location.pathname.includes('apoderado-dashboard.html')) {
+            window.location.hash = 'view=dashboard';
+            // Si el navegador no recarga solo por el cambio de hash y el listener no lo captura bien
+            // porque el contenido de <main> fue reemplazado, una recarga forzada podría ser necesaria.
+            // Pero primero probemos si el cambio de hash es suficiente.
+            // Si la lógica de hashchange en dashboard.js es robusta, debería manejarlo.
+            // Si studentProfileManagement reemplazó todo el <main>, una recarga es implícita
+            // si el hash realmente cambia la URL lo suficiente para el navegador.
+            // Si solo cambia el hash y no hay recarga, y los divs del dashboard no existen,
+            // handleHashChange no podrá mostrarlos.
+            // Por ahora, confiamos en que el cambio de hash + la lógica en dashboard.js lo resolverá,
+            // potencialmente a través de una recarga si el navegador la considera necesaria.
+            // Si no, se podría forzar: window.location.reload(); después de setear el hash.
+        } else {
+            // Si estamos en una página completamente diferente, redirigir con el hash.
+            window.location.href = 'apoderado-dashboard.html#view=dashboard';
+        }
     }
 
 } // ...existing code... (fin de la clase BaseProfileManagement)
