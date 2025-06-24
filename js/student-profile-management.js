@@ -55,37 +55,51 @@ class BaseProfileManagement {
         }
     }
 
-    async loadStudentsData() {
-        console.log('🔄 BaseProfileManagement: Cargando datos de estudiantes...');
-        try {
-            if (window.studentCore && window.studentCore.isInitialized()) {
-                const coreStudents = await window.studentCore.getAllStudents(); // studentCore ya los tiene de Supabase/localStorage
-                this.students = coreStudents.map(s => ({ // Adaptar si el formato es ligeramente diferente o añadir campos necesarios para profile management
+// En student-profile-management.js, reemplaza la función entera
+
+async loadStudentsData() {
+    console.log('🔄 BaseProfileManagement: Esperando que studentCore esté listo...');
+
+    // En lugar de chequear inmediatamente, creamos una promesa que espera la señal.
+    return new Promise(async (resolve, reject) => {
+
+        // Función para cargar los datos una vez que el core esté listo
+        const load = async () => {
+            try {
+                const coreStudents = await window.studentCore.getAllStudents();
+                this.students = coreStudents.map(s => ({
                     ...s,
-                    // Asegurarse de que los campos que espera student-profile-management estén aquí
-                    // Por ejemplo, si studentCore no devuelve 'city' sino 'comuna', mapearlo.
-                    // La estructura de studentCore.loadFromSupabase parece bastante completa.
-                    // Lo importante es que this.students en BaseProfileManagement tenga lo necesario para renderizar.
-                    // Si studentCore.getAllStudents() devuelve el formato exacto que usa saveStudentProfile,
-                    // entonces un simple this.students = coreStudents; podría ser suficiente.
-                    // Por ahora, asumimos que el formato es compatible o que getAllStudents ya lo adapta.
-                    city: s.comuna || s.city, // Ejemplo de adaptación
+                    city: s.comuna || s.city,
                     region: s.region,
                     description: s.description || '',
                     favoriteSubject: s.favoriteSubject || '',
                     academic: s.academic || { grade: s.course, school: s.school }
                 }));
                 console.log(`✅ BaseProfileManagement: ${this.students.length} estudiantes cargados desde studentCore.`);
-            } else {
-                console.warn('⚠️ BaseProfileManagement: studentCore no disponible o no inicializado. No se pueden cargar estudiantes desde el core.');
+                resolve(); // La promesa se resuelve con éxito
+            } catch (error) {
+                console.error('❌ BaseProfileManagement: Error cargando estudiantes desde studentCore:', error);
                 this.students = [];
-                // Considerar un reintento o un listener si studentCore se inicializa más tarde que BaseProfileManagement
+                reject(error); // La promesa falla
             }
-        } catch (error) {
-            console.error('❌ BaseProfileManagement: Error cargando estudiantes desde studentCore:', error);
-            this.students = [];
+        };
+
+        // Chequeamos si, por casualidad, el core ya está listo
+        if (window.studentCore && window.studentCore.isInitialized()) {
+            console.log('✅ studentCore ya estaba listo. Cargando datos inmediatamente.');
+            await load();
+        } else {
+            // Si no está listo, escuchamos el evento 'studentCoreReady'
+            console.log('🎧 studentCore no está listo. Escuchando el evento "studentCoreReady"...');
+            const onCoreReady = async () => {
+                console.log("🎉 ¡Evento 'studentCoreReady' recibido! Cargando datos de estudiantes.");
+                document.removeEventListener('studentCoreReady', onCoreReady); // Limpiamos el listener para no ejecutarlo dos veces
+                await load();
+            };
+            document.addEventListener('studentCoreReady', onCoreReady, { once: true }); // {once: true} es una forma segura de auto-limpiar
         }
-    }
+    });
+}
 
     getUserRole() {
         return this.currentUser?.user_role || 'parent';
