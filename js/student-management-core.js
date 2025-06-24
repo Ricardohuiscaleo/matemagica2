@@ -406,76 +406,102 @@ class StudentManagementCore {
         this.state.students.push(newStudent);
         await this.saveToLocal();
         
-        let supabaseSuccess = false;
+        let supabaseResult = null;
         if (this.state.supabaseClient) {
             try {
-                const savedSupabaseStudent = await this.saveToSupabase(newStudent);
-                if (savedSupabaseStudent) {
-                    console.log('✅ Estudiante guardado/actualizado en Supabase:', savedSupabaseStudent);
-                    supabaseSuccess = true;
+                // Para nuevos estudiantes, 'newStudent' contiene los datos para el insert.
+                // La función saveToSupabase ahora maneja la lógica de insert.
+                // El student.id (student_...) NO se usa como user_id en la BD.
+                // El 'id' (PK de math_profiles) será generado por la BD.
+                supabaseResult = await this.saveToSupabase(newStudent, false);
+                if (supabaseResult && supabaseResult.id) {
+                    // Actualizar el objeto newStudent local con el id de la base de datos
+                    // y potencialmente otros campos que devuelve Supabase.
+                    // Esto es importante si el ID de la BD se usa para futuras actualizaciones.
+                    newStudent.db_id = supabaseResult.id; // Guardar el ID de la BD, ej: para futuras actualizaciones.
+                    console.log('✅ Estudiante guardado en Supabase con ID de BD:', supabaseResult.id);
+                } else {
+                     console.warn('⚠️ Estudiante guardado en Supabase, pero no se retornó ID o datos completos.');
                 }
             } catch (error) {
-                // El error ya se loguea dentro de saveToSupabase
+                console.error('❌ Error al intentar guardar nuevo estudiante en Supabase:', error);
+                // supabaseResult sigue siendo null o el error
             }
         }
         
         if (this.state.students.length === 1 && !this.state.currentStudent) {
+            // newStudent.id sigue siendo el student_... frontend ID
             await this.selectStudent(newStudent.id);
         }
         
-        // this.updateUI(); // Comentado/Eliminado
-        
-        console.log(`🧑‍🎓 Perfil local para ${newStudent.name} creado/actualizado. Supabase sync: ${supabaseSuccess}`);
-        return newStudent;
+        console.log(`🧑‍🎓 Perfil local para ${newStudent.name} creado. Supabase sync: ${!!supabaseResult?.id}`);
+        return newStudent; // Devolver el objeto estudiante local, ahora con db_id si Supabase tuvo éxito.
     }
     
     // ✅ SELECCIONAR ESTUDIANTE
-    async selectStudent(studentId) {
-        const student = this.state.students.find(s => s.id === studentId);
-        if (!student) throw new Error('Estudiante no encontrado');
+    async selectStudent(studentFrontendId) { // studentFrontendId es el student_...
+        const student = this.state.students.find(s => s.id === studentFrontendId);
+        if (!student) {
+            console.error(`Estudiante no encontrado con ID de frontend: ${studentFrontendId}`);
+            // throw new Error('Estudiante no encontrado');
+            return null;
+        }
         
         this.state.currentStudent = student;
-        localStorage.setItem('matemagica_current_student_id', studentId);
-        
+        localStorage.setItem('matemagica_current_student_id', studentFrontendId);
+        console.log(`✅ Estudiante actual seleccionado (frontend ID ${studentFrontendId}):`, student.name);
         return student;
     }
     
     // ✅ ACTUALIZAR ESTUDIANTE
-    async updateStudent(studentId, newData) {
-        const studentIndex = this.state.students.findIndex(s => s.id === studentId);
-        if (studentIndex === -1) throw new Error('Estudiante no encontrado');
+    async updateStudent(studentFrontendId, newData) { // studentFrontendId es el student_...
+        const studentIndex = this.state.students.findIndex(s => s.id === studentFrontendId);
+        if (studentIndex === -1) throw new Error(`Estudiante no encontrado para actualizar con ID de frontend: ${studentFrontendId}`);
         
-        const updatedStudent = {
+        // Conservar el db_id si existe, es crucial para la actualización en Supabase
+        const currentDbId = this.state.students[studentIndex].db_id;
+
+        const updatedStudentLocal = {
             ...this.state.students[studentIndex],
             ...newData,
-            lastActivity: new Date().toISOString()
+            lastActivity: new Date().toISOString(),
+            db_id: currentDbId // Asegurarse de que db_id se mantiene
         };
         
-        this.state.students[studentIndex] = updatedStudent;
+        this.state.students[studentIndex] = updatedStudentLocal;
         
-        if (this.state.currentStudent?.id === studentId) {
-            this.state.currentStudent = updatedStudent;
+        if (this.state.currentStudent?.id === studentFrontendId) {
+            this.state.currentStudent = updatedStudentLocal;
         }
         
-        await this.saveToLocal();
+        await this.saveToLocal(); // Guardar la versión local actualizada
         
-        if (this.state.supabaseClient) {
-            await this.saveToSupabase(updatedStudent);
+        let supabaseSuccess = false;
+        if (this.state.supabaseClient && updatedStudentLocal.db_id) {
+            try {
+                // Pasar el objeto local completo y el db_id para la actualización
+                await this.saveToSupabase(updatedStudentLocal, true, updatedStudentLocal.db_id);
+                supabaseSuccess = true;
+            } catch (error) {
+                 console.error('❌ Error al intentar actualizar estudiante en Supabase:', error);
+            }
+        } else if (!updatedStudentLocal.db_id) {
+            console.warn(`⚠️ No se puede actualizar estudiante ${studentFrontendId} en Supabase: falta db_id.`);
         }
         
-        return updatedStudent;
+        console.log(`🧑‍🎓 Perfil local para ${updatedStudentLocal.name} actualizado. Supabase sync: ${supabaseSuccess}`);
+        return updatedStudentLocal;
     }
     
     // ✅ ELIMINAR ESTUDIANTE
-    async deleteStudent(studentId) {
-        const studentIndex = this.state.students.findIndex(s => s.id === studentId);
-        if (studentIndex === -1) throw new Error('Estudiante no encontrado');
+    async deleteStudent(studentFrontendId) { // studentFrontendId es el student_...
+        const studentIndex = this.state.students.findIndex(s => s.id === studentFrontendId);
+        if (studentIndex === -1) throw new Error(`Estudiante no encontrado para eliminar con ID de frontend: ${studentFrontendId}`);
         
-        const deletedStudent = this.state.students[studentIndex];
+        const deletedStudentLocal = this.state.students[studentIndex];
         this.state.students.splice(studentIndex, 1);
         
-        // Si era el estudiante actual, seleccionar otro
-        if (this.state.currentStudent?.id === studentId) {
+        if (this.state.currentStudent?.id === studentFrontendId) {
             if (this.state.students.length > 0) {
                 await this.selectStudent(this.state.students[0].id);
             } else {
@@ -506,74 +532,102 @@ class StudentManagementCore {
     }
     
     // ✅ GUARDAR EN SUPABASE
-    async saveToSupabase(student) { // student es el objeto newStudent de createStudent
+    async saveToSupabase(studentProfileData, isUpdate = false, profileDbId = null) {
         try {
             if (!this.state.supabaseClient) {
                 console.warn('Supabase client no disponible, no se puede guardar en Supabase.');
-                return null; // Devolver null si no se pudo guardar
+                return null;
             }
             
-            console.log('💾 Intentando guardar/actualizar estudiante en Supabase:', student.name);
+            console.log(`💾 Intentando ${isUpdate ? 'actualizar' : 'guardar'} perfil de estudiante en Supabase:`, studentProfileData.name);
 
+            // Mapeo de studentProfileData (viene de createStudent o updateStudent) a supabaseRecord
             const supabaseRecord = {
-                user_id: student.id, // PK
-                parent_id: student.parentId,
+                // id: se maneja por Supabase (PK auto-generada en insert, o se usa profileDbId para update)
+                parent_id: studentProfileData.parentId, // UUID del padre autenticado
+                user_id: null, // Para perfiles de estudiantes, user_id (Auth UUID) es usualmente null o no se gestiona aquí.
+                               // Si los estudiantes tuvieran sus propios logins, aquí iría su Auth UUID.
+                               // NO COLOCAR el student.id (student_...) aquí.
 
-                nombre_completo: student.name,
-                full_name: student.name,
-                nickname: student.nickname,
-                fecha_nacimiento: student.birthdate,
-                genero: student.gender,
+                nombre_completo: studentProfileData.name,
+                full_name: studentProfileData.name, // Asegurar que esta columna NOT NULL se llene
+                nickname: studentProfileData.nickname,
+                email: studentProfileData.email || null, // Si los estudiantes tienen email
 
-                region_chile: student.region_chile,
-                comuna_chile: student.comuna_chile,
-
-                intereses: student.intereses,
-                materia_favorita: student.materia_favorita,
-
-                curso_actual: student.curso_actual,
-                nombre_colegio: student.nombre_colegio,
-
-                descripcion_personalizada: student.descripcion_personalizada,
-
+                user_role: 'student', // o tipo_perfil: 'student'
                 tipo_perfil: 'student',
-                user_role: 'student',
-                perfil_completo: student.perfil_completo !== undefined ? student.perfil_completo : true,
 
-                email: student.email || null,
-                avatar_url: student.avatar,
+                avatar_url: studentProfileData.avatar,
+                fecha_nacimiento: studentProfileData.birthdate,
+                genero: studentProfileData.gender,
 
-                created_at: student.createdAt || new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                is_active: true
+                region_chile: studentProfileData.region_chile,
+                comuna_chile: studentProfileData.comuna_chile,
+
+                intereses: studentProfileData.interests,
+                materia_favorita: studentProfileData.materia_favorita,
+                curso_actual: studentProfileData.curso_actual,
+                nombre_colegio: studentProfileData.nombre_colegio,
+                descripcion_personalizada: studentProfileData.descripcion_personalizada,
+
+                perfil_completo: studentProfileData.perfil_completo !== undefined ? studentProfileData.perfil_completo : true,
+                is_active: true, // Asumimos que un nuevo perfil o uno actualizado está activo
+
+                // Campos de estadísticas y configuración podrían manejarse por separado o con valores por defecto
+                // configuracion: studentProfileData.configuracion || '{}',
+                // estadisticas: studentProfileData.stats || '{}', // Adaptar si stats tiene otra estructura
+
+                // created_at y updated_at son manejados por Supabase o por defecto
+                // created_at: isUpdate ? undefined : (studentProfileData.createdAt || new Date().toISOString()),
+                updated_at: new Date().toISOString()
             };
 
-            // Limpiar campos undefined para evitar problemas con Supabase
+            // Eliminar propiedades undefined para evitar errores con Supabase
             for (const key in supabaseRecord) {
                 if (supabaseRecord[key] === undefined) {
-                    supabaseRecord[key] = null;
+                    delete supabaseRecord[key];
                 }
             }
             
             console.log('📨 Objeto a enviar a Supabase:', supabaseRecord);
 
-            const { data, error } = await this.state.supabaseClient
-                .from('math_profiles') // Nombre de la tabla
-                .upsert(supabaseRecord, { onConflict: 'user_id' })
-                .select()
-                .single();
+            let data, error;
+
+            if (isUpdate) {
+                if (!profileDbId) {
+                    console.error('❌ Error: se requiere profileDbId para actualizar.');
+                    throw new Error('profileDbId es requerido para actualizar un perfil de estudiante.');
+                }
+                // Para actualizar, usamos el 'id' (PK de la tabla math_profiles) del estudiante
+                const response = await this.state.supabaseClient
+                    .from('math_profiles')
+                    .update(supabaseRecord)
+                    .eq('id', profileDbId) // Usar el ID de la base de datos del perfil del estudiante
+                    .select()
+                    .single();
+                data = response.data;
+                error = response.error;
+            } else {
+                // Para crear, es un insert simple. El 'id' (PK) se autogenerará.
+                const response = await this.state.supabaseClient
+                    .from('math_profiles')
+                    .insert(supabaseRecord)
+                    .select()
+                    .single();
+                data = response.data;
+                error = response.error;
+            }
             
             if (error) {
-                console.error('❌ Error guardando en Supabase:', error);
+                console.error(`❌ Error ${isUpdate ? 'actualizando' : 'guardando'} en Supabase:`, error);
                 throw error;
             }
             
-            console.log('✅ Estudiante guardado/actualizado en SupABASE y devuelto:', data);
-            return data;
+            console.log(`✅ Estudiante ${isUpdate ? 'actualizado' : 'guardado'} en Supabase y devuelto:`, data);
+            return data; // Este es el registro completo de Supabase, incluyendo el 'id' (PK)
             
         } catch (error) {
-            console.error('❌ Error interno en saveToSupabase:', error);
-            // this.updateUI(); // ESTA ES LA LÍNEA PROBLEMÁTICA ORIGINAL, la comentamos/eliminamos
+            console.error(`❌ Error interno en saveToSupabase (${isUpdate ? 'update' : 'insert'}):`, error);
             throw error;
         }
     }
