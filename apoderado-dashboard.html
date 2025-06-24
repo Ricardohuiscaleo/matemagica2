@@ -1230,7 +1230,12 @@
 
                 const selectedGrade = card.dataset.grade;
                 if (card.classList.contains('opacity-50')) {
-                    showToast(`Los contenidos para ${selectedGrade} aún no están disponibles.`, 'info');
+                    // Usar mostrarNotificacion de apoderado-dashboard.js
+                    if(typeof mostrarNotificacion === 'function') {
+                        mostrarNotificacion(`Los contenidos para ${selectedGrade} aún no están disponibles.`, 'info');
+                    } else {
+                        alert(`Los contenidos para ${selectedGrade} aún no están disponibles.`);
+                    }
                     return;
                 }
                 console.log(`🎓 Apoderado: Grado seleccionado: ${selectedGrade}`);
@@ -1239,36 +1244,7 @@
             console.log('✅ Apoderado: Listeners para selección de grado configurados.');
         }
 
-        function showToast(message, type = 'info', duration = 3000) {
-            const toastId = 'matemagica-toast';
-            let toastContainer = document.getElementById(toastId);
-
-            if (!toastContainer) {
-                toastContainer = document.createElement('div');
-                toastContainer.id = toastId;
-                toastContainer.className = 'fixed top-20 right-5 z-50 p-4 rounded-md shadow-lg text-white font-semibold';
-                document.body.appendChild(toastContainer);
-            }
-
-            const colors = {
-                success: 'bg-green-500', error: 'bg-red-500',
-                warning: 'bg-yellow-500', info: 'bg-blue-500'
-            };
-            toastContainer.className = `fixed top-20 right-5 z-50 p-4 rounded-md shadow-lg text-white font-semibold ${colors[type] || colors.info}`;
-            toastContainer.textContent = message;
-            toastContainer.style.display = 'block';
-            toastContainer.style.opacity = '1';
-            toastContainer.style.transform = 'translateX(0)';
-
-
-            setTimeout(() => {
-                toastContainer.style.opacity = '0';
-                toastContainer.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    toastContainer.style.display = 'none';
-                }, 300);
-            }, duration);
-        }
+        // La función showToast se elimina, se usará mostrarNotificacion de apoderado-dashboard.js
 
         // --- FIN: Lógica de Navegación Adaptada ---
     </script>
@@ -1513,13 +1489,16 @@
         // 🔄 FUNCIÓN PARA CARGAR SCRIPT DE GESTIÓN DE PERFILES (MODIFICADA)
         function loadProfileManagementScript() {
             console.log('📦 Cargando script de gestión de perfiles dinámicamente...');
-            showLoadingIndicator('Cargando gestión de perfiles...');
+            // Usar mostrarCargando de apoderado-dashboard.js
+            if (typeof mostrarCargando === 'function') {
+                mostrarCargando('Cargando gestión de perfiles...');
+            } else {
+                console.warn("mostrarCargando no está definida al intentar cargar script de perfiles.");
+            }
 
             const scriptId = 'student-profile-management-script';
             if (document.getElementById(scriptId)) {
                 console.log('📜 Script ya añadido al DOM. Esperando evento `studentProfileFactoryReady`.');
-                // No es necesario re-añadirlo. El listener global para 'studentProfileFactoryReady'
-                // debería encargarse de llamar a openProfileManagement cuando esté listo.
                 return;
             }
 
@@ -1532,12 +1511,12 @@
                 console.log('✅ Script `student-profile-management.js` cargado por el navegador.');
                 // No llamamos a openProfileManagement() aquí directamente.
                 // Confiamos en que el script disparará 'studentProfileFactoryReady'.
-                // hideLoadingIndicator() se llamará cuando el evento 'studentProfileFactoryReady' se reciba.
+                // ocultarCargando() se llamará cuando el evento 'studentProfileFactoryReady' se reciba.
             };
 
             script.onerror = (error) => {
                 console.error('❌ Error cargando script de gestión de perfiles:', error);
-                hideLoadingIndicator();
+                if (typeof ocultarCargando === 'function') ocultarCargando();
                 showProfileManagementError("No se pudo cargar el módulo de gestión de perfiles.");
             };
 
@@ -1548,7 +1527,7 @@
         // Este listener se añade una vez cuando apoderado-dashboard.html se carga.
         document.addEventListener('studentProfileFactoryReady', (event) => {
             console.log("🎉 Evento 'studentProfileFactoryReady' recibido en apoderado-dashboard.html!");
-            hideLoadingIndicator();
+            if (typeof ocultarCargando === 'function') ocultarCargando();
             if (event.detail && event.detail.manager) {
                 // La instancia ya está creada y disponible en window.studentProfileManagement
                 // y también en event.detail.manager.
@@ -1562,38 +1541,21 @@
 
         // Se elimina waitForScriptLoad ya que el evento 'studentProfileFactoryReady' maneja la lógica de "espera".
 
-        // 🔄 NUEVA FUNCIÓN: Mostrar indicador de carga
-        function showLoadingIndicator(mensaje = 'Cargando...') {
-            // Remover indicador existente si hay uno
-            hideLoadingIndicator();
-            
-            const indicator = document.createElement('div');
-            indicator.id = 'profile-loading-indicator';
-            indicator.className = 'fixed top-20 right-4 z-50 bg-blue-500 text-white p-4 rounded-lg shadow-lg max-w-sm';
-            indicator.innerHTML = `
-                <div class="flex items-center space-x-3">
-                    <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    <div>
-                        <div class="font-medium">${mensaje}</div>
-                        <div class="text-xs opacity-75">Por favor espera...</div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(indicator);
-        }
-
-        // 🚫 NUEVA FUNCIÓN: Ocultar indicador de carga
-        function hideLoadingIndicator() {
-            const indicator = document.getElementById('profile-loading-indicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
+        // Las funciones showLoadingIndicator y hideLoadingIndicator se eliminan.
+        // Se usarán mostrarCargando() y ocultarCargando() de apoderado-dashboard.js.
 
         // ❌ FUNCIÓN PARA MOSTRAR ERROR DE GESTIÓN DE PERFILES (MODIFICADA PARA ACEPTAR MENSAJE)
         function showProfileManagementError(customMessage = "Error cargando gestión de perfiles.") {
-            hideLoadingIndicator();
+            // Usar ocultarCargando de apoderado-dashboard.js
+            if (typeof ocultarCargando === 'function') {
+                ocultarCargando();
+            } else {
+                // Fallback si ocultarCargando no está listo (improbable si el error ocurre después de su carga)
+                const indicator = document.getElementById('profile-loading-indicator'); // ID del antiguo indicador
+                if (indicator) indicator.remove();
+                const loadingOverlay = document.getElementById('loading-overlay'); // ID del indicador de apoderado-dashboard.js
+                if (loadingOverlay) loadingOverlay.classList.add('hidden');
+            }
             
             // Evitar múltiples modales de error
             if (document.getElementById('profile-error-modal')) return;
