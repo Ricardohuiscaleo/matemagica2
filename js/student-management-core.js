@@ -1,5 +1,5 @@
 /**
- * 🎯 CORE DE GESTIÓN DE ESTUDIANTES v6 24 jun 02:48pm
+ * 🎯 CORE DE GESTIÓN DE ESTUDIANTES
  * Responsabilidad: Lógica de negocio, datos y persistencia
  * Separado del sistema de modales para mejor organización
  */
@@ -304,7 +304,7 @@ class StudentManagementCore {
             
             // Convertir formato
             return data.map(student => ({
-                id: student.user_id,
+                id: student.id, // Usar la PK de la tabla math_profiles como el ID en el frontend
                 name: student.full_name,
                 age: student.age || 8,
                 gender: student.gender || 'niño',
@@ -370,72 +370,81 @@ class StudentManagementCore {
     // ✅ CREAR ESTUDIANTE
     async createStudent(studentData) { // studentData viene de student-profile-management.js
         console.log('➕ Creando nuevo estudiante en Core:', studentData.name);
-        const studentId = `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // El studentId local ya no se usará como el ID principal persistente en el frontend.
+        // Se usará el ID de la base de datos (PK de Supabase) una vez obtenido.
         const parentProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
         
-        const newStudent = {
-            id: studentId,
+        // Objeto inicial con datos del formulario.
+        // El ID final (PK de Supabase) se asignará después del guardado.
+        let studentProfileForSave = {
             name: studentData.name,
             nickname: studentData.nickname,
             birthdate: studentData.birthdate,
             gender: studentData.gender,
-
             region_chile: studentData.region,
             comuna_chile: studentData.city,
-
             interests: studentData.interests || [],
             materia_favorita: studentData.favoriteSubject,
-
             curso_actual: studentData.academic?.grade || null,
             nombre_colegio: studentData.academic?.school || null,
-
             descripcion_personalizada: studentData.description,
-
-            mathLevel: 1,
+            // Campos por defecto o calculados que saveToSupabase espera para construir el supabaseRecord
             avatar: studentData.avatar || (studentData.gender === 'femenino' ? '👧' : (studentData.gender === 'masculino' ? '👦' : '👤')),
             parentId: parentProfile.user_id || 'unknown',
-            createdAt: new Date().toISOString(),
-            lastActivity: new Date().toISOString(),
+            mathLevel: 1, // Podría venir de studentData si el formulario lo incluye
             stats: { totalExercises: 0, correctAnswers: 0, totalPoints: 0, streakDays: 0, averageAccuracy: 0 },
-
             tipo_perfil: 'student',
             perfil_completo: true,
-            user_role: 'student'
+            user_role: 'student',
+            // createdAt y lastActivity se manejarán en el objeto final para el estado local
         };
         
-        this.state.students.push(newStudent);
-        await this.saveToLocal();
-        
+        let finalStudentObject = { ...studentProfileForSave }; // Clonar para el estado local
+        finalStudentObject.createdAt = new Date().toISOString();
+        finalStudentObject.lastActivity = new Date().toISOString();
+
         let supabaseResult = null;
         if (this.state.supabaseClient) {
             try {
-                // Para nuevos estudiantes, 'newStudent' contiene los datos para el insert.
-                // La función saveToSupabase ahora maneja la lógica de insert.
-                // El student.id (student_...) NO se usa como user_id en la BD.
-                // El 'id' (PK de math_profiles) será generado por la BD.
-                supabaseResult = await this.saveToSupabase(newStudent, false);
+                supabaseResult = await this.saveToSupabase(studentProfileForSave, false); // Pasa el perfil preparado
                 if (supabaseResult && supabaseResult.id) {
-                    // Actualizar el objeto newStudent local con el id de la base de datos
-                    // y potencialmente otros campos que devuelve Supabase.
-                    // Esto es importante si el ID de la BD se usa para futuras actualizaciones.
-                    newStudent.db_id = supabaseResult.id; // Guardar el ID de la BD, ej: para futuras actualizaciones.
                     console.log('✅ Estudiante guardado en Supabase con ID de BD:', supabaseResult.id);
+                    // Usar el ID de Supabase como el ID principal del estudiante en el frontend
+                    finalStudentObject.id = supabaseResult.id;
+                    // Actualizar el objeto local con cualquier dato que Supabase haya devuelto/modificado
+                    finalStudentObject.name = supabaseResult.full_name || finalStudentObject.name;
+                    finalStudentObject.nickname = supabaseResult.nickname || finalStudentObject.nickname;
+                    finalStudentObject.birthdate = supabaseResult.fecha_nacimiento || finalStudentObject.birthdate;
+                    finalStudentObject.gender = supabaseResult.genero || finalStudentObject.gender;
+                    finalStudentObject.avatar = supabaseResult.avatar_url || finalStudentObject.avatar;
+                    finalStudentObject.parentId = supabaseResult.parent_id || finalStudentObject.parentId;
+                    finalStudentObject.createdAt = supabaseResult.created_at || finalStudentObject.createdAt;
+                    finalStudentObject.lastActivity = supabaseResult.updated_at || finalStudentObject.lastActivity;
+                    // Aquí se podrían mapear más campos si es necesario desde supabaseResult
                 } else {
-                     console.warn('⚠️ Estudiante guardado en Supabase, pero no se retornó ID o datos completos.');
+                     console.warn('⚠️ Estudiante no se guardó correctamente en Supabase o no se retornó ID. Usando ID local temporal.');
+                     finalStudentObject.id = `student_local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 }
             } catch (error) {
                 console.error('❌ Error al intentar guardar nuevo estudiante en Supabase:', error);
-                // supabaseResult sigue siendo null o el error
+                finalStudentObject.id = `student_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             }
+        } else {
+            // Modo offline o Supabase no disponible
+            console.log('🔌 Modo offline: generando ID local para nuevo estudiante.');
+            finalStudentObject.id = `student_offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         }
         
-        if (this.state.students.length === 1 && !this.state.currentStudent) {
-            // newStudent.id sigue siendo el student_... frontend ID
-            await this.selectStudent(newStudent.id);
+        this.state.students.push(finalStudentObject);
+        await this.saveToLocal();
+
+        // Seleccionar el nuevo estudiante si es el primero o si se guardó en Supabase
+        if (finalStudentObject.id && (this.state.students.length === 1 || (supabaseResult && supabaseResult.id))) {
+            await this.selectStudent(finalStudentObject.id);
         }
         
-        console.log(`🧑‍🎓 Perfil local para ${newStudent.name} creado. Supabase sync: ${!!supabaseResult?.id}`);
-        return newStudent; // Devolver el objeto estudiante local, ahora con db_id si Supabase tuvo éxito.
+        console.log(`🧑‍🎓 Perfil para ${finalStudentObject.name} creado con ID: ${finalStudentObject.id}. Supabase sync: ${!!(supabaseResult && supabaseResult.id)}`);
+        return finalStudentObject;
     }
     
     // ✅ SELECCIONAR ESTUDIANTE
@@ -518,17 +527,23 @@ class StudentManagementCore {
                 const { error } = await this.state.supabaseClient
                     .from('math_profiles')
                     .delete()
-                    .eq('user_id', studentId);
+                    .eq('id', studentId); // Usar 'id' (PK de la tabla) para la eliminación
                 
                 if (error) {
                     console.error('❌ Error eliminando de Supabase:', error);
+                    // Podríamos decidir si relanzar el error o solo loguearlo
+                    // Por ahora, solo se loguea. El estudiante ya fue eliminado localmente.
+                } else {
+                    console.log(`✅ Estudiante con ID ${studentId} eliminado de Supabase.`);
                 }
             } catch (error) {
-                console.error('❌ Error en eliminación de Supabase:', error);
+                console.error('❌ Error en el proceso de eliminación de Supabase:', error);
             }
         }
         
-        return deletedStudent;
+        // deletedStudentLocal es el objeto que se eliminó del array local
+        console.log(`🗑️ Estudiante ${deletedStudentLocal.name} (ID: ${studentId}) eliminado localmente.`);
+        return deletedStudentLocal;
     }
     
     // ✅ GUARDAR EN SUPABASE
