@@ -368,46 +368,64 @@ class StudentManagementCore {
     }
     
     // ✅ CREAR ESTUDIANTE
-    async createStudent(studentData) {
+    async createStudent(studentData) { // studentData viene de student-profile-management.js
+        console.log('➕ Creando nuevo estudiante en Core:', studentData.name);
         const studentId = `student_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const parentProfile = JSON.parse(localStorage.getItem('matemagica-user-profile') || '{}');
         
         const newStudent = {
             id: studentId,
-            name: studentData.name.trim(),
-            age: parseInt(studentData.age),
+            name: studentData.name,
+            nickname: studentData.nickname,
+            birthdate: studentData.birthdate,
             gender: studentData.gender,
-            course: studentData.course?.trim() || '',
-            school: studentData.school?.trim() || 'Colegio Fines Relmu', // ✅ NUEVO: Escuela
-            teacher: studentData.teacher || null, // ✅ NUEVO: Datos del profesor asignado
+
+            region_chile: studentData.region,
+            comuna_chile: studentData.city,
+
             interests: studentData.interests || [],
-            mathLevel: parseInt(studentData.mathLevel) || 1,
-            avatar: studentData.avatar || (studentData.gender === 'niña' ? '👧' : '👦'),
+            materia_favorita: studentData.favoriteSubject,
+
+            curso_actual: studentData.academic?.grade || null,
+            nombre_colegio: studentData.academic?.school || null,
+
+            descripcion_personalizada: studentData.description,
+
+            mathLevel: 1,
+            avatar: studentData.avatar || (studentData.gender === 'femenino' ? '👧' : (studentData.gender === 'masculino' ? '👦' : '👤')),
             parentId: parentProfile.user_id || 'unknown',
             createdAt: new Date().toISOString(),
             lastActivity: new Date().toISOString(),
-            stats: { totalExercises: 0, correctAnswers: 0, totalPoints: 0, streakDays: 0, averageAccuracy: 0 }
+            stats: { totalExercises: 0, correctAnswers: 0, totalPoints: 0, streakDays: 0, averageAccuracy: 0 },
+
+            tipo_perfil: 'student',
+            perfil_completo: true,
+            user_role: 'student'
         };
         
         this.state.students.push(newStudent);
         await this.saveToLocal();
         
+        let supabaseSuccess = false;
         if (this.state.supabaseClient) {
-            await this.saveToSupabase(newStudent);
+            try {
+                const savedSupabaseStudent = await this.saveToSupabase(newStudent);
+                if (savedSupabaseStudent) {
+                    console.log('✅ Estudiante guardado/actualizado en Supabase:', savedSupabaseStudent);
+                    supabaseSuccess = true;
+                }
+            } catch (error) {
+                // El error ya se loguea dentro de saveToSupabase
+            }
         }
         
-        // Si es el primer estudiante, seleccionarlo
-        if (this.state.students.length === 1) {
+        if (this.state.students.length === 1 && !this.state.currentStudent) {
             await this.selectStudent(newStudent.id);
         }
         
-        this.updateUI();
+        // this.updateUI(); // Comentado/Eliminado
         
-        // ✅ NUEVO: Log específico para asignación de profesor
-        if (newStudent.teacher && newStudent.teacher.id !== 'manual') {
-            console.log(`🎯 Estudiante ${newStudent.name} asignado al profesor: ${newStudent.teacher.name} (${newStudent.teacher.email})`);
-        }
-        
+        console.log(`🧑‍🎓 Perfil local para ${newStudent.name} creado/actualizado. Supabase sync: ${supabaseSuccess}`);
         return newStudent;
     }
     
@@ -488,53 +506,75 @@ class StudentManagementCore {
     }
     
     // ✅ GUARDAR EN SUPABASE
-    async saveToSupabase(student) {
+    async saveToSupabase(student) { // student es el objeto newStudent de createStudent
         try {
-            if (!this.state.supabaseClient) return false;
+            if (!this.state.supabaseClient) {
+                console.warn('Supabase client no disponible, no se puede guardar en Supabase.');
+                return null; // Devolver null si no se pudo guardar
+            }
             
+            console.log('💾 Intentando guardar/actualizar estudiante en Supabase:', student.name);
+
             const supabaseRecord = {
-                user_id: student.id,
-                full_name: student.name,
-                age: student.age,
-                gender: student.gender,
-                course: student.course,
-                school: student.school || 'Colegio Fines Relmu', // ✅ NUEVO: Campo escuela
-                teacher_id: student.teacher?.id || null, // ✅ NUEVO: ID del profesor
-                teacher_name: student.teacher?.name || null, // ✅ NUEVO: Nombre del profesor
-                teacher_email: student.teacher?.email || null, // ✅ NUEVO: Email del profesor
-                interests: student.interests,
-                current_level: student.mathLevel,
+                user_id: student.id, // PK
                 parent_id: student.parentId,
+
+                nombre_completo: student.name,
+                full_name: student.name,
+                nickname: student.nickname,
+                fecha_nacimiento: student.birthdate,
+                genero: student.gender,
+
+                region_chile: student.region_chile,
+                comuna_chile: student.comuna_chile,
+
+                intereses: student.intereses,
+                materia_favorita: student.materia_favorita,
+
+                curso_actual: student.curso_actual,
+                nombre_colegio: student.nombre_colegio,
+
+                descripcion_personalizada: student.descripcion_personalizada,
+
+                tipo_perfil: 'student',
                 user_role: 'student',
-                avatar: student.avatar,
-                total_exercises: student.stats.totalExercises,
-                correct_exercises: student.stats.correctAnswers,
-                total_points: student.stats.totalPoints,
-                streak_days: student.stats.streakDays,
-                average_accuracy: student.stats.averageAccuracy,
-                created_at: student.createdAt,
-                updated_at: student.lastActivity
+                perfil_completo: student.perfil_completo !== undefined ? student.perfil_completo : true,
+
+                email: student.email || null,
+                avatar_url: student.avatar,
+
+                created_at: student.createdAt || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                is_active: true
             };
+
+            // Limpiar campos undefined para evitar problemas con Supabase
+            for (const key in supabaseRecord) {
+                if (supabaseRecord[key] === undefined) {
+                    supabaseRecord[key] = null;
+                }
+            }
             
-            const { error } = await this.state.supabaseClient
-                .from('math_profiles')
-                .upsert(supabaseRecord, { onConflict: 'user_id' });
+            console.log('📨 Objeto a enviar a Supabase:', supabaseRecord);
+
+            const { data, error } = await this.state.supabaseClient
+                .from('math_profiles') // Nombre de la tabla
+                .upsert(supabaseRecord, { onConflict: 'user_id' })
+                .select()
+                .single();
             
             if (error) {
                 console.error('❌ Error guardando en Supabase:', error);
-                return false;
+                throw error;
             }
             
-            // ✅ NUEVO: Log específico cuando se guarda relación profesor-estudiante
-            if (student.teacher && student.teacher.id !== 'manual') {
-                console.log(`✅ Relación guardada en Supabase: ${student.name} → Profesor ${student.teacher.name}`);
-            }
-            
-            return true;
+            console.log('✅ Estudiante guardado/actualizado en SupABASE y devuelto:', data);
+            return data;
             
         } catch (error) {
-            console.error('❌ Error en saveToSupabase:', error);
-            return false;
+            console.error('❌ Error interno en saveToSupabase:', error);
+            // this.updateUI(); // ESTA ES LA LÍNEA PROBLEMÁTICA ORIGINAL, la comentamos/eliminamos
+            throw error;
         }
     }
     
