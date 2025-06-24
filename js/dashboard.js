@@ -109,47 +109,66 @@ async function waitForUnifiedSystem() {
     return false;
 }
 
-// ✅ MANEJO DE NAVEGACIÓN POR HASH
+// ✅ MANEJO DE NAVEGACIÓN POR HASH (VERSIÓN ROBUSTA)
 function handleHashChange() {
     const hash = window.location.hash;
     console.log('🔄 Hash changed or page loaded. Hash:', hash);
 
-    const dashboardContent = document.getElementById('dashboard-content');
-    const matematicasContent = document.getElementById('matematicas-segundo-content');
-    // Asumimos que si studentProfileManagement está activo, una recarga por cambio de hash
-    // limpiará <main> y estos divs (dashboard-content, matematicas-segundo-content)
-    // serán recreados o ya existen en el DOM original de apoderado-dashboard.html.
+    const mainArea = document.querySelector('main.flex-1.md\\:ml-64');
+    if (!mainArea) {
+        console.error("❌ Elemento <main class='flex-1 md:ml-64'> no encontrado. No se puede gestionar la vista.");
+        return;
+    }
+
+    // HTML base de las secciones principales.
+    // El div #topics-grid dentro de #matematicas-segundo-content es crucial para initializeCurriculum.
+    const initialDashboardHTML = '<div id="dashboard-content" class="p-6"></div>'; // Contenido se carga dinámicamente o es estático en el HTML original
+    const initialMatematicasHTML = '<div id="matematicas-segundo-content" class="hidden"><div id="topics-grid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div></div>';
+
+    // Verificar y re-crear contenedores si fueron eliminados por studentProfileManagement
+    let dashboardContent = document.getElementById('dashboard-content');
+    let matematicasContent = document.getElementById('matematicas-segundo-content');
+
+    if (!dashboardContent || !matematicasContent) {
+        console.log('🎨 Restaurando estructura de vistas principales (#dashboard-content, #matematicas-segundo-content) en <main>...');
+        // Limpiar <main> de cualquier contenido de studentProfileManagement antes de añadir los divs base.
+        // Esto es importante si studentProfileManagement no se renderiza dentro de un contenedor específico
+        // que podamos simplemente ocultar/mostrar.
+        mainArea.innerHTML = initialDashboardHTML + initialMatematicasHTML;
+        dashboardContent = document.getElementById('dashboard-content');
+        matematicasContent = document.getElementById('matematicas-segundo-content');
+    }
+
+    // Asegurar que los elementos se hayan encontrado o creado
+    if (!dashboardContent || !matematicasContent) {
+        console.error("❌ Error crítico: No se pudieron encontrar o re-crear los contenedores de vista principal.");
+        return;
+    }
 
     // Ocultar todas las secciones principales primero
-    if (dashboardContent) dashboardContent.classList.add('hidden');
-    if (matematicasContent) matematicasContent.classList.add('hidden');
+    dashboardContent.classList.add('hidden');
+    matematicasContent.classList.add('hidden');
 
     // Determinar qué vista mostrar
     if (hash === '#view=dashboard' || hash === '#dashboard' || hash === '') {
-        if (dashboardContent) {
-            dashboardContent.classList.remove('hidden');
-            console.log('🚀 Mostrando vista: Dashboard');
-        } else {
-            console.warn('⚠️ #dashboard-content no encontrado para mostrar.');
-        }
+        dashboardContent.classList.remove('hidden');
+        console.log('🚀 Mostrando vista: Dashboard');
+        // Aquí se podría llamar a una función para popular #dashboard-content si es dinámico,
+        // por ejemplo, cargar estadísticas o accesos rápidos.
+        // Por ahora, se asume que su contenido es estático o se maneja al cargar la página inicialmente.
+        // Si #dashboard-content fue recreado, su contenido original del HTML se perdió.
+        // Esto podría requerir una función para re-popularlo.
+        // Ejemplo: if (dashboardContent.innerHTML === '') loadDashboardWidgets();
     } else if (hash === '#view=mathematics' || hash.startsWith('#matematicas')) {
-        if (matematicasContent) {
-            matematicasContent.classList.remove('hidden');
-            console.log('🚀 Mostrando vista: Matemáticas');
-            if (typeof initializeCurriculum === 'function') {
-                initializeCurriculum(); // Cargar contenido del currículum
-            }
-        } else {
-            console.warn('⚠️ #matematicas-segundo-content no encontrado para mostrar.');
+        matematicasContent.classList.remove('hidden');
+        console.log('🚀 Mostrando vista: Matemáticas');
+        if (typeof initializeCurriculum === 'function') {
+            initializeCurriculum(); // Cargar contenido del currículum en #topics-grid
         }
     } else {
         // Hash desconocido o no especificado para vista, mostrar dashboard por defecto
-        if (dashboardContent) {
-            dashboardContent.classList.remove('hidden');
-            console.log('🚀 Mostrando vista por defecto: Dashboard (hash desconocido o no especificado)');
-        } else {
-            console.warn('⚠️ #dashboard-content no encontrado para vista por defecto.');
-        }
+        dashboardContent.classList.remove('hidden');
+        console.log('🚀 Mostrando vista por defecto: Dashboard (hash desconocido o no especificado)');
     }
 }
 
