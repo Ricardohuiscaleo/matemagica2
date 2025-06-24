@@ -1093,7 +1093,7 @@
                 } else {
                     console.warn('⚠️ Botón de logout no encontrado');
                 }
-            } catch (error) {
+            } catch (error) { // GESTIÓN DE PERFILES (MODIFICADA)
                 console.error('❌ Error configurando botón de logout:', error);
             }
         }
@@ -1401,6 +1401,6 @@
     </script>
     
     <!-- ✅ MANTENER DASHBOARD.JS PARA COMPATIBILIDAD -->
-    <script src="js/dashboard.js"></script>
+    <!-- <script src="js/dashboard.js"></script> --> <!-- Eliminado para evitar conflicto con lógica de apoderado-dashboard -->
 </body>
 </html>
