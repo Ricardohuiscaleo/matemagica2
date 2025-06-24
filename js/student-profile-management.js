@@ -578,8 +578,9 @@ async loadStudentsData() {
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     <i class="fas fa-birthday-cake mr-1"></i>Fecha de nacimiento
                                 </label>
-                                <input type="date" id="student-birthdate" required
-                                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                                <input type="text" id="student-birthdate" required
+                                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                                       placeholder="DD/MM/AAAA">
                             </div>
                             
                             <div>
@@ -1393,6 +1394,24 @@ async loadStudentsData() {
         
         // ✅ CONFIGURAR REGIONES Y COMUNAS DE CHILE AUTOMÁTICAMENTE
         this.setupChileRegionsComunas();
+
+        // Inicializar Flatpickr para el campo de fecha de nacimiento
+        const birthdateInput = document.getElementById('student-birthdate');
+        if (birthdateInput && typeof flatpickr === 'function') {
+            flatpickr(birthdateInput, {
+                altInput: true,
+                altFormat: "d/m/Y",
+                dateFormat: "Y-m-d",
+                placeholder: "Selecciona fecha...",
+                maxDate: "today",
+                locale: "es",
+                disableMobile: "true"
+            });
+            console.log('🎉 Flatpickr inicializado para el campo de fecha de nacimiento.');
+        } else {
+            if (!birthdateInput) console.warn('⚠️ Input #student-birthdate no encontrado para Flatpickr.');
+            if (typeof flatpickr !== 'function') console.warn('⚠️ Librería Flatpickr no parece estar cargada.');
+        }
         
         form.addEventListener('submit', (e) => {
             e.preventDefault();
