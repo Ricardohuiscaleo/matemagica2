@@ -56,20 +56,33 @@ class BaseProfileManagement {
     }
 
     async loadStudentsData() {
+        console.log('🔄 BaseProfileManagement: Cargando datos de estudiantes...');
         try {
-            const userRole = this.getUserRole();
-            const storageKey = userRole === 'teacher' ? 'profesorEstudiantes' : 'apoderadoEstudiantes';
-            const studentsData = localStorage.getItem(storageKey);
-            
-            if (studentsData) {
-                this.students = JSON.parse(studentsData).filter(s => s.activo !== false);
+            if (window.studentCore && window.studentCore.isInitialized()) {
+                const coreStudents = await window.studentCore.getAllStudents(); // studentCore ya los tiene de Supabase/localStorage
+                this.students = coreStudents.map(s => ({ // Adaptar si el formato es ligeramente diferente o añadir campos necesarios para profile management
+                    ...s,
+                    // Asegurarse de que los campos que espera student-profile-management estén aquí
+                    // Por ejemplo, si studentCore no devuelve 'city' sino 'comuna', mapearlo.
+                    // La estructura de studentCore.loadFromSupabase parece bastante completa.
+                    // Lo importante es que this.students en BaseProfileManagement tenga lo necesario para renderizar.
+                    // Si studentCore.getAllStudents() devuelve el formato exacto que usa saveStudentProfile,
+                    // entonces un simple this.students = coreStudents; podría ser suficiente.
+                    // Por ahora, asumimos que el formato es compatible o que getAllStudents ya lo adapta.
+                    city: s.comuna || s.city, // Ejemplo de adaptación
+                    region: s.region,
+                    description: s.description || '',
+                    favoriteSubject: s.favoriteSubject || '',
+                    academic: s.academic || { grade: s.course, school: s.school }
+                }));
+                console.log(`✅ BaseProfileManagement: ${this.students.length} estudiantes cargados desde studentCore.`);
             } else {
+                console.warn('⚠️ BaseProfileManagement: studentCore no disponible o no inicializado. No se pueden cargar estudiantes desde el core.');
                 this.students = [];
+                // Considerar un reintento o un listener si studentCore se inicializa más tarde que BaseProfileManagement
             }
-            
-            console.log(`✅ ${this.students.length} estudiantes cargados para ${userRole}`);
         } catch (error) {
-            console.error('❌ Error cargando estudiantes:', error);
+            console.error('❌ BaseProfileManagement: Error cargando estudiantes desde studentCore:', error);
             this.students = [];
         }
     }
@@ -1763,32 +1776,43 @@ class BaseProfileManagement {
                 assignedTeachers: []
             };
 
-            console.log('🧑‍🎓 Datos del nuevo estudiante:', studentData);
+            console.log('🧑‍🎓 BaseProfileManagement: Datos del nuevo estudiante para el core:', studentDataForCore);
 
-            // Añadir a la lista local y simular guardado
-            this.students.push(studentData);
+            if (window.studentCore) {
+                try {
+                    const createdStudent = await window.studentCore.createStudent(studentDataForCore);
+                    if (createdStudent) {
+                        console.log('✅ BaseProfileManagement: Estudiante creado/guardado a través de studentCore:', createdStudent);
+                        this.showNotification(`✅ Perfil de ${nickname} guardado exitosamente (vía Core).`, 'success');
 
-            // Guardar en localStorage (para apoderados)
-            // En un sistema real, esto iría a Supabase o similar.
-            const storageKey = this.getUserRole() === 'teacher' ? 'profesorEstudiantes' : 'apoderadoEstudiantes';
-            localStorage.setItem(storageKey, JSON.stringify(this.students));
-            console.log(`💾 Estudiantes guardados en localStorage (${storageKey})`);
+                        // Actualizar la lista local de estudiantes en BaseProfileManagement
+                        await this.loadStudentsData();
 
+                        // Limpiar formulario (opcional)
+                        // document.getElementById('student-profile-form').reset();
+                        // if (window.ChileLocationService) window.ChileLocationService.resetComunaSelector('student-comuna');
 
-            this.showNotification(`✅ Perfil de ${nickname} guardado exitosamente`, 'success');
+                        // Encontrar el estudiante recién creado en la lista actualizada para pasarlo
+                        const newStudentInList = this.students.find(s => s.name === name && s.nickname === nickname); // Ajustar criterio si es necesario
+                        this.currentStudent = newStudentInList || createdStudent;
 
-            // Limpiar formulario (opcional)
-            // document.getElementById('student-profile-form').reset();
-            // window.ChileLocationService.resetComunaSelector('student-comuna');
-
-
-            // Cambiar a la pestaña de "Asignar Profesores"
-            this.currentStudent = studentData; // Guardar referencia al estudiante actual para la siguiente pestaña
-            this.switchView('assign-teachers');
+                        this.switchView('assign-teachers');
+                    } else {
+                        console.error('❌ BaseProfileManagement: studentCore.createStudent no devolvió un estudiante.');
+                        this.showNotification('❌ Error al guardar el perfil con el Core.', 'error');
+                    }
+                } catch (coreError) {
+                    console.error('❌ BaseProfileManagement: Error llamando a studentCore.createStudent:', coreError);
+                    this.showNotification(`❌ Error al guardar: ${coreError.message || 'Error desconocido del Core.'}`, 'error');
+                }
+            } else {
+                console.error('❌ BaseProfileManagement: studentCore no disponible. No se puede guardar el perfil.');
+                this.showNotification('❌ Error crítico: Sistema de estudiantes no disponible.', 'error');
+            }
 
         } catch (error) {
-            console.error('❌ Error guardando perfil:', error);
-            this.showNotification('❌ Error al guardar el perfil. Intenta de nuevo.', 'error');
+            console.error('❌ BaseProfileManagement: Error recolectando datos del formulario:', error);
+            this.showNotification('❌ Error en el formulario. Revisa los datos e intenta de nuevo.', 'error');
         }
     }
 
@@ -1839,11 +1863,19 @@ class BaseProfileManagement {
 
     // 🌍 NUEVO: Detectar ubicación y configurar selectores (MÉTODO MEJORADO con geolocalización nativa)
     async detectLocationAndSetupSelectors(regionSelect, comunaSelect) {
-        console.log('🌍 Iniciando detección de ubicación avanzada...');
+        console.log('🌍 Iniciando detección de ubicación y configuración de selectores de Región/Comuna...');
         
         try {
             // 1️⃣ Configurar selectores básicos primero
-            window.ChileLocationService.setupRegionComunaSelectors('student-region', 'student-comuna');
+            if (window.ChileLocationService && typeof window.ChileLocationService.setupRegionComunaSelectors === 'function') {
+                console.log('🇨🇱 Llamando a ChileLocationService.setupRegionComunaSelectors para IDs:', regionSelect.id, comunaSelect.id);
+                window.ChileLocationService.setupRegionComunaSelectors(regionSelect.id, comunaSelect.id);
+                console.log('✅ Selectores de región/comuna configurados por ChileLocationService.');
+            } else {
+                console.error('❌ ChileLocationService.setupRegionComunaSelectors no está disponible. Los selectores de Región/Comuna no se poblarán.');
+                this.showLocationHelp(); // Mostrar ayuda indicando que se debe seleccionar manualmente
+                return; // Salir si el servicio básico no está
+            }
             
             // 2️⃣ NUEVO: Intentar geolocalización nativa del navegador PRIMERO (más precisa)
             let detectedLocation = null;

@@ -477,6 +477,9 @@
             <!-- Contenido de Matemáticas 2° Básico (se carga dinámicamente) -->
             <div id="matematicas-segundo-content" class="hidden">
                 <!-- Este contenido será el dashboard curricular existente -->
+                <div id="topics-grid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Los temas cargados por dashboard.js se insertarán aquí -->
+                </div>
             </div>
         </main>
     </div>
@@ -696,49 +699,127 @@
         }
 
         function updateDashboardStats() {
+            console.log('🔄 Actualizando estadísticas del dashboard...');
             try {
-                const progress = JSON.parse(localStorage.getItem('exercise_progress') || '[]');
-                const totalExercises = progress.length;
-                const correctAnswers = progress.filter(p => p.correct).length;
+                let currentStudent = null;
+                if (window.studentCore && typeof window.studentCore.getCurrentStudent === 'function') {
+                    currentStudent = window.studentCore.getCurrentStudent();
+                }
 
-                const statElements = {
-                    exercises: document.getElementById('stat-exercises'),
-                    points: document.getElementById('stat-points')
-                };
+                const statExercisesEl = document.getElementById('stat-exercises');
+                const statPointsEl = document.getElementById('stat-points');
+                // Podríamos añadir también los otros elementos de stats si queremos actualizarlos:
+                // const statAccuracyEl = document.getElementById('stat-accuracy'); // Asumiendo que exista un ID
+                // const statTimeEl = document.getElementById('stat-time');       // Asumiendo que exista un ID
 
-                if (statElements.exercises) statElements.exercises.textContent = totalExercises;
-                if (statElements.points) statElements.points.textContent = correctAnswers * 10;
+                if (currentStudent && currentStudent.stats) {
+                    console.log('📊 Usando estadísticas del estudiante actual:', currentStudent.name, currentStudent.stats);
+                    if (statExercisesEl) statExercisesEl.textContent = currentStudent.stats.totalExercises || 0;
+                    if (statPointsEl) statPointsEl.textContent = currentStudent.stats.totalPoints || 0;
+                    // Ejemplo para otros stats:
+                    // if (statAccuracyEl) statAccuracyEl.textContent = `${currentStudent.stats.averageAccuracy || 0}%`;
+                    // if (statTimeEl) statTimeEl.textContent = удобныйФорматВремени(currentStudent.stats.totalStudyTime || 0);
+                } else {
+                    console.log('ℹ️ No hay estudiante actual o no tiene estadísticas. Mostrando valores por defecto.');
+                    if (statExercisesEl) statExercisesEl.textContent = '0';
+                    if (statPointsEl) statPointsEl.textContent = '0';
+                    // if (statAccuracyEl) statAccuracyEl.textContent = '0%';
+                    // if (statTimeEl) statTimeEl.textContent = '0h';
 
-                console.log('✅ Estadísticas actualizadas');
+                    // Aquí se podría actualizar el resto del dashboard para mostrar mensajes de "selecciona estudiante"
+                    // o "no hay datos", pero eso es más extenso.
+                    // Por ahora, solo las stats principales se resetean.
+                }
+                console.log('✅ Estadísticas del dashboard actualizadas.');
             } catch (error) {
-                console.error('❌ Error actualizando estadísticas:', error);
+                console.error('❌ Error actualizando estadísticas del dashboard:', error);
+                // Fallback a cero en caso de error
+                const statExercisesEl = document.getElementById('stat-exercises');
+                const statPointsEl = document.getElementById('stat-points');
+                if (statExercisesEl) statExercisesEl.textContent = '0';
+                if (statPointsEl) statPointsEl.textContent = '0';
             }
         }
 
         function initializeGlobalAIIndicator() {
             try {
                 const aiConfigured = window.geminiAI && window.geminiAI.configured;
-                console.log(`🤖 IA: ${aiConfigured ? 'ACTIVA' : 'OFFLINE'}`);
+                const aiStatusDot = document.querySelector('#ai-indicator .ai-status-dot');
+                const aiStatusText = document.querySelector('#ai-indicator .ai-status-text');
+
+                if (aiStatusDot) {
+                    if (aiConfigured) {
+                        aiStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
+                        aiStatusDot.classList.add('bg-green-500');
+                        if (aiStatusText) aiStatusText.textContent = 'IA Activa';
+                        console.log('🤖 IA: ACTIVA (Indicador visual actualizado)');
+                    } else {
+                        aiStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
+                        aiStatusDot.classList.add('bg-red-500');
+                        if (aiStatusText) aiStatusText.textContent = 'IA Offline';
+                        console.log('🤖 IA: OFFLINE (Indicador visual actualizado)');
+                    }
+                } else {
+                    console.warn("⚠️ Elemento .ai-status-dot no encontrado para el indicador IA.");
+                }
             } catch (error) {
                 console.error('❌ Error inicializando indicador IA:', error);
+                // Asegurarse de que el indicador muestre un estado de error o desconocido
+                const aiStatusDot = document.querySelector('#ai-indicator .ai-status-dot');
+                const aiStatusText = document.querySelector('#ai-indicator .ai-status-text');
+                if (aiStatusDot) {
+                    aiStatusDot.classList.remove('bg-green-500', 'bg-red-500');
+                    aiStatusDot.classList.add('bg-gray-400'); // Estado neutro/error
+                    if (aiStatusText) aiStatusText.textContent = 'IA Indet.';
+                }
             }
         }
 
         function updateWelcomeMessage() {
             try {
                 const now = new Date();
-                const timeString = now.toLocaleTimeString('es-ES', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                const dayName = now.toLocaleDateString('es-ES', { weekday: 'long' });
+                let greeting = "¡Hola";
+
+                const hours = now.getHours();
+                if (hours < 12) {
+                    greeting = "¡Buenos días";
+                } else if (hours < 20) {
+                    greeting = "¡Buenas tardes";
+                } else {
+                    greeting = "¡Buenas noches";
+                }
+
+                let userName = "";
+                try {
+                    const userProfileString = localStorage.getItem('matemagica-user-profile');
+                    if (userProfileString) {
+                        const userProfile = JSON.parse(userProfileString);
+                        if (userProfile && userProfile.full_name) {
+                            userName = userProfile.full_name.split(' ')[0]; // Tomar solo el primer nombre
+                        }
+                    }
+                } catch (e) {
+                    console.warn("⚠️ No se pudo obtener el nombre del usuario para el saludo:", e);
+                }
+
+                if (userName) {
+                    greeting += `, ${userName}!`;
+                } else {
+                    greeting += "!";
+                }
+
+                const timeString = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                const dateStringOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const dateString = now.toLocaleDateString('es-ES', dateStringOptions);
+
+                const fullMessage = `${greeting} Son las ${timeString} del ${dateString}.`;
 
                 const welcomeElement = document.getElementById('welcome-message');
                 if (welcomeElement) {
-                    welcomeElement.textContent = `${dayName} ${timeString}`;
+                    welcomeElement.textContent = fullMessage;
                 }
 
-                console.log(`✅ Mensaje de bienvenida: ${dayName} ${timeString}`);
+                console.log(`✅ Mensaje de bienvenida actualizado: ${fullMessage}`);
             } catch (error) {
                 console.error('❌ Error actualizando mensaje de bienvenida:', error);
             }
