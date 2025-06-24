@@ -493,6 +493,15 @@ async loadStudentsData() {
         `;
         
         this.updateTabNavigation();
+
+        // Asegurar que los eventos del formulario se configuren si la vista de creación es la actual.
+        // Esto es crucial para la carga inicial de la vista de creación para padres sin hijos.
+        if (this.currentView === 'create-profile' || (this.getUserRole() === 'parent' && this.currentView === 'overview')) {
+            // Pequeño delay para asegurar que el DOM esté completamente actualizado por mainContent.innerHTML
+            setTimeout(() => {
+                this.setupProfileFormEvents();
+            }, 0);
+        }
     }
 
     renderCreateProfileView() {
@@ -1377,7 +1386,7 @@ async loadStudentsData() {
     }
     
     setupProfileFormEvents() {
-        console.log('📝 Configurando eventos del formulario de perfil');
+        // console.log('📝 Configurando eventos del formulario de perfil'); // Log original, mantener si se desea
         
         const form = document.getElementById('student-profile-form');
         if (!form) return;
@@ -1393,37 +1402,35 @@ async loadStudentsData() {
 
     // 🇨🇱 NUEVO MÉTODO: Configurar regiones y comunas de Chile automáticamente con detección IP
     async setupChileRegionsComunas() {
-        console.log('🇨🇱 Configurando regiones y comunas de Chile con detección automática por IP...');
+        // console.log('🇨🇱 Configurando regiones y comunas...'); // Log original o modificado, mantener si se desea
         
         // Verificar que el servicio de Chile esté disponible
         if (typeof window.ChileLocationService === 'undefined' || typeof window.ChileLocationService.setupRegionComunaSelectors === 'undefined') {
             console.error('❌ ERROR CRÍTICO: ChileLocationService no está disponible o completo cuando se necesita en setupChileRegionsComunas.');
             console.error('❌ No se puede continuar con la configuración de regiones y comunas. Los selectores permanecerán vacíos.');
-            // Opcionalmente, notificar al usuario en la UI si es apropiado.
-            // this.showNotification('Error al cargar datos de ubicación. Por favor, recarga la página.', 'error');
-            this.showLocationHelp(); // Mostrar ayuda indicando que se debe seleccionar manualmente, aunque estará vacío.
-            return; // Detener la ejecución de esta función para evitar más errores.
+            this.showLocationHelp();
+            return;
         }
         
-        // ✅ USAR EL SISTEMA PROBADO DE DETECCIÓN AUTOMÁTICA DE IP
+        // Configurar selectores para la selección manual.
         try {
-            console.log('🌍 Iniciando detección automática de ubicación por IP...');
+            // console.log('🌍 Configurando selectores de ubicación para modo manual...'); // Log opcional
             
-            // Configurar selectores primero
             const regionSelect = document.getElementById('student-region');
             const comunaSelect = document.getElementById('student-comuna');
             
             if (!regionSelect || !comunaSelect) {
-                console.warn('⚠️ Selectores de región/comuna no encontrados');
+                console.warn('⚠️ Selectores de región/comuna (#student-region, #student-comuna) no encontrados en el DOM dentro de setupChileRegionsComunas. No se pueden configurar.');
+                this.showLocationHelp(); // Informar al usuario que algo falló.
                 return;
             }
             
-            // 🔥 USAR EL MÉTODO PROBADO DEL REAL ANALYTICS SERVICE
+            // Llama a la versión ahora simplificada de detectLocationAndSetupSelectors
             await this.detectLocationAndSetupSelectors(regionSelect, comunaSelect);
             
         } catch (error) {
-            console.error('❌ Error configurando regiones de Chile:', error);
-            this.setupFallbackRegions();
+            console.error('❌ Error general en setupChileRegionsComunas al intentar configurar selectores manuales:', error);
+            this.showLocationHelp(); // Informar al usuario en caso de cualquier error.
         }
     }
 
@@ -1910,74 +1917,25 @@ showNotification(message, type = 'info', duration = 4000) {
 }
 
 
-    // 🌍 NUEVO: Detectar ubicación y configurar selectores (MÉTODO MEJORADO con geolocalización nativa)
+    // 🌍 SIMPLIFICADO: Configurar selectores para selección manual únicamente
     async detectLocationAndSetupSelectors(regionSelect, comunaSelect) {
-        console.log('🌍 Iniciando detección de ubicación y configuración de selectores de Región/Comuna...');
+        console.log('🌍 Configurando selectores de Región/Comuna para selección MANUAL.');
         
         try {
-            // 1️⃣ Configurar selectores básicos primero
             if (window.ChileLocationService && typeof window.ChileLocationService.setupRegionComunaSelectors === 'function') {
                 console.log('🇨🇱 Llamando a ChileLocationService.setupRegionComunaSelectors para IDs:', regionSelect.id, comunaSelect.id);
                 window.ChileLocationService.setupRegionComunaSelectors(regionSelect.id, comunaSelect.id);
-                console.log('✅ Selectores de región/comuna configurados por ChileLocationService.');
+                console.log('✅ Selectores de región/comuna configurados para selección manual por ChileLocationService.');
+                // No mostramos showLocationHelp() aquí porque si esto funciona, el usuario PUEDE seleccionar.
+                // showLocationHelp() es más para cuando la detección falla Y/O la configuración básica falla.
             } else {
                 console.error('❌ ChileLocationService.setupRegionComunaSelectors no está disponible. Los selectores de Región/Comuna no se poblarán.');
-                this.showLocationHelp(); // Mostrar ayuda indicando que se debe seleccionar manualmente
-                return; // Salir si el servicio básico no está
+                this.showLocationHelp(); // Mostrar ayuda indicando que se debe seleccionar manualmente (aunque estarán vacíos)
+                return;
             }
-            
-            // 2️⃣ NUEVO: Intentar geolocalización nativa del navegador PRIMERO (más precisa)
-            let detectedLocation = null;
-            
-            console.log('📍 Intentando geolocalización nativa del navegador...');
-            detectedLocation = await this.detectLocationByBrowserGeolocation();
-            
-            // 3️⃣ Si falla la geolocalización nativa, usar detección por IP como fallback
-            if (!detectedLocation) {
-                console.log('🔍 Fallback: Intentando detección por IP...');
-                
-                // Opción A: Usar RealAnalyticsService si está disponible
-                if (window.RealAnalyticsService && window.RealAnalyticsService.visitorData) {
-                    const visitorData = window.RealAnalyticsService.visitorData;
-                    console.log('📊 Datos del visitante disponibles:', visitorData);
-                    
-                    if (visitorData.ip && visitorData.ip.region && visitorData.ip.city) {
-                        detectedLocation = {
-                            region: visitorData.ip.region,
-                            city: visitorData.ip.city,
-                            country: visitorData.ip.country,
-                            method: 'ip-analytics'
-                        };
-                        console.log('✅ Ubicación detectada desde RealAnalyticsService:', detectedLocation);
-                    }
-                }
-                
-                // Opción B: Usar API de geolocalización por IP directa
-                if (!detectedLocation) {
-                    console.log('🔍 Intentando detección directa por IP...');
-                    detectedLocation = await this.detectLocationByIP();
-                    if (detectedLocation) {
-                        detectedLocation.method = 'ip-direct';
-                    }
-                }
-            }
-            
-            // 4️⃣ Aplicar ubicación detectada si se encontró y es Chile
-            if (detectedLocation && (detectedLocation.country === 'Chile' || detectedLocation.country === 'CL')) {
-                console.log('🇨🇱 Ubicación chilena detectada, aplicando automáticamente...');
-                this.applyDetectedLocation(detectedLocation, regionSelect, comunaSelect);
-            } else if (detectedLocation && detectedLocation.country !== 'Chile' && detectedLocation.country !== 'CL') {
-                console.log('🌎 Usuario detectado fuera de Chile:', detectedLocation.country);
-                this.showInternationalUserMessage(detectedLocation.country);
-            } else {
-                console.log('❓ Ubicación no detectada, dejando selección manual');
-                this.showLocationHelp();
-            }
-            
         } catch (error) {
-            console.error('❌ Error en detección automática:', error);
-            console.log('📍 Continuando con selección manual...');
-            this.showLocationHelp();
+            console.error('❌ Error configurando selectores para selección manual:', error);
+            this.showLocationHelp(); // Mostrar ayuda en caso de error.
         }
     }
 
