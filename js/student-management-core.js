@@ -56,6 +56,7 @@ class StudentManagementCore {
             this.state.isInitialized = true;
             
             console.log('✅ Core de estudiantes inicializado');
+            document.dispatchEvent(new CustomEvent('studentCoreReady'));
             
         } catch (error) {
             console.error('❌ Error en inicialización del core:', error);
