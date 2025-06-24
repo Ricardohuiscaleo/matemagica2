@@ -1,5 +1,5 @@
 /**
- * 👥 SISTEMA DE GESTIÓN DE PERFILES - REFACTORIZADO POR ROLES
+ * 👥 SISTEMA DE GESTIÓN DE PERFILES - REFACTORIZADO POR ROLES 23 julio 09:32 v3 (actualizar version cada vez que se actualize)
  * Matemágica PWA - Gestión especializada según parent/teacher
  * Versión limpia sin duplicaciones - Diciembre 2024
  */
@@ -1728,140 +1728,132 @@ class BaseProfileManagement {
         `;
     }
 
-    saveStudentProfile() {
-        console.log('💾 Guardando perfil de estudiante...');
-        try {
-            const name = document.getElementById('student-name').value.trim();
-            const nickname = document.getElementById('student-nickname').value.trim();
-            const birthdate = document.getElementById('student-birthdate').value;
-            const gender = document.getElementById('student-gender').value;
-            const region = document.getElementById('student-region').value;
-            const comuna = document.getElementById('student-comuna').value;
-            const favoriteSubject = document.getElementById('favorite-subject').value;
-            const description = document.getElementById('student-description').value.trim();
+saveStudentProfile() {
+    console.log('💾 Guardando perfil de estudiante...');
+    try {
+        const name = document.getElementById('student-name').value.trim();
+        const nickname = document.getElementById('student-nickname').value.trim();
+        const birthdate = document.getElementById('student-birthdate').value;
+        const gender = document.getElementById('student-gender').value;
+        const region = document.getElementById('student-region').value;
+        const comuna = document.getElementById('student-comuna').value;
+        const favoriteSubject = document.getElementById('favorite-subject').value;
+        const description = document.getElementById('student-description').value.trim();
 
-            const interests = [];
-            document.querySelectorAll('.interest-checkbox:checked').forEach(checkbox => {
-                interests.push(checkbox.value);
-            });
+        const interests = [];
+        document.querySelectorAll('.interest-checkbox:checked').forEach(checkbox => {
+            interests.push(checkbox.value);
+        });
 
-            if (!name || !nickname || !birthdate || !gender || !region || !comuna) {
-                this.showNotification('⚠️ Por favor completa todos los campos obligatorios.', 'warning');
-                // Resaltar campos faltantes (lógica adicional podría ir aquí)
-                return;
-            }
+        if (!name || !nickname || !birthdate || !gender || !region || !comuna) {
+            this.showNotification('⚠️ Por favor completa todos los campos obligatorios.', 'warning');
+            return;
+        }
 
-            const studentId = `student-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const studentId = `student-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const studentData = {
+            id: studentId,
+            name,
+            nickname,
+            birthdate,
+            gender,
+            region,
+            city: comuna, // Usamos 'city' internamente como en studentCard, pero el campo es 'comuna'
+            favoriteSubject,
+            interests,
+            description,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            activo: true, // Marcar como activo por defecto
+            academic: {
+                grade: null,
+                school: null
+            },
+            assignedTeachers: []
+        };
+        console.log('🧑‍🎓 BaseProfileManagement: Datos del nuevo estudiante para el core:', studentData);
 
-            const studentData = {
-                id: studentId,
-                name,
-                nickname,
-                birthdate,
-                gender,
-                region,
-                city: comuna, // Usamos 'city' internamente como en studentCard, pero el campo es 'comuna'
-                favoriteSubject,
-                interests,
-                description,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                activo: true, // Marcar como activo por defecto
-                // Datos académicos se añadirán en la pestaña de "Asignar Profesores"
-                academic: {
-                    grade: null,
-                    school: null
-                },
-                // Profesores asignados (vacío inicialmente)
-                assignedTeachers: []
-            };
-
-            // Aquí estaba el error: studentDataForCore no estaba definida.
-            // La variable correcta con los datos del formulario es 'studentData'.
-            console.log('🧑‍🎓 BaseProfileManagement: Datos del nuevo estudiante para el core:', studentData);
-
-            if (window.studentCore) {
-                try {
-                    // Usar la variable correcta 'studentData' aquí también.
-                    const createdStudent = await window.studentCore.createStudent(studentData);
+        if (window.studentCore) {
+            // VERSIÓN "ANTI-HOSTINGER" CON .then().catch()
+            window.studentCore.createStudent(studentData)
+                .then(createdStudent => {
                     if (createdStudent) {
-                        console.log('✅ BaseProfileManagement: Estudiante creado/guardado a través de studentCore:', createdStudent);
-                        this.showNotification(`✅ Perfil de ${nickname} guardado exitosamente (vía Core).`, 'success');
-
-                        // Actualizar la lista local de estudiantes en BaseProfileManagement
-                        await this.loadStudentsData();
-
-                        // Limpiar formulario (opcional)
-                        // document.getElementById('student-profile-form').reset();
-                        // if (window.ChileLocationService) window.ChileLocationService.resetComunaSelector('student-comuna');
-
-                        // Encontrar el estudiante recién creado en la lista actualizada para pasarlo
-                        const newStudentInList = this.students.find(s => s.name === name && s.nickname === nickname); // Ajustar criterio si es necesario
-                        this.currentStudent = newStudentInList || createdStudent;
-
-                        this.switchView('assign-teachers');
+                        console.log('✅ Estudiante creado/guardado vía Core:', createdStudent);
+                        this.showNotification(`✅ Perfil de ${nickname} guardado.`, 'success');
+                        
+                        // Encadenamos la siguiente acción para asegurar el orden
+                        return this.loadStudentsData().then(() => {
+                            const newStudentInList = this.students.find(s => s.name === name && s.nickname === nickname);
+                            this.currentStudent = newStudentInList || createdStudent;
+                            this.switchView('assign-teachers');
+                        });
                     } else {
-                        console.error('❌ BaseProfileManagement: studentCore.createStudent no devolvió un estudiante.');
+                        console.error('❌ studentCore.createStudent no devolvió un estudiante.');
                         this.showNotification('❌ Error al guardar el perfil con el Core.', 'error');
                     }
-                } catch (coreError) {
-                    console.error('❌ BaseProfileManagement: Error llamando a studentCore.createStudent:', coreError);
-                    this.showNotification(`❌ Error al guardar: ${coreError.message || 'Error desconocido del Core.'}`, 'error');
-                }
-            } else {
-                console.error('❌ BaseProfileManagement: studentCore no disponible. No se puede guardar el perfil.');
-                this.showNotification('❌ Error crítico: Sistema de estudiantes no disponible.', 'error');
-            }
-
-        } catch (error) {
-            console.error('❌ BaseProfileManagement: Error recolectando datos del formulario:', error);
-            this.showNotification('❌ Error en el formulario. Revisa los datos e intenta de nuevo.', 'error');
+                })
+                .catch(coreError => {
+                    console.error('❌ Error en la promesa de studentCore.createStudent:', coreError);
+                    this.showNotification(`❌ Error al guardar: ${coreError.message || 'Error desconocido.'}`, 'error');
+                });
+        } else {
+            console.error('❌ studentCore no disponible. No se puede guardar el perfil.');
+            this.showNotification('❌ Error crítico: Sistema de estudiantes no disponible.', 'error');
         }
+
+    } catch (error) {
+        console.error('❌ Error recolectando datos del formulario:', error);
+        this.showNotification('❌ Error en el formulario. Revisa los datos.', 'error');
+    }
+}
+
+// Reemplaza toda la función showNotification con esta
+showNotification(message, type = 'info', duration = 4000) {
+    console.log(`🔔 Notificación [${type}]: ${message}`);
+    
+    // Aquí está el cambio: Se usa 'let' en lugar de 'const'
+    let container = document.getElementById('toast-container');
+
+    // El resto de la lógica para crear el toast
+    const toast = document.createElement('div');
+    let bgColor, icon;
+
+    switch (type) {
+        case 'success':
+            bgColor = 'bg-green-500';
+            icon = '<i class="fas fa-check-circle mr-2"></i>';
+            break;
+        case 'error':
+            bgColor = 'bg-red-500';
+            icon = '<i class="fas fa-times-circle mr-2"></i>';
+            break;
+        case 'warning':
+            bgColor = 'bg-yellow-500';
+            icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
+            break;
+        default: // info
+            bgColor = 'bg-blue-500';
+            icon = '<i class="fas fa-info-circle mr-2"></i>';
     }
 
-    showNotification(message, type = 'info', duration = 4000) {
-        console.log(`🔔 Notificación [${type}]: ${message}`);
-        const container = document.getElementById('toast-container') || document.body;
+    toast.className = `${bgColor} text-white p-4 rounded-lg shadow-lg flex items-center text-sm`;
+    toast.innerHTML = `${icon} ${message}`;
 
-        const toast = document.createElement('div');
-        let bgColor, icon;
-
-        switch (type) {
-            case 'success':
-                bgColor = 'bg-green-500';
-                icon = '<i class="fas fa-check-circle mr-2"></i>';
-                break;
-            case 'error':
-                bgColor = 'bg-red-500';
-                icon = '<i class="fas fa-times-circle mr-2"></i>';
-                break;
-            case 'warning':
-                bgColor = 'bg-yellow-500';
-                icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
-                break;
-            default: // info
-                bgColor = 'bg-blue-500';
-                icon = '<i class="fas fa-info-circle mr-2"></i>';
-        }
-
-        toast.className = `${bgColor} text-white p-4 rounded-lg shadow-lg flex items-center text-sm`;
-        toast.innerHTML = `${icon} ${message}`;
-
-        // Posicionamiento del toast container si no existe
-        if (!document.getElementById('toast-container')) {
-            const toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.className = 'fixed bottom-4 right-4 z-50 space-y-2';
-            document.body.appendChild(toastContainer);
-            container = toastContainer;
-        }
-
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.remove();
-        }, duration);
+    // Ahora esta parte es válida porque 'container' puede ser reasignado
+    if (!container) {
+        const toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+        document.body.appendChild(toastContainer);
+        container = toastContainer;
     }
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, duration);
+}
 
 
     // 🌍 NUEVO: Detectar ubicación y configurar selectores (MÉTODO MEJORADO con geolocalización nativa)
